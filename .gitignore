@@ -1,0 +1,113 @@
+# ==================================================
+# Environment
+# ==================================================
+.env
+.env.*
+!.env.example
+
+
+# ==================================================
+# Backend - Spring Boot / Maven
+# ==================================================
+backend/target/
+
+
+# ==================================================
+# Frontend - Next.js
+# ==================================================
+
+# Dependencies
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.*
+
+# Yarn
+frontend/.yarn/*
+!frontend/.yarn/patches/
+!frontend/.yarn/plugins/
+!frontend/.yarn/releases/
+!frontend/.yarn/versions/
+
+# Next.js build
+frontend/.next/
+frontend/out/
+
+# Production build
+frontend/build/
+
+# Testing
+frontend/coverage/
+
+# Vercel
+frontend/.vercel/
+
+# TypeScript
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+
+
+# ==================================================
+# Logs
+# ==================================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# ==================================================
+# Certificates / local secrets
+# ==================================================
+*.pem
+
+
+# ==================================================
+# STS
+# ==================================================
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+
+
+# ==================================================
+# IntelliJ IDEA
+# ==================================================
+.idea/
+*.iws
+*.iml
+*.ipr
+
+
+# ==================================================
+# NetBeans
+# ==================================================
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+
+
+# ==================================================
+# VS Code
+# ==================================================
+.vscode/
+
+
+# ==================================================
+# OS
+# ==================================================
+.DS_Store
+Thumbs.db
+
+
+# ==================================================
+# AI Agent local instructions
+# ==================================================
+AGENTS.md
