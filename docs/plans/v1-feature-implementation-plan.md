@@ -16,15 +16,15 @@ Nguồn đối chiếu:
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
 | Database | PostgreSQL 17, Flyway migration V1 cho audit; Hibernate validate schema |
 | Authentication | Security chỉ mở GET health, chặn Actuator; flow xác thực thuộc F03 |
-| Frontend | Next.js 16.3.6, React 19.2.8, Tailwind; còn trang khởi tạo |
+| Frontend | Next.js 16.3.6, React 19.2.8, Tailwind; có design system, workspace shell và API transport F02 |
 | Redis, WebSocket | Redis 7.4 đã cấu hình local/Testcontainers; WebSocket chưa triển khai |
 | OpenAPI | Health đã triển khai; có schema lỗi và convention pagination dùng chung |
 | Testing | 33 test backend pass, gồm HTTP contract và transaction audit trên PostgreSQL/Redis thật |
 | CI | Cấu hình backend verify bằng Testcontainers, frontend lint/build; chưa chạy CI remote trong phiên |
 | Tài liệu | Đã đồng bộ hủy Session/deadline, README local và sơ đồ nền tảng F01 |
 
-**F01 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** F02–F21 chưa hoàn thành;
-M0 vẫn còn app shell F02. Kết quả và giới hạn kiểm chứng được ghi tại mục F01 bên dưới.
+**F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành;
+F03–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -106,17 +106,36 @@ Kiến trúc và cách dùng các thành phần chung:
 
 **Phụ thuộc:** F01.
 
-- [ ] Dùng UI/UX Pro Max tra cứu và kiểm tra hướng thiết kế phù hợp Learnova trước khi chốt.
-- [ ] Tạo `design-system/learnova/MASTER.md`; chỉ tạo override trong `pages/` cho màn hình có khác biệt thực sự. Chốt typography hỗ trợ tiếng Việt, semantic tokens, spacing, component states và motion.
-- [ ] Triển khai CSS variables/Tailwind tokens theo Master; dùng hướng dẫn dành cho web, Next.js và Tailwind, không áp dụng máy móc quy tắc native mobile.
-- [ ] Tổ chức `app` để routing/composition, `features` cho UI nghiệp vụ và API client tập trung.
-- [ ] Dựng sidebar, topbar, workspace switcher, user menu và các primitive thực sự cần dùng.
-- [ ] Giữ root layout là Server Component; đặt auth và interaction trong Client Component phù hợp.
-- [ ] Chuẩn bị loading, empty, validation, forbidden, not-found và network-error state.
-- [ ] Bám route map trong Screen Flow; giao diện mặc định tiếng Việt, enum/code giữ tiếng Anh.
-- [ ] Tạo API client hỗ trợ bearer token, credentials, lỗi có cấu trúc và hủy request không còn cần thiết.
+- [x] Dùng UI/UX Pro Max tra cứu và kiểm tra hướng thiết kế phù hợp Learnova trước khi chốt.
+- [x] Tạo `design-system/learnova/MASTER.md`; chỉ tạo override trong `pages/` cho màn hình có khác biệt thực sự. Chốt typography hỗ trợ tiếng Việt, semantic tokens, spacing, component states và motion.
+- [x] Triển khai CSS variables/Tailwind tokens theo Master; dùng hướng dẫn dành cho web, Next.js và Tailwind, không áp dụng máy móc quy tắc native mobile.
+- [x] Tổ chức `app` để routing/composition, `features` cho UI nghiệp vụ và API client tập trung.
+- [x] Dựng sidebar, topbar, workspace switcher, user menu và các primitive thực sự cần dùng.
+- [x] Giữ root layout là Server Component; đặt auth và interaction trong Client Component phù hợp.
+- [x] Chuẩn bị loading, empty, validation, forbidden, not-found và network-error state.
+- [x] Bám route map trong Screen Flow; giao diện mặc định tiếng Việt, enum/code giữ tiếng Anh.
+- [x] Tạo API client hỗ trợ bearer token, credentials, lỗi có cấu trúc và hủy request không còn cần thiết.
 
 **Nghiệm thu:** Navigation và layout dùng chung nhất quán với Master; kiểm tra keyboard/focus, responsive, contrast và reduced motion; mobile không mất action chính; chưa hiển thị dữ liệu mock như dữ liệu thật.
+
+**Kết quả kiểm chứng ngày 26/09/2026:**
+
+- Theme sáng xanh dương, Plus Jakarta Sans tiếng Việt, token CSS/Tailwind và Master;
+  chưa cần override. Đã review ảnh desktop/mobile và contrast của cặp màu chính.
+- Shell có sidebar/drawer, switcher theo role collection, user disclosure và trạng thái UI.
+  Fixture chỉ trong preview development; production trả HTTP 404. Route thật báo chưa sẵn sàng.
+- 28 unit test; 8 browser test trên Edge; 1 production route test và 1 health integration test pass.
+- `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:e2e`,
+  `npm run test:production`, `npm run test:health` thành công trong lần kiểm chứng cuối tương ứng.
+- Browser checks gồm 375/768/1024/1440px, keyboard/focus, drawer Escape/return focus,
+  role isolation, validation, reduced motion và viewport reflow 640x450 tương đương diện tích CSS
+  khi zoom 200% trên 1280x900. Chưa kiểm chứng mọi browser zoom hoặc screen reader.
+- Health test gọi backend Spring Boot thật từ Node; chưa kiểm chứng browser CORS/cookie/auth,
+  các phần này thuộc F03. Không thay backend hoặc OpenAPI.
+- CI đã bổ sung test/typecheck/browser/production checks; chưa chạy remote.
+  Local Node 24/Windows/Edge; CI Node 22/Chromium.
+
+Chi tiết và sơ đồ: [Kiến trúc F02](../architecture/f02-frontend-foundation.md).
 
 ### F03 — Local authentication và multi-role
 
@@ -447,6 +466,7 @@ Kiến trúc và cách dùng các thành phần chung:
 
 ### Definition of Done cho mỗi feature
 
+- [ ] Trước khi sửa code, đã kiểm tra working tree và chuyển sang nhánh `feat/<feature-id>-<slug>` từ `origin/main` đã cập nhật; nếu đang ở đúng nhánh feature thì tiếp tục. Không triển khai/commit feature trực tiếp trên `main`, không tự bỏ thay đổi đang có.
 - [ ] Có mapping tới use case và screen flow.
 - [ ] Feature có UI được thiết kế/review bằng UI/UX Pro Max theo Master và override phù hợp; kiểm tra semantic tokens, keyboard/focus, responsive, contrast và reduced motion.
 - [ ] API, migration, backend và frontend nhất quán.
@@ -456,6 +476,7 @@ Kiến trúc và cách dùng các thành phần chung:
 - [ ] Tài liệu được đồng bộ; feature quan trọng có sơ đồ trong `docs/architecture/`.
 - [ ] Không chứa secret hoặc sửa đè thay đổi đang có của người dùng.
 - [ ] Có commit Conventional Commits sau khi feature hoàn thành.
+- [ ] Đã push nhánh feature và mở pull request vào `main`, ghi kết quả kiểm chứng; không tự merge khi chưa được yêu cầu.
 
 Checkbox đã đánh dấu ở F01 phản ánh công việc đã triển khai và kiểm chứng nêu trên.
 Các checkbox còn lại là công việc chưa hoàn thành; Definition of Done là checklist

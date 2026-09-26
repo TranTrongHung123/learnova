@@ -14,7 +14,9 @@ Nguồn nghiệp vụ và kế hoạch:
 
 Kết quả tra cứu skill là gợi ý, không phải requirement tự động được chấp thuận. Kiểm tra domain/category, kết quả ưu tiên và mức phù hợp với sản phẩm assessment trước khi sử dụng. Không tự thêm course, payment, AI hoặc thay đổi authentication, grading, authorization và result policy để phù hợp một mẫu UI.
 
-Lần chuyển workflow này chỉ cập nhật tài liệu. Design system và app shell thuộc F02; chưa có bộ màu/font được chốt bởi tài liệu này.
+F02 đã chốt theme sáng xanh dương và Plus Jakarta Sans hỗ trợ tiếng Việt tại
+[Master](../../design-system/learnova/MASTER.md); app shell được mô tả trong
+[kiến trúc F02](f02-frontend-foundation.md).
 
 ## 2. Quy trình theo từng feature
 
@@ -67,7 +69,8 @@ Không áp dụng đơn vị native như pt/dp, haptics hoặc Dynamic Type làm
 
 ## 4. Design system ở F02
 
-Các đường dẫn dưới đây là đầu ra dự kiến, được tạo khi thực hiện F02:
+Master đã được tạo ở F02. Override chỉ tạo khi feature có khác biệt thực sự;
+F02 chưa có override trong `pages/`:
 
 ```text
 design-system/learnova/MASTER.md

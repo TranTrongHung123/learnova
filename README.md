@@ -20,11 +20,14 @@ Online Assessment & Examination Platform
 - Docker
 - Docker Compose
 
-## Chạy local (F01)
+## Chạy local (F01–F02)
 
 Yêu cầu Java 21, Node.js 22 + npm và Docker Desktop đang chạy Linux containers.
 Backend dùng Maven Wrapper; PostgreSQL 17 và Redis 7.4 chạy qua Compose.
-Frontend hiện vẫn là trang khởi tạo; app shell thuộc F02, authentication thuộc F03.
+Frontend đã có design system và workspace shell F02; authentication thuộc F03.
+Route thật hiển thị trạng thái chưa sẵn sàng, không giả đăng nhập hoặc dữ liệu nghiệp vụ.
+Sau `npm run dev`, mở [preview workspace](http://localhost:3000/dev/workspace-preview)
+để kiểm tra shell, tập role và các trạng thái UI. Preview trả 404 ở production.
 
 Từ root repository, chỉ tạo file local nếu chưa có:
 
@@ -111,16 +114,35 @@ không cần `.env` hoặc database local cho tests. Không bỏ qua integration
 # Trong frontend/
 npm ci
 npm run lint
+npm test
+npm run typecheck
+npm run test:e2e
 npm run build
+npm run test:production
+# Khi backend local đã chạy:
+npm run test:health
 ```
 
-Linux/macOS dùng `./mvnw` thay `mvnw.cmd`. CI chạy Java 21, Node 22 và các lệnh trên.
+Linux/macOS dùng `./mvnw` thay `mvnw.cmd`. CI chạy Java 21, Node 22; health smoke là lệnh local riêng.
+Browser test local mặc định dùng Microsoft Edge đã cài. CI dùng Chromium và cài qua
+`npx playwright install --with-deps chromium`. Test khởi động server ở cổng 3102/3103;
+production test yêu cầu build trước. Health test đọc `NEXT_PUBLIC_API_URL` từ process
+environment, mặc định localhost:8080; không tự nạp `.env.local`.
 Build frontend hiện tải font qua `next/font/google`, cần truy cập mạng.
 Nếu Docker báo thiếu named pipe, khởi động Docker Desktop và chờ Linux engine sẵn sàng.
 Nếu cổng đã dùng, đổi port trong `.env` trước khi chạy Compose/backend.
 
 `docker compose stop` dừng dependency và giữ dữ liệu. `docker compose down` gỡ container
 nhưng giữ named volume; không dùng `down -v` nếu cần giữ dữ liệu.
+
+## Quy trình Git cho feature
+
+- Trước khi sửa code feature mới, kiểm tra working tree và branch hiện tại; không tự bỏ hoặc ghi đè thay đổi đang có.
+- Fetch `origin`, tạo và chuyển sang nhánh `feat/<feature-id>-<slug>` từ `origin/main` đã cập nhật, ví dụ `feat/f03-local-authentication`.
+- Nếu đang ở đúng nhánh của feature đang làm, tiếp tục trên nhánh đó; không tạo nhánh trùng.
+- Không triển khai hoặc commit feature trực tiếp trên `main`.
+- Hoàn thành feature bằng kiểm thử phù hợp, Conventional Commit, push nhánh và pull request vào `main`. Không tự merge khi chưa được yêu cầu.
+- `AGENTS.md` local cũng ghi quy tắc này nhưng đang bị Git ignore; README và Definition of Done là bản được lưu trên GitHub.
 
 ## UI/UX workflow
 
@@ -129,5 +151,7 @@ Learnova dùng **UI/UX Pro Max** để thiết kế, triển khai và review gia
 - [Workflow UI/UX](docs/architecture/ui-ux-workflow.md): cách dùng skill, design system và checklist nghiệm thu.
 - [Screen Flow](docs/requirements/screen-flow.md): màn hình, route và business state.
 - [Kế hoạch V1](docs/plans/v1-feature-implementation-plan.md): thứ tự triển khai F01–F21.
+- [Design system Master](design-system/learnova/MASTER.md): token, typography, layout và interaction.
+- [Kiến trúc F02](docs/architecture/f02-frontend-foundation.md): shell, API client, điểm tích hợp F03 và kết quả kiểm chứng.
 
 Skill nằm tại [.agents/skills/ui-ux-pro-max/SKILL.md](.agents/skills/ui-ux-pro-max/SKILL.md). Python 3 chỉ cần cho công cụ tra cứu local, không phải dependency chạy ứng dụng.
