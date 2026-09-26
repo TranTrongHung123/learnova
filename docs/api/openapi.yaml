@@ -1,0 +1,206 @@
+openapi: 3.1.0
+
+info:
+  title: Learnova API
+  version: 1.0.0
+  description: |
+    API Contract cho hệ thống Learnova.
+
+    Backend: Spring Boot
+    Frontend: Next.js
+
+    Lỗi dùng application/problem+json với code ổn định và fieldErrors.
+    detail là thông báo an toàn cho người dùng; không có trường message trùng nghĩa.
+    F01 chỉ công khai GET /api/v1/health, các URL khác bị Security chặn trước routing.
+    Actuator không được expose qua HTTP. Authentication nghiệp vụ được bổ sung ở F03.
+    Các list API sau này dùng Page/Size và PageResponse; sort được định nghĩa riêng
+    theo whitelist của từng endpoint, không nhận property persistence tùy ý.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: Health
+    description: API kiểm tra trạng thái hệ thống
+
+paths:
+
+  /api/v1/health:
+    get:
+      tags:
+        - Health
+
+      summary: Kiểm tra trạng thái backend
+
+      operationId: getHealth
+      security: []
+      description: |
+        Xác nhận ứng dụng đang phục vụ HTTP (liveness), không kiểm tra readiness
+        của PostgreSQL/Redis và không trả dependency details hoặc phiên bản.
+
+      responses:
+
+        "200":
+          description: Backend đang hoạt động bình thường
+
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+              example:
+                status: UP
+
+components:
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Trang bắt đầu từ 0. Chỉ nhận một số nguyên không âm; sai trả 400.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        maximum: 2147483647
+        default: 0
+    Size:
+      name: size
+      in: query
+      description: Kích thước trang. Rỗng, lặp tham số, không nguyên hoặc ngoài giới hạn trả 400.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    BadRequest:
+      description: INVALID_REQUEST hoặc VALIDATION_FAILED; không trả rejectedValue.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ApiProblem'
+          example:
+            type: about:blank
+            title: Bad Request
+            status: 400
+            detail: The request is invalid.
+            instance: /api/v1/questions
+            code: VALIDATION_FAILED
+            fieldErrors:
+              - field: size
+                message: Must be between 1 and 100.
+    Unauthorized:
+      description: AUTHENTICATION_REQUIRED; không redirect đến login.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ApiProblem'
+    Forbidden:
+      description: ACCESS_DENIED, bao gồm CSRF không hợp lệ.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ApiProblem'
+    NotFound:
+      description: RESOURCE_NOT_FOUND khi request đã qua kiểm tra Security.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ApiProblem'
+    InternalError:
+      description: INTERNAL_ERROR; không chứa stack trace, SQL hay exception message.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ApiProblem'
+
+  schemas:
+
+    ApiProblem:
+      type: object
+      required: [type, title, status, detail, instance, code, fieldErrors]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          example: about:blank
+        title:
+          type: string
+          example: Bad Request
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+          description: Path của request, không chứa query string.
+        code:
+          type: string
+          description: |
+            Mã ổn định. F01: INVALID_REQUEST/VALIDATION_FAILED (400),
+            AUTHENTICATION_REQUIRED (401), ACCESS_DENIED (403), RESOURCE_NOT_FOUND (404),
+            METHOD_NOT_ALLOWED (405), NOT_ACCEPTABLE (406), CONFLICT (409),
+            PAYLOAD_TOO_LARGE (413), UNSUPPORTED_MEDIA_TYPE (415), INTERNAL_ERROR (500),
+            SERVICE_UNAVAILABLE (503); fallback REQUEST_REJECTED cho lỗi 4xx còn lại.
+            Feature sau có thể bổ sung business code.
+        fieldErrors:
+          type: array
+          description: Danh sách rỗng nếu không có lỗi theo field; không chứa giá trị đầu vào.
+          items:
+            $ref: '#/components/schemas/FieldError'
+
+    FieldError:
+      type: object
+      additionalProperties: false
+      required: [field, message]
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+
+    PageResponse:
+      type: object
+      description: |
+        Envelope dùng chung; từng list operation phải khai báo schema item cụ thể
+        trong content. Trang vượt tổng số trang trả content rỗng và giữ page yêu cầu.
+        Kết quả rỗng có totalElements=0, totalPages=0. Không serialize Spring Page.
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items: {}
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+
+    HealthResponse:
+      type: object
+      additionalProperties: false
+
+      required:
+        - status
+
+      properties:
+
+        status:
+          type: string
+          enum: [UP]
+          example: UP
