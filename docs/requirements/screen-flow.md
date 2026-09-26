@@ -156,6 +156,23 @@ Logout
 
 # 4. Route Map đề xuất
 
+## Trạng thái triển khai sau F02
+
+F02 tạo nền tảng UI, chưa triển khai xác thực hoặc màn hình nghiệp vụ bên dưới.
+Các entry `/participant`, `/creator`, `/admin`, `/profile`, `/notifications`, `/login`,
+`/register` hiện hiển thị “Tính năng đang được hoàn thiện” với đường về `/`.
+Không suy diễn trạng thái này thành danh sách rỗng hoặc phiên đã đăng nhập.
+
+`/dev/workspace-preview` chỉ chạy development, production trả HTTP 404. Preview có
+fixture gắn nhãn rõ, chọn tập role/workspace/UI state; không tạo token hoặc gọi API nghiệp vụ.
+Shell dùng sidebar từ 1024px, drawer trên màn hình nhỏ, switcher chỉ có các role được cấp;
+ADMIN không tự có PARTICIPANT/CREATOR. Trong preview, thiếu role hiển thị forbidden.
+Mục nghiệp vụ chưa có được disable kèm “Sắp có”; Monitoring/Reports chưa có route riêng.
+F03 sẽ kết nối người dùng thật và workspace resolution theo mục 7; F02 không thay rule đó.
+
+Chi tiết: [kiến trúc F02](../architecture/f02-frontend-foundation.md),
+[Design system Master](../../design-system/learnova/MASTER.md).
+
 ## 4.1. Authentication
 
 | Route | Screen |
