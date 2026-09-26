@@ -37,6 +37,8 @@ frontend/build/
 
 # Testing
 frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
 
 # Vercel
 frontend/.vercel/
