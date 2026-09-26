@@ -135,6 +135,15 @@ Nếu cổng đã dùng, đổi port trong `.env` trước khi chạy Compose/ba
 `docker compose stop` dừng dependency và giữ dữ liệu. `docker compose down` gỡ container
 nhưng giữ named volume; không dùng `down -v` nếu cần giữ dữ liệu.
 
+## Quy trình Git cho feature
+
+- Trước khi sửa code feature mới, kiểm tra working tree và branch hiện tại; không tự bỏ hoặc ghi đè thay đổi đang có.
+- Fetch `origin`, tạo và chuyển sang nhánh `feat/<feature-id>-<slug>` từ `origin/main` đã cập nhật, ví dụ `feat/f03-local-authentication`.
+- Nếu đang ở đúng nhánh của feature đang làm, tiếp tục trên nhánh đó; không tạo nhánh trùng.
+- Không triển khai hoặc commit feature trực tiếp trên `main`.
+- Hoàn thành feature bằng kiểm thử phù hợp, Conventional Commit, push nhánh và pull request vào `main`. Không tự merge khi chưa được yêu cầu.
+- `AGENTS.md` local cũng ghi quy tắc này nhưng đang bị Git ignore; README và Definition of Done là bản được lưu trên GitHub.
+
 ## UI/UX workflow
 
 Learnova dùng **UI/UX Pro Max** để thiết kế, triển khai và review giao diện theo từng feature trên Next.js App Router và Tailwind CSS.

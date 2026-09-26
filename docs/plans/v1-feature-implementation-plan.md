@@ -466,6 +466,7 @@ Chi tiết và sơ đồ: [Kiến trúc F02](../architecture/f02-frontend-founda
 
 ### Definition of Done cho mỗi feature
 
+- [ ] Trước khi sửa code, đã kiểm tra working tree và chuyển sang nhánh `feat/<feature-id>-<slug>` từ `origin/main` đã cập nhật; nếu đang ở đúng nhánh feature thì tiếp tục. Không triển khai/commit feature trực tiếp trên `main`, không tự bỏ thay đổi đang có.
 - [ ] Có mapping tới use case và screen flow.
 - [ ] Feature có UI được thiết kế/review bằng UI/UX Pro Max theo Master và override phù hợp; kiểm tra semantic tokens, keyboard/focus, responsive, contrast và reduced motion.
 - [ ] API, migration, backend và frontend nhất quán.
@@ -475,6 +476,7 @@ Chi tiết và sơ đồ: [Kiến trúc F02](../architecture/f02-frontend-founda
 - [ ] Tài liệu được đồng bộ; feature quan trọng có sơ đồ trong `docs/architecture/`.
 - [ ] Không chứa secret hoặc sửa đè thay đổi đang có của người dùng.
 - [ ] Có commit Conventional Commits sau khi feature hoàn thành.
+- [ ] Đã push nhánh feature và mở pull request vào `main`, ghi kết quả kiểm chứng; không tự merge khi chưa được yêu cầu.
 
 Checkbox đã đánh dấu ở F01 phản ánh công việc đã triển khai và kiểm chứng nêu trên.
 Các checkbox còn lại là công việc chưa hoàn thành; Definition of Done là checklist
