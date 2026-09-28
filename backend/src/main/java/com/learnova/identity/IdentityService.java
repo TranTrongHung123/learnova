@@ -52,6 +52,7 @@ class IdentityService {
     public AuthDtos.UserSummary activeUser(UUID id) {
         var user = users.findById(id).orElseThrow(() -> new AuthFailure(401, "AUTHENTICATION_REQUIRED"));
         if (!user.status.equals("ACTIVE")) throw new AuthFailure(403, "ACCOUNT_" + user.status);
+        if (!user.onboardingCompleted) throw new AuthFailure(403, "ONBOARDING_REQUIRED");
         return AuthDtos.UserSummary.from(user);
     }
 

@@ -87,6 +87,10 @@ jobs:
         working-directory: frontend
         run: npm run test:auth
 
+      - name: Google browser integration with test OIDC provider
+        working-directory: frontend
+        run: npm run test:google
+
       - name: Build
         working-directory: frontend
         run: npm run build
