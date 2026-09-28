@@ -514,6 +514,7 @@ Chi tiết và sơ đồ: [Kiến trúc F04](../architecture/f04-google-authenti
 - [ ] Có mapping tới use case và screen flow.
 - [ ] Feature có UI được thiết kế/review bằng UI/UX Pro Max theo Master và override phù hợp; kiểm tra semantic tokens, keyboard/focus, responsive, contrast và reduced motion.
 - [ ] API, migration, backend và frontend nhất quán.
+- [ ] Backend tuân thủ [quy ước package](../architecture/backend-package-structure.md): module theo nghiệp vụ, bên trong nhóm theo trách nhiệm, không tạo package rỗng hoặc mở quyền truy cập dư thừa.
 - [ ] Authorization, ownership, state và deadline được backend enforce.
 - [ ] Các test quan trọng của feature pass; ghi rõ lệnh đã chạy.
 - [ ] Không còn mock trong luồng thật.

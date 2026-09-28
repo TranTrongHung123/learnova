@@ -1,5 +1,6 @@
-package com.learnova.identity;
+package com.learnova.identity.security;
 
+import com.learnova.identity.exception.AuthFailure;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -16,21 +17,21 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 @Component
-class RefreshSessions {
+public class RefreshSessions {
     private static final String PREFIX = "auth:";
     private static final Duration LIFETIME = Duration.ofDays(7);
     private static final SecureRandom RANDOM = new SecureRandom();
     private final StringRedisTemplate redis;
     private final Clock clock;
 
-    RefreshSessions(StringRedisTemplate redis, Clock clock) { this.redis = redis; this.clock = clock; }
+    public RefreshSessions(StringRedisTemplate redis, Clock clock) { this.redis = redis; this.clock = clock; }
 
-    record Session(UUID userId, String sessionId, String familyId, Instant expiresAt) {}
-    record Issued(String token, Session session) {
+    public record Session(UUID userId, String sessionId, String familyId, Instant expiresAt) {}
+    public record Issued(String token, Session session) {
         @Override public String toString() { return "Issued[redacted]"; }
     }
 
-    Issued create(UUID userId) {
+    public Issued create(UUID userId) {
         String token = randomToken();
         String id = UUID.randomUUID().toString();
         var session = new Session(userId, id, UUID.randomUUID().toString(), clock.instant().plus(LIFETIME));
@@ -49,7 +50,7 @@ class RefreshSessions {
         return new Issued(token, session);
     }
 
-    Session lookup(String token) {
+    public Session lookup(String token) {
         if (token == null || !token.matches("[A-Za-z0-9_-]{43}")) throw invalid();
         var row = redis.opsForHash().entries(tokenKey(token));
         if (row.isEmpty()) throw invalid();
@@ -59,7 +60,7 @@ class RefreshSessions {
         return session;
     }
 
-    Issued rotate(String oldToken, Session session) {
+    public Issued rotate(String oldToken, Session session) {
         String token = randomToken();
         // Script kiểm tra lại trạng thái sau lookup; lookup không cấp quyền rotate.
         long result = run("""
@@ -82,12 +83,12 @@ class RefreshSessions {
         return new Issued(token, session);
     }
 
-    void revoke(Session session) {
+    public void revoke(Session session) {
         run("redis.call('DEL', KEYS[1]); redis.call('ZREM', KEYS[2], KEYS[1]); return 1",
                 List.of(sessionKey(session.sessionId()), userKey(session.userId())));
     }
 
-    void revokeAll(UUID userId) {
+    public void revokeAll(UUID userId) {
         run("""
                 local sessions = redis.call('ZRANGE', KEYS[1], 0, -1)
                 for _, key in ipairs(sessions) do redis.call('DEL', key) end

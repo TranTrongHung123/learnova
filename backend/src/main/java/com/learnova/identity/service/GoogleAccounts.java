@@ -1,7 +1,14 @@
-package com.learnova.identity;
+package com.learnova.identity.service;
 
-import com.learnova.audit.AuditAction;
-import com.learnova.audit.AuditService;
+import com.learnova.identity.dto.AuthDtos;
+import com.learnova.identity.entity.AuthIdentity;
+import com.learnova.identity.entity.User;
+import com.learnova.identity.exception.AuthFailure;
+import com.learnova.identity.repository.AuthIdentityRepository;
+import com.learnova.identity.repository.UserRepository;
+import com.learnova.identity.security.google.GoogleFlowStore;
+import com.learnova.audit.enums.AuditAction;
+import com.learnova.audit.service.AuditService;
 import java.time.Clock;
 import java.util.List;
 import java.util.Locale;
@@ -14,7 +21,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
-class GoogleAccounts {
+public class GoogleAccounts {
     private final UserRepository users;
     private final AuthIdentityRepository identities;
     private final IdentityService local;
@@ -28,7 +35,7 @@ class GoogleAccounts {
         this.audit = audit; this.clock = clock; this.transaction = new TransactionTemplate(manager);
     }
 
-    GoogleFlowStore.Pending recognize(String subject, String email, String name) {
+    public GoogleFlowStore.Pending recognize(String subject, String email, String name) {
         if (subject == null || subject.isBlank() || subject.length() > 254 || email == null)
             throw new AuthFailure(401, "GOOGLE_IDENTITY_INVALID");
         String normalized = email.strip().toLowerCase(Locale.ROOT);
@@ -44,74 +51,74 @@ class GoogleAccounts {
     private GoogleFlowStore.Pending recognizeInTransaction(String subject, String email, String name) {
         var linked = identities.findByProviderAndProviderSubject("GOOGLE", subject);
         if (linked.isPresent()) {
-            var user = active(linked.get().userId);
-            return new GoogleFlowStore.Pending(user.onboardingCompleted ? "AUTHENTICATED" : "ONBOARDING",
-                    user.id, subject, user.email);
+            var user = active(linked.get().getUserId());
+            return new GoogleFlowStore.Pending(user.isOnboardingCompleted() ? "AUTHENTICATED" : "ONBOARDING",
+                    user.getId(), subject, user.getEmail());
         }
         var existing = users.findByEmail(email);
         if (existing.isPresent()) {
-            var user = active(existing.get().id);
+            var user = active(existing.get().getId());
             if (identities.findByProviderAndProviderSubject("LOCAL", email).isEmpty())
                 throw new AuthFailure(409, "GOOGLE_IDENTITY_CONFLICT");
-            return new GoogleFlowStore.Pending("LINK_REQUIRED", user.id, subject, email);
+            return new GoogleFlowStore.Pending("LINK_REQUIRED", user.getId(), subject, email);
         }
         String displayName = name == null || name.isBlank() ? email : name.strip();
         displayName = displayName.substring(0, Math.min(100, displayName.length()));
         var user = new User(email, displayName, Set.of(), clock.instant());
-        user.onboardingCompleted = false;
+        user.setOnboardingCompleted(false);
         users.save(user);
         identities.saveAndFlush(AuthIdentity.google(user, subject));
-        return new GoogleFlowStore.Pending("ONBOARDING", user.id, subject, email);
+        return new GoogleFlowStore.Pending("ONBOARDING", user.getId(), subject, email);
     }
 
-    void verify(GoogleFlowStore.Pending pending, String password) {
+    public void verify(GoogleFlowStore.Pending pending, String password) {
         if (!pending.state().equals("LINK_REQUIRED")) throw new AuthFailure(409, "GOOGLE_FLOW_CHANGED");
         var user = local.authenticate(new AuthDtos.LoginRequest(pending.email(), password));
         if (!user.id().equals(pending.userId())) throw new AuthFailure(409, "GOOGLE_IDENTITY_CONFLICT");
     }
 
-    static void validateRoles(List<String> roles) {
+    public static void validateRoles(List<String> roles) {
         if (roles == null || roles.isEmpty() || roles.size() > 2 || roles.stream().anyMatch(role ->
                 role == null || !Set.of("PARTICIPANT", "CREATOR").contains(role))
                 || Set.copyOf(roles).size() != roles.size())
             throw new AuthFailure(400, "VALIDATION_FAILED", "roles");
     }
 
-    UUID onboard(GoogleFlowStore.Pending pending, List<String> roles) {
+    public UUID onboard(GoogleFlowStore.Pending pending, List<String> roles) {
         validateRoles(roles);
         return transaction.execute(status -> {
             var user = active(pending.userId());
             var identity = identities.findByProviderAndProviderSubject("GOOGLE", pending.subject())
                     .orElseThrow(() -> new AuthFailure(409, "GOOGLE_IDENTITY_CONFLICT"));
-            if (!identity.userId.equals(user.id)) throw new AuthFailure(409, "GOOGLE_IDENTITY_CONFLICT");
-            if (!user.onboardingCompleted) {
-                user.roles.addAll(roles);
-                user.onboardingCompleted = true;
-                audit.record(user.id.toString(), AuditAction.ONBOARDING_COMPLETED, "User", user.id.toString(), Map.of());
+            if (!identity.getUserId().equals(user.getId())) throw new AuthFailure(409, "GOOGLE_IDENTITY_CONFLICT");
+            if (!user.isOnboardingCompleted()) {
+                user.getRoles().addAll(roles);
+                user.setOnboardingCompleted(true);
+                audit.record(user.getId().toString(), AuditAction.ONBOARDING_COMPLETED, "User", user.getId().toString(), Map.of());
             }
-            return user.id;
+            return user.getId();
         });
     }
 
-    UUID link(GoogleFlowStore.Pending pending) {
+    public UUID link(GoogleFlowStore.Pending pending) {
         try {
             return transaction.execute(status -> {
                 var user = active(pending.userId());
                 var linked = identities.findByProviderAndProviderSubject("GOOGLE", pending.subject());
                 if (linked.isPresent()) {
-                    if (!linked.get().userId.equals(user.id)) throw new AuthFailure(409, "GOOGLE_IDENTITY_CONFLICT");
-                    return user.id;
+                    if (!linked.get().getUserId().equals(user.getId())) throw new AuthFailure(409, "GOOGLE_IDENTITY_CONFLICT");
+                    return user.getId();
                 }
                 identities.saveAndFlush(AuthIdentity.google(user, pending.subject()));
-                audit.record(user.id.toString(), AuditAction.GOOGLE_ACCOUNT_LINKED, "User", user.id.toString(), Map.of());
-                return user.id;
+                audit.record(user.getId().toString(), AuditAction.GOOGLE_ACCOUNT_LINKED, "User", user.getId().toString(), Map.of());
+                return user.getId();
             });
         } catch (DataIntegrityViolationException ex) { throw new AuthFailure(409, "GOOGLE_IDENTITY_CONFLICT"); }
     }
 
     private User active(UUID id) {
         var user = users.lockById(id).orElseThrow(() -> new AuthFailure(401, "AUTHENTICATION_REQUIRED"));
-        if (!user.status.equals("ACTIVE")) throw new AuthFailure(403, "ACCOUNT_" + user.status);
+        if (!user.getStatus().equals("ACTIVE")) throw new AuthFailure(403, "ACCOUNT_" + user.getStatus());
         return user;
     }
 }

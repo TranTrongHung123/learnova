@@ -1,5 +1,9 @@
-package com.learnova.identity;
+package com.learnova.identity.config;
 
+import com.learnova.identity.controller.GoogleController;
+import com.learnova.identity.exception.AuthFailure;
+import com.learnova.identity.security.google.GoogleAuthorizationRequests;
+import com.learnova.identity.security.google.GoogleFlowStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;

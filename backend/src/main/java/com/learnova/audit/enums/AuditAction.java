@@ -1,4 +1,4 @@
-package com.learnova.audit;
+package com.learnova.audit.enums;
 
 public enum AuditAction {
     GOOGLE_ACCOUNT_LINKED,

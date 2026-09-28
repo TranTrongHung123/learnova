@@ -3,7 +3,7 @@ package com.learnova;
 import java.util.List;
 import java.util.stream.Stream;
 
-import com.learnova.health.HealthController;
+import com.learnova.health.controller.HealthController;
 import com.learnova.shared.api.ApiErrorController;
 import com.learnova.shared.api.ApiExceptionHandler;
 import com.learnova.shared.api.ApiProblems;
