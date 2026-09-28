@@ -50,6 +50,15 @@ public class ApiProblems {
         mapper.writeValue(response.getOutputStream(), create(status, request.getRequestURI()));
     }
 
+    public void write(HttpServletRequest request, HttpServletResponse response, HttpStatus status, String code)
+            throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        var problem = create(status, request.getRequestURI());
+        problem.setProperty("code", code);
+        mapper.writeValue(response.getOutputStream(), problem);
+    }
+
     private static String code(int status) {
         return switch (status) {
             case 400 -> "INVALID_REQUEST";

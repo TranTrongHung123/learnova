@@ -52,6 +52,7 @@ type ShellProps = {
   children: ReactNode;
   onWorkspaceChange: (workspace: Workspace) => void;
   onLogout: () => void;
+  onLogoutAll?: () => void;
   hrefFor?: (href: string) => string;
 };
 
@@ -63,6 +64,7 @@ export function WorkspaceShell({
   children,
   onWorkspaceChange,
   onLogout,
+  onLogoutAll,
   hrefFor = (href) => href,
 }: ShellProps) {
   const drawer = useRef<HTMLDialogElement>(null);
@@ -325,6 +327,19 @@ export function WorkspaceShell({
                 <LogOut size={16} aria-hidden="true" />
                 Đăng xuất
               </Button>
+              {onLogoutAll && (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    menuTrigger.current?.focus();
+                    onLogoutAll();
+                  }}
+                >
+                  Đăng xuất tất cả thiết bị
+                </Button>
+              )}
             </div>
           )}
         </div>

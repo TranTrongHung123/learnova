@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/features/auth/auth-provider";
 
 const sans = Plus_Jakarta_Sans({
   variable: "--font-learnova",
@@ -18,7 +19,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <a className="skip-link" href="#main-content">
           Chuyển đến nội dung chính
         </a>
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

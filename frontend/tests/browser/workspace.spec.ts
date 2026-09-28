@@ -88,10 +88,8 @@ test("validation gắn lỗi với input, route thật không dùng fixture", as
     /Vui lòng nhập tên/,
   );
   await page.goto("/creator");
-  await expect(
-    page.getByRole("heading", { name: "Tính năng đang được hoàn thiện" }),
-  ).toBeVisible();
   await expect(page.getByText("Tài khoản minh họa")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Tính năng đang được hoàn thiện" })).toHaveCount(0);
 });
 test("keyboard skip link, reduced motion và màn hình nhỏ tương đương zoom 200%", async ({
   page,

@@ -53,6 +53,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({ApiProblems.class, ApiExceptionHandler.class, SecurityConfiguration.class,
         WebConfiguration.class, PlatformApiTests.TestEndpointsSecurity.class, PlatformApiTests.TestController.class})
 class PlatformApiTests {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder;
     @Autowired
     MockMvc mvc;
 
