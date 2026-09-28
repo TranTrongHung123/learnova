@@ -1,5 +1,11 @@
-package com.learnova.identity;
+package com.learnova.identity.service;
 
+import com.learnova.identity.dto.AuthDtos;
+import com.learnova.identity.entity.AuthIdentity;
+import com.learnova.identity.entity.User;
+import com.learnova.identity.exception.AuthFailure;
+import com.learnova.identity.repository.AuthIdentityRepository;
+import com.learnova.identity.repository.UserRepository;
 import java.time.Clock;
 import java.util.Locale;
 import java.util.Set;
@@ -9,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-class IdentityService {
+public class IdentityService {
     private final UserRepository users;
     private final AuthIdentityRepository identities;
     private final PasswordEncoder passwords;
@@ -43,16 +49,16 @@ class IdentityService {
     public AuthDtos.UserSummary authenticate(AuthDtos.LoginRequest request) {
         String email = normalizeEmail(request.email());
         var identity = identities.findByProviderAndProviderSubject("LOCAL", email);
-        boolean matches = passwords.matches(request.password(), identity.map(value -> value.passwordHash).orElse(dummyHash));
+        boolean matches = passwords.matches(request.password(), identity.map(value -> value.getPasswordHash()).orElse(dummyHash));
         if (!matches || identity.isEmpty()) throw new AuthFailure(401, "INVALID_CREDENTIALS");
-        return activeUser(identity.get().userId);
+        return activeUser(identity.get().getUserId());
     }
 
     @Transactional(readOnly = true)
     public AuthDtos.UserSummary activeUser(UUID id) {
         var user = users.findById(id).orElseThrow(() -> new AuthFailure(401, "AUTHENTICATION_REQUIRED"));
-        if (!user.status.equals("ACTIVE")) throw new AuthFailure(403, "ACCOUNT_" + user.status);
-        if (!user.onboardingCompleted) throw new AuthFailure(403, "ONBOARDING_REQUIRED");
+        if (!user.getStatus().equals("ACTIVE")) throw new AuthFailure(403, "ACCOUNT_" + user.getStatus());
+        if (!user.isOnboardingCompleted()) throw new AuthFailure(403, "ONBOARDING_REQUIRED");
         return AuthDtos.UserSummary.from(user);
     }
 

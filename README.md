@@ -2,6 +2,17 @@
 
 Online Assessment & Examination Platform
 
+## Cấu trúc backend
+
+Backend tổ chức theo business module; bên trong mỗi module nhóm class theo trách nhiệm
+(`controller`, `dto`, `service`, `entity`, `repository`, `security`, `config`, `exception`,
+`enums`) khi có code thực tế. Khi thêm class, đọc
+[quy ước package backend](docs/architecture/backend-package-structure.md); không gom
+các loại class vào package gốc của module hoặc tạo technical layer chung toàn ứng dụng.
+
+- [ ] Class mới nằm đúng module và package trách nhiệm; không tạo package rỗng.
+- [ ] Chỉ mở quyền truy cập cần thiết; không dùng repository/entity của module khác làm API.
+
 ## Tech Stack
 
 ### Backend

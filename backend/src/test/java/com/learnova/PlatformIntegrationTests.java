@@ -6,8 +6,8 @@ import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 
-import com.learnova.audit.AuditAction;
-import com.learnova.audit.AuditService;
+import com.learnova.audit.enums.AuditAction;
+import com.learnova.audit.service.AuditService;
 import jakarta.persistence.EntityManagerFactory;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;

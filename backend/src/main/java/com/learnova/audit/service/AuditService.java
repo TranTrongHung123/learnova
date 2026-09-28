@@ -1,5 +1,7 @@
-package com.learnova.audit;
+package com.learnova.audit.service;
 
+import com.learnova.audit.entity.AuditRecord;
+import com.learnova.audit.enums.AuditAction;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;

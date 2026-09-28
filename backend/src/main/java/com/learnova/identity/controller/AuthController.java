@@ -1,5 +1,10 @@
-package com.learnova.identity;
+package com.learnova.identity.controller;
 
+import com.learnova.identity.dto.AuthDtos;
+import com.learnova.identity.exception.AuthFailure;
+import com.learnova.identity.security.AccessTokens;
+import com.learnova.identity.security.RefreshSessions;
+import com.learnova.identity.service.IdentityService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -18,8 +23,8 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-class AuthController {
-    static final String COOKIE = "learnova_refresh";
+public class AuthController {
+    public static final String COOKIE = "learnova_refresh";
     private final IdentityService identity;
     private final RefreshSessions sessions;
     private final AccessTokens tokens;

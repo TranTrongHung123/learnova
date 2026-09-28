@@ -1,5 +1,6 @@
-package com.learnova.identity;
+package com.learnova.identity.controller;
 
+import com.learnova.identity.exception.AuthFailure;
 import com.learnova.shared.api.ApiProblems;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;

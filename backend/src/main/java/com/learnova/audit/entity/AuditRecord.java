@@ -1,5 +1,6 @@
-package com.learnova.audit;
+package com.learnova.audit.entity;
 
+import com.learnova.audit.enums.AuditAction;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -14,7 +15,7 @@ import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "audit_records")
-class AuditRecord {
+public class AuditRecord {
     @Id
     private UUID id;
 
@@ -40,7 +41,7 @@ class AuditRecord {
 
     protected AuditRecord() {}
 
-    AuditRecord(UUID id, String actorUserId, AuditAction action, String targetType,
+    public AuditRecord(UUID id, String actorUserId, AuditAction action, String targetType,
             String targetId, Map<String, String> metadata, Instant occurredAt) {
         this.id = id;
         this.actorUserId = actorUserId;

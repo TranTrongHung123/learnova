@@ -1,5 +1,7 @@
-package com.learnova.identity;
+package com.learnova.identity.controller;
 
+import com.learnova.identity.security.google.GoogleFlowStore;
+import com.learnova.identity.service.GoogleAccounts;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -15,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth/google")
-class GoogleController {
+public class GoogleController {
     private final GoogleAccounts accounts;
     private final GoogleFlowStore flows;
     private final AuthController auth;
@@ -79,7 +81,7 @@ class GoogleController {
         auth.googleSession(userId, request, response);
     }
 
-    void success(String subject, String email, String name, HttpServletRequest request,
+    public void success(String subject, String email, String name, HttpServletRequest request,
             HttpServletResponse response) throws IOException {
         var pending = accounts.recognize(subject, email, name);
         if (pending.state().equals("AUTHENTICATED")) finish(pending.userId(), request, response);
@@ -87,7 +89,7 @@ class GoogleController {
         response.sendRedirect(frontend + "/auth/google/callback");
     }
 
-    void failure(HttpServletResponse response, String code) throws IOException {
+    public void failure(HttpServletResponse response, String code) throws IOException {
         response.sendRedirect(frontend + "/auth/google/callback?error=" + code);
     }
 }

@@ -1,5 +1,6 @@
-package com.learnova.identity;
+package com.learnova.identity.security.google;
 
+import com.learnova.identity.exception.AuthFailure;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
@@ -20,8 +21,8 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
-class GoogleFlowStore {
-    static final String COOKIE = "learnova_google_flow";
+public class GoogleFlowStore {
+    public static final String COOKIE = "learnova_google_flow";
     static final Duration TTL = Duration.ofMinutes(10);
     private final StringRedisTemplate redis;
     private final ObjectMapper mapper;
@@ -33,7 +34,7 @@ class GoogleFlowStore {
         this.redis = redis; this.mapper = mapper; this.secure = secure;
     }
 
-    record Pending(String state, UUID userId, String subject, String email) {
+    public record Pending(String state, UUID userId, String subject, String email) {
         @Override public String toString() { return "Pending[redacted]"; }
     }
 
@@ -54,17 +55,17 @@ class GoogleFlowStore {
         return token;
     }
 
-    void pending(HttpServletRequest request, HttpServletResponse response, Pending value) {
+    public void pending(HttpServletRequest request, HttpServletResponse response, Pending value) {
         put("pending", replace(request, response), mapper.writeValueAsString(value));
     }
 
-    Pending read(HttpServletRequest request) {
+    public Pending read(HttpServletRequest request) {
         String raw = get("pending", browserToken(request));
         if (raw == null) throw new AuthFailure(401, "GOOGLE_FLOW_EXPIRED");
         return mapper.readValue(raw, Pending.class);
     }
 
-    void beginPasswordAttempt(HttpServletRequest request) {
+    public void beginPasswordAttempt(HttpServletRequest request) {
         read(request);
         Long count = redis.execute(new DefaultRedisScript<>("""
                 local n = redis.call('INCR', KEYS[1])
@@ -74,7 +75,7 @@ class GoogleFlowStore {
         if (count == null || count > 5) throw new AuthFailure(429, "GOOGLE_LINK_ATTEMPTS_EXCEEDED");
     }
 
-    void verified(HttpServletRequest request, Pending previous) {
+    public void verified(HttpServletRequest request, Pending previous) {
         var next = new Pending("LINK_CONFIRMATION", previous.userId(), previous.subject(), previous.email());
         Long changed = redis.execute(new DefaultRedisScript<>("""
                 if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
@@ -85,7 +86,7 @@ class GoogleFlowStore {
         if (!Long.valueOf(1).equals(changed)) throw new AuthFailure(409, "GOOGLE_FLOW_CHANGED");
     }
 
-    Pending consume(HttpServletRequest request, String expectedState) {
+    public Pending consume(HttpServletRequest request, String expectedState) {
         var pending = read(request);
         if (!pending.state().equals(expectedState)) throw new AuthFailure(409, "GOOGLE_FLOW_CHANGED");
         Long consumed = redis.execute(new DefaultRedisScript<>("""
@@ -97,14 +98,14 @@ class GoogleFlowStore {
         return pending;
     }
 
-    void cancel(HttpServletRequest request, HttpServletResponse response) {
+    public void cancel(HttpServletRequest request, HttpServletResponse response) {
         String token = browserToken(request);
         if (token != null) redis.delete(List.of(key("pending", token), key("oauth", token), key("attempts", token)));
         cookie(response, "", Duration.ZERO);
     }
 
-    void put(String kind, String token, String value) { redis.opsForValue().set(key(kind, token), value, TTL); }
-    String get(String kind, String token) { return token == null ? null : redis.opsForValue().get(key(kind, token)); }
+    public void put(String kind, String token, String value) { redis.opsForValue().set(key(kind, token), value, TTL); }
+    public String get(String kind, String token) { return token == null ? null : redis.opsForValue().get(key(kind, token)); }
     String take(String kind, String token) { return token == null ? null : redis.opsForValue().getAndDelete(key(kind, token)); }
 
     private String key(String kind, String token) {
