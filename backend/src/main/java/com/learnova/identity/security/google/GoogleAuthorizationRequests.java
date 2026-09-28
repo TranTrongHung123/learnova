@@ -1,4 +1,4 @@
-package com.learnova.identity;
+package com.learnova.identity.security.google;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -8,10 +8,10 @@ import org.springframework.security.oauth2.client.web.AuthorizationRequestReposi
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import tools.jackson.databind.ObjectMapper;
 
-class GoogleAuthorizationRequests implements AuthorizationRequestRepository<OAuth2AuthorizationRequest> {
+public class GoogleAuthorizationRequests implements AuthorizationRequestRepository<OAuth2AuthorizationRequest> {
     private final GoogleFlowStore flows;
     private final ObjectMapper mapper;
-    GoogleAuthorizationRequests(GoogleFlowStore flows, ObjectMapper mapper) { this.flows = flows; this.mapper = mapper; }
+    public GoogleAuthorizationRequests(GoogleFlowStore flows, ObjectMapper mapper) { this.flows = flows; this.mapper = mapper; }
 
     record Stored(String authorizationUri, String clientId, String redirectUri, Set<String> scopes, String state,
             Map<String, Object> additionalParameters, Map<String, Object> attributes) {

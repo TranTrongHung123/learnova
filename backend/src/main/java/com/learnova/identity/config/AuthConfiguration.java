@@ -1,4 +1,4 @@
-package com.learnova.identity;
+package com.learnova.identity.config;
 
 import java.util.Base64;
 import java.util.Map;

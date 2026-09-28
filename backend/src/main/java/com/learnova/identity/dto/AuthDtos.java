@@ -1,5 +1,6 @@
-package com.learnova.identity;
+package com.learnova.identity.dto;
 
+import com.learnova.identity.entity.User;
 import jakarta.validation.constraints.*;
 import java.time.Instant;
 import java.util.List;
@@ -18,9 +19,9 @@ public final class AuthDtos {
         @Override public String toString() { return "LoginRequest[redacted]"; }
     }
     public record UserSummary(UUID id, String email, String displayName, String status, List<String> roles) {
-        static UserSummary from(User user) {
-            return new UserSummary(user.id, user.email, user.displayName, user.status,
-                    user.roles.stream().sorted().toList());
+        public static UserSummary from(User user) {
+            return new UserSummary(user.getId(), user.getEmail(), user.getDisplayName(), user.getStatus(),
+                    user.getRoles().stream().sorted().toList());
         }
     }
     public record TokenResponse(String accessToken, String tokenType, long expiresIn,
