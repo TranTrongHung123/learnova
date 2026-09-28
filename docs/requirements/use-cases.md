@@ -318,6 +318,12 @@ Transport: HttpOnly Cookie
 Server-side storage: Redis
 ```
 
+F03 dùng deadline session cố định 7 ngày từ login; rotation không kéo dài deadline.
+Token USED được giữ đến cùng deadline để phát hiện reuse. Logout/revoke chỉ thu hồi
+refresh session; JWT đã cấp còn hiệu lực đến expiry tối đa 15 phút, không cộng clock skew.
+Frontend/API production cùng site, HTTPS, CORS allowlist và CSRF cookie/header cho POST auth.
+Chi tiết: [kiến trúc F03](../architecture/f03-local-authentication.md).
+
 Cookie production:
 
 ```text
@@ -427,7 +433,7 @@ PARTICIPANT + CREATOR
 7. Tạo User.
 8. Gán role được phép.
 9. Trả kết quả đăng ký thành công.
-10. Người dùng chuyển tới Login hoặc được login tùy implementation UI.
+10. Người dùng chuyển tới Login; đăng ký không tự tạo session.
 
 **Business Rule:**
 
@@ -435,6 +441,9 @@ PARTICIPANT + CREATOR
 - Backend whitelist role được phép self-register.
 - Password không lưu plaintext.
 - Email được normalize theo rule hệ thống.
+- F03 dùng strip/lowercase, không bỏ dấu chấm hoặc `+tag` trong email.
+- Password từ 12–128 Unicode code point, giữ Unicode/khoảng trắng, không ép composition.
+- Roles là danh sách không trùng PARTICIPANT, CREATOR hoặc cả hai.
 
 ---
 

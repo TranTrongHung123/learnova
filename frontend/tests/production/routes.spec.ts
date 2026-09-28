@@ -23,8 +23,12 @@ test("production không cung cấp preview hoặc fixture", async ({
     expect(result?.status()).toBe(200);
     await expect(
       page.getByRole("heading", { name: "Tính năng đang được hoàn thiện" }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(page.getByText("Tài khoản minh họa")).toHaveCount(0);
+    if (route === "/login" || route === "/register") {
+      await expect(page.locator("#email")).toBeVisible();
+      await expect(page.locator("#password")).toBeVisible();
+    }
   }
   expect((await request.get("/unknown-route")).status()).toBe(404);
 });

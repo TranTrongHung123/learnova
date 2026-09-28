@@ -1,5 +1,5 @@
-import { UnavailablePage } from "@/components/unavailable-page";
+import { ProtectedWorkspace } from "@/features/auth/protected-workspace";
 export const metadata = { title: "Hồ sơ" };
 export default function Page() {
-  return <UnavailablePage title="Hồ sơ" />;
+  return <ProtectedWorkspace title="Hồ sơ" />;
 }

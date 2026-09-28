@@ -52,12 +52,16 @@ type ClientOptions = {
   baseUrl: string;
   getAccessToken?: () => string | null;
   fetcher?: typeof fetch;
+  refreshAccessToken?: () => Promise<void>;
+  getAuthGeneration?: () => number;
 };
 
 export function createApiClient({
   baseUrl,
   getAccessToken = () => null,
   fetcher = fetch,
+  refreshAccessToken,
+  getAuthGeneration = () => 0,
 }: ClientOptions) {
   const origin = new URL(baseUrl);
   if (
@@ -88,29 +92,47 @@ export function createApiClient({
       const headers = new Headers(options.headers);
       headers.set("Accept", "application/json, application/problem+json");
       const token = authenticated ? getAccessToken() : null;
+      const generation = getAuthGeneration();
+      const assertCurrentSession = () => {
+        if (authenticated && generation !== getAuthGeneration())
+          throw new DOMException("Authentication changed", "AbortError");
+      };
       headers.delete("Authorization");
       if (token) headers.set("Authorization", `Bearer ${token}`);
       if (json !== undefined) headers.set("Content-Type", "application/json");
       const body = json === undefined ? undefined : JSON.stringify(json);
-      let response: Response;
-      let raw: string;
-      try {
-        response = await fetcher(url, {
-          ...options,
-          headers,
-          body,
-          credentials: options.credentials ?? "include",
-          cache: "no-store",
-          redirect: "error",
-        });
-        raw = await response.text();
-      } catch (error) {
-        if (
-          options.signal?.aborted ||
-          (error instanceof Error && error.name === "AbortError")
-        )
-          throw error;
-        throw new ApiError("network", 0);
+      const send = async () => {
+        try {
+          const response = await fetcher(url, {
+            ...options,
+            headers,
+            body,
+            credentials: options.credentials ?? "include",
+            cache: "no-store",
+            redirect: "error",
+          });
+          return { response, raw: await response.text() };
+        } catch (error) {
+          if (
+            options.signal?.aborted ||
+            (error instanceof Error && error.name === "AbortError")
+          )
+            throw error;
+          throw new ApiError("network", 0);
+        }
+      };
+      let { response, raw } = await send();
+      assertCurrentSession();
+      if (response.status === 401 && authenticated && refreshAccessToken) {
+        // Request cũ có thể trả 401 sau khi request khác đã refresh xong.
+        if (getAccessToken() === token) await refreshAccessToken();
+        options.signal?.throwIfAborted();
+        assertCurrentSession();
+        const refreshed = getAccessToken();
+        if (!refreshed) throw new ApiError("http", 401);
+        headers.set("Authorization", `Bearer ${refreshed}`);
+        ({ response, raw } = await send());
+        assertCurrentSession();
       }
       if (response.status === 204 && response.ok) return undefined as T;
       let data: unknown;
