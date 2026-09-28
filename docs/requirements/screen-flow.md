@@ -156,19 +156,19 @@ Logout
 
 # 4. Route Map đề xuất
 
-## Trạng thái triển khai sau F02
+## Trạng thái triển khai sau F03
 
-F02 tạo nền tảng UI, chưa triển khai xác thực hoặc màn hình nghiệp vụ bên dưới.
-Các entry `/participant`, `/creator`, `/admin`, `/profile`, `/notifications`, `/login`,
-`/register` hiện hiển thị “Tính năng đang được hoàn thiện” với đường về `/`.
-Không suy diễn trạng thái này thành danh sách rỗng hoặc phiên đã đăng nhập.
+F02 tạo nền tảng UI; F03 kết nối Local auth thật tại `/login`, `/register` và `/workspaces`.
+Các entry `/participant`, `/creator`, `/admin`, `/profile`, `/notifications` chờ auth bootstrap;
+không có phiên hợp lệ chuyển Login, lỗi mạng có retry, thiếu role hiển thị forbidden.
+Sau auth, màn hình nghiệp vụ chưa triển khai giữ “Tính năng đang được hoàn thiện”.
 
 `/dev/workspace-preview` chỉ chạy development, production trả HTTP 404. Preview có
 fixture gắn nhãn rõ, chọn tập role/workspace/UI state; không tạo token hoặc gọi API nghiệp vụ.
 Shell dùng sidebar từ 1024px, drawer trên màn hình nhỏ, switcher chỉ có các role được cấp;
 ADMIN không tự có PARTICIPANT/CREATOR. Trong preview, thiếu role hiển thị forbidden.
 Mục nghiệp vụ chưa có được disable kèm “Sắp có”; Monitoring/Reports chưa có route riêng.
-F03 sẽ kết nối người dùng thật và workspace resolution theo mục 7; F02 không thay rule đó.
+F03 kết nối User thật, switch workspace theo roles; không thay business rule.
 
 Chi tiết: [kiến trúc F02](../architecture/f02-frontend-foundation.md),
 [Design system Master](../../design-system/learnova/MASTER.md).
@@ -340,11 +340,21 @@ Quyết định UI:
 - Nếu User có nhiều role, ưu tiên nhớ Workspace gần nhất.
 - Không yêu cầu chọn role mỗi lần đăng nhập.
 
+F03 dùng `/workspaces` khi chưa có preference hợp lệ. Preference lưu theo User ID,
+chỉ giữ workspace, không lưu token. `returnTo` chỉ chấp nhận route nội bộ phù hợp roles;
+reject URL ngoài, dot segments và encoded traversal. API vẫn quyết định authorization.
+Đăng ký thành công chuyển `/login?registered=1`, không tự login.
+User menu có logout và logout-all với xác nhận; lỗi thu hồi server được hiển thị rõ và có retry.
+Các POST auth phối hợp Web Locks giữa tabs; reload bootstrap bằng refresh cookie.
+
 Đây là quyết định UX, không thay đổi business role.
 
 ---
 
 # 8. Authentication Screens
+
+F03 chỉ cung cấp Local Login. Action Google bên dưới được bật khi F04 hoàn thành;
+không hiển thị action đăng nhập Google giả hoặc mock fallback.
 
 # 8.1. Login Screen
 

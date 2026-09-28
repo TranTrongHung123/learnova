@@ -43,6 +43,18 @@ server:
     include-stacktrace: never
     include-exception: false
 
+learnova:
+  auth:
+    jwt-secret: ${JWT_SECRET}
+    issuer: ${JWT_ISSUER:learnova}
+    cookie-secure: ${AUTH_COOKIE_SECURE:true}
+    allowed-origins: ${AUTH_ALLOWED_ORIGINS:http://localhost:3000}
+
+# Hibernate có thể ghi giá trị vi phạm constraint; không để lộ dữ liệu identity.
+logging:
+  level:
+    org.hibernate.orm.jdbc.error: OFF
+
 management:
   endpoints:
     web:

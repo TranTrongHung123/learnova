@@ -22,12 +22,12 @@ export default function Home() {
         </h1>
       </div>
       <p className="max-w-xl text-lg text-muted-foreground">
-        Learnova đang được hoàn thiện. Các tính năng tài khoản, tạo đề và tham
-        gia kỳ thi sẽ sớm có mặt.
+        Tạo tài khoản hoặc đăng nhập để vào không gian của bạn.
+        Các tính năng tạo đề và tham gia kỳ thi đang được hoàn thiện.
       </p>
       <div className="flex flex-wrap gap-3">
         <LinkButton href="/login">
-          Thông tin đăng nhập <ArrowRight size={18} aria-hidden="true" />
+          Đăng nhập <ArrowRight size={18} aria-hidden="true" />
         </LinkButton>
         {process.env.NODE_ENV === "development" && (
           <LinkButton variant="secondary" href="/dev/workspace-preview">

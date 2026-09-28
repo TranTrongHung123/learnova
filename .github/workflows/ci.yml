@@ -61,6 +61,16 @@ jobs:
         working-directory: frontend
         run: npm test
 
+      - name: Setup Java for auth browser integration
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Make Maven Wrapper executable
+        run: chmod +x backend/mvnw
+
       - name: Type check
         working-directory: frontend
         run: npm run typecheck
@@ -72,6 +82,10 @@ jobs:
       - name: Browser tests
         working-directory: frontend
         run: npm run test:e2e
+
+      - name: Auth browser integration with PostgreSQL and Redis
+        working-directory: frontend
+        run: npm run test:auth
 
       - name: Build
         working-directory: frontend

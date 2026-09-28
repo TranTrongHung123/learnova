@@ -20,12 +20,13 @@ Online Assessment & Examination Platform
 - Docker
 - Docker Compose
 
-## Chạy local (F01–F02)
+## Chạy local (F01–F03)
 
 Yêu cầu Java 21, Node.js 22 + npm và Docker Desktop đang chạy Linux containers.
 Backend dùng Maven Wrapper; PostgreSQL 17 và Redis 7.4 chạy qua Compose.
-Frontend đã có design system và workspace shell F02; authentication thuộc F03.
-Route thật hiển thị trạng thái chưa sẵn sàng, không giả đăng nhập hoặc dữ liệu nghiệp vụ.
+Frontend có design system, workspace shell và Local authentication F03.
+Đăng ký tại `/register`, đăng nhập tại `/login`; multi-role có thể đổi workspace.
+Các tính năng nghiệp vụ chưa triển khai giữ trạng thái chưa sẵn sàng, không có mock fallback.
 Sau `npm run dev`, mở [preview workspace](http://localhost:3000/dev/workspace-preview)
 để kiểm tra shell, tập role và các trạng thái UI. Preview trả 404 ở production.
 
@@ -37,6 +38,21 @@ if (!(Test-Path frontend/.env.local)) { Copy-Item frontend/.env.example frontend
 ```
 
 Thay placeholder `POSTGRES_PASSWORD` trong `.env` bằng mật khẩu local.
+F03 yêu cầu `JWT_SECRET` là base64 của ít nhất 32 random bytes. Đoạn sau chạy được
+trên Windows PowerShell 5.1 và PowerShell 7:
+
+```powershell
+$jwtSecretBytes = New-Object byte[] 32
+$jwtSecretGenerator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+try { $jwtSecretGenerator.GetBytes($jwtSecretBytes) }
+finally { $jwtSecretGenerator.Dispose() }
+[Convert]::ToBase64String($jwtSecretBytes)
+```
+
+Lưu kết quả trong `.env` local, không commit hoặc chia sẻ output. Nếu `.env` đã tồn tại,
+thêm biến auth từ `.env.example`, không ghi đè giá trị database hiện có.
+Local dùng `AUTH_COOKIE_SECURE=false`, `AUTH_ALLOWED_ORIGINS=http://localhost:3000`.
+Production dùng HTTPS cùng site, `AUTH_COOKIE_SECURE=true` và allowlist frontend chính xác.
 Không commit `.env` hoặc `.env.local`. Redis local mặc định không đặt mật khẩu;
 nếu đặt `REDIS_PASSWORD`, Compose và backend phải dùng cùng giá trị.
 Cả hai cổng database/cache chỉ bind `127.0.0.1`.
@@ -70,6 +86,8 @@ Set-Location backend
 Nếu chạy qua IDE, cấu hình cùng biến ở Run Configuration. Các biến backend:
 `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`;
 `REDIS_HOST=localhost`, `REDIS_PORT=6379`, `REDIS_PASSWORD=` và `SERVER_PORT=8080` có mặc định.
+Auth dùng `JWT_SECRET` bắt buộc, `JWT_ISSUER=learnova`, `AUTH_COOKIE_SECURE=true`
+và `AUTH_ALLOWED_ORIGINS=http://localhost:3000` mặc định.
 
 Trong terminal khác:
 
@@ -93,12 +111,14 @@ user/password mặc định và không mở quyền ADMIN cho Actuator.
 ## Schema, API và audit
 
 - Flyway chạy migration khi backend khởi động; Hibernate chỉ `validate` schema.
-- Không sửa migration đã áp dụng. F01 tạo `audit_records`; schema nghiệp vụ bổ sung theo feature.
+- Không sửa migration đã áp dụng. F01 tạo `audit_records`; F03 thêm users, user_roles và auth_identities.
 - `baseline-on-migrate=false`: database không rỗng nhưng thiếu Flyway history sẽ bị từ chối.
   Với database có sẵn, backup và kiểm tra schema trước; chỉ baseline thủ công ở version 0
   nếu schema chưa chứa đối tượng của V1. Nếu đã có bảng tương ứng, cần đối soát riêng,
   không bật auto-baseline để bỏ qua lỗi. Không xóa volume để xử lý lỗi trên dữ liệu cần giữ.
-- [OpenAPI](docs/api/openapi.yaml) định nghĩa health, ProblemDetail và pagination.
+- [OpenAPI](docs/api/openapi.yaml) định nghĩa health, auth, ProblemDetail và pagination.
+- [Authentication F03](docs/architecture/f03-local-authentication.md) mô tả JWT, refresh rotation,
+  CSRF/CORS, workspace resolution và giới hạn vận hành.
 - [Nền tảng F01](docs/architecture/f01-platform-foundation.md) mô tả security boundary,
   cách dùng pagination và ghi audit cùng transaction nghiệp vụ.
 
@@ -117,6 +137,7 @@ npm run lint
 npm test
 npm run typecheck
 npm run test:e2e
+npm run test:auth
 npm run build
 npm run test:production
 # Khi backend local đã chạy:
@@ -129,6 +150,9 @@ Browser test local mặc định dùng Microsoft Edge đã cài. CI dùng Chromi
 production test yêu cầu build trước. Health test đọc `NEXT_PUBLIC_API_URL` từ process
 environment, mặc định localhost:8080; không tự nạp `.env.local`.
 Build frontend hiện tải font qua `next/font/google`, cần truy cập mạng.
+Auth browser test tự chạy backend ở 8081 và frontend ở 3104 cùng Testcontainers riêng;
+không cần đọc `.env` hoặc dùng database của bạn. Tắt server ở cổng này để tạo môi trường mới.
+Không ghi trace auth chứa password/token; ảnh form rỗng nằm trong test-results.
 Nếu Docker báo thiếu named pipe, khởi động Docker Desktop và chờ Linux engine sẵn sàng.
 Nếu cổng đã dùng, đổi port trong `.env` trước khi chạy Compose/backend.
 

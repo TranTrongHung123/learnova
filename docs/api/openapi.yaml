@@ -11,8 +11,8 @@ info:
 
     Lỗi dùng application/problem+json với code ổn định và fieldErrors.
     detail là thông báo an toàn cho người dùng; không có trường message trùng nghĩa.
-    F01 chỉ công khai GET /api/v1/health, các URL khác bị Security chặn trước routing.
-    Actuator không được expose qua HTTP. Authentication nghiệp vụ được bổ sung ở F03.
+    F03 bổ sung local authentication, refresh rotation và multi-role.
+    Actuator không được expose qua HTTP. Endpoint chưa khai báo vẫn bị từ chối.
     Các list API sau này dùng Page/Size và PageResponse; sort được định nghĩa riêng
     theo whitelist của từng endpoint, không nhận property persistence tùy ý.
 
@@ -21,10 +21,165 @@ servers:
     description: Local development
 
 tags:
+  - name: Authentication
+    description: Local authentication và multi-role. Refresh token chỉ truyền qua HttpOnly cookie.
   - name: Health
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+
+  /api/v1/auth/csrf:
+    get:
+      tags: [Authentication]
+      operationId: getCsrfToken
+      summary: Lấy token bảo vệ thao tác auth
+      security: []
+      description: |
+        Set XSRF-TOKEN host-only HttpOnly cookie, Path=/api/v1/auth, SameSite=Lax,
+        Secure ở production. Gửi token JSON trong headerName của các POST auth tiếp theo.
+        Không tạo HttpSession. CORS chỉ cho frontend origin trong allowlist; dùng credentials=include.
+      responses:
+        '200':
+          description: Token CSRF được che bằng cơ chế BREACH của Spring Security; không cache.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [headerName, token]
+                properties:
+                  headerName: {type: string, const: X-XSRF-TOKEN}
+                  token: {type: string}
+
+  /api/v1/auth/register:
+    post:
+      tags: [Authentication]
+      operationId: registerLocalUser
+      summary: Đăng ký tài khoản Local
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      description: |
+        Tạo User ACTIVE, roles và Local Identity trong một transaction. Email strip/lowercase,
+        không bỏ dấu chấm hoặc phần +tag. Reject ADMIN/role không biết, không tự cấp session.
+        Password giữ nguyên Unicode/khoảng trắng, 12–128 Unicode code point; không ép composition.
+        Display name strip, không rỗng, tối đa 100 UTF-16 code unit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RegisterRequest'}
+      responses:
+        '201':
+          description: Đăng ký thành công; frontend chuyển Login.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/UserSummary'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/CsrfForbidden'}
+        '409':
+          description: EMAIL_ALREADY_EXISTS, bao gồm đăng ký đồng thời cùng email chuẩn hóa.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      operationId: loginLocalUser
+      summary: Đăng nhập bằng email/password
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      description: |
+        Chỉ User ACTIVE được cấp session. Sai password hoặc không có Local Identity trả cùng lỗi.
+        Kiểm tra status sau xác minh password. Thu hồi session cũ của cookie hiện tại trước khi cấp session mới.
+        JWT HS256 TTL 900 giây; chỉ lưu memory, không đưa vào URL hoặc browser storage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/AuthTokens'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/AuthUnauthorized'}
+        '403': {$ref: '#/components/responses/AuthForbidden'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: refreshAuthentication
+      summary: Rotate refresh token và cấp access token mới
+      security: [{refreshCookie: []}]
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      description: |
+        Không cần bearer. Session có deadline cố định 7 ngày từ login, không gia hạn khi rotate.
+        Redis chỉ giữ SHA-256 token và metadata. Rotation atomic; USED token được giữ đến deadline.
+        Reuse revoke family và trả 401. Hai request cùng token: một rotate thành công, request còn lại
+        revoke cả family, bao gồm token vừa được cấp. Client dùng shared Promise/Web Locks để tránh race.
+        Kiểm tra User ACTIVE; lỗi auth xóa cookie. Lỗi hạ tầng không được coi là đã logout.
+      responses:
+        '200': {$ref: '#/components/responses/AuthTokens'}
+        '401': {$ref: '#/components/responses/AuthUnauthorized'}
+        '403': {$ref: '#/components/responses/AuthForbidden'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
+  /api/v1/auth/me:
+    get:
+      tags: [Authentication]
+      operationId: getCurrentUser
+      summary: Thông tin User hiện tại
+      security: [{bearerAuth: []}]
+      description: User từ JWT subject; đọc roles/status hiện tại trong database. ADMIN không suy ra business role khác.
+      responses:
+        '200':
+          description: User ACTIVE hiện tại.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/UserSummary'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AuthForbidden'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logoutCurrentSession
+      summary: Đăng xuất session hiện tại
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      description: |
+        Cookie learnova_refresh là tùy chọn. Thu hồi session được xác định bởi cookie, kể cả token USED.
+        Idempotent: cookie thiếu/hết hạn/không hợp lệ vẫn trả 204. Xóa cookie cùng Path/SameSite/Secure.
+        JWT đã cấp vẫn có thể dùng đến expiry tối đa 15 phút. Lỗi Redis không được báo thành công.
+      responses:
+        '204':
+          description: Session đã bị thu hồi hoặc không tồn tại; clear refresh cookie.
+        '403': {$ref: '#/components/responses/CsrfForbidden'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
+  /api/v1/auth/logout-all:
+    post:
+      tags: [Authentication]
+      operationId: logoutAllSessions
+      summary: Đăng xuất tất cả thiết bị của User hiện tại
+      security: [{bearerAuth: []}]
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      description: |
+        Actor từ bearer subject, không nhận userId trong payload. Revoke mọi refresh session hiện có
+        bằng index User và operation Redis atomic. Không quét toàn Redis; clear cookie hiện tại.
+        Login mới sau operation được phép tạo session mới. JWT đã cấp còn hiệu lực đến expiry.
+      responses:
+        '204':
+          description: Đã thu hồi các refresh session hiện có và clear refresh cookie.
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/CsrfForbidden'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
 
   /api/v1/health:
     get:
@@ -54,7 +209,23 @@ paths:
 
 components:
 
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: learnova_refresh
+
   parameters:
+    CsrfHeader:
+      name: X-XSRF-TOKEN
+      in: header
+      required: true
+      description: Token từ GET /auth/csrf, kèm cookie XSRF-TOKEN của cùng browser.
+      schema: {type: string}
     Page:
       name: page
       in: query
@@ -76,6 +247,36 @@ components:
         default: 20
 
   responses:
+    AuthTokens:
+      description: |
+        Token mới; Cache-Control no-store. Set learnova_refresh HttpOnly, host-only,
+        SameSite=Lax, Path=/api/v1/auth, Secure ở production. Max-Age bằng phần còn lại của session 7 ngày.
+      headers:
+        Set-Cookie:
+          schema: {type: string}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/TokenResponse'}
+    AuthUnauthorized:
+      description: INVALID_CREDENTIALS, INVALID_REFRESH_TOKEN, REFRESH_REUSED hoặc AUTHENTICATION_REQUIRED.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    CsrfForbidden:
+      description: CSRF_INVALID khi thiếu/sai CSRF token. CORS origin lạ bị từ chối trước controller.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    AuthForbidden:
+      description: ACCOUNT_LOCKED, ACCOUNT_DISABLED hoặc CSRF_INVALID; không có session mới.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    AuthUnavailable:
+      description: SERVICE_UNAVAILABLE khi database/Redis không phục vụ được; không khẳng định logout thành công.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
     BadRequest:
       description: INVALID_REQUEST hoặc VALIDATION_FAILED; không trả rejectedValue.
       content:
@@ -118,6 +319,46 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, displayName, roles]
+      properties:
+        email: {type: string, maxLength: 254, description: Email được strip/lowercase khi xử lý.}
+        password: {type: string, format: password, minLength: 12, maxLength: 128, writeOnly: true}
+        displayName: {type: string, minLength: 1, maxLength: 100}
+        roles:
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items: {type: string, enum: [PARTICIPANT, CREATOR]}
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: {type: string, maxLength: 254}
+        password: {type: string, format: password, maxLength: 256, writeOnly: true}
+    UserSummary:
+      type: object
+      required: [id, email, displayName, status, roles]
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        displayName: {type: string}
+        status: {type: string, enum: [ACTIVE, LOCKED, DISABLED]}
+        roles:
+          type: array
+          uniqueItems: true
+          items: {type: string, enum: [PARTICIPANT, CREATOR, ADMIN]}
+    TokenResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn, expiresAt, user]
+      properties:
+        accessToken: {type: string}
+        tokenType: {type: string, const: Bearer}
+        expiresIn: {type: integer, const: 900}
+        expiresAt: {type: string, format: date-time}
+        user: {$ref: '#/components/schemas/UserSummary'}
 
     ApiProblem:
       type: object

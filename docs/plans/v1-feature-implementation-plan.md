@@ -14,17 +14,18 @@ Nguồn đối chiếu:
 | Thành phần | Hiện trạng |
 |---|---|
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
-| Database | PostgreSQL 17, Flyway migration V1 cho audit; Hibernate validate schema |
-| Authentication | Security chỉ mở GET health, chặn Actuator; flow xác thực thuộc F03 |
-| Frontend | Next.js 16.3.6, React 19.2.8, Tailwind; có design system, workspace shell và API transport F02 |
-| Redis, WebSocket | Redis 7.4 đã cấu hình local/Testcontainers; WebSocket chưa triển khai |
-| OpenAPI | Health đã triển khai; có schema lỗi và convention pagination dùng chung |
-| Testing | 33 test backend pass, gồm HTTP contract và transaction audit trên PostgreSQL/Redis thật |
-| CI | Cấu hình backend verify bằng Testcontainers, frontend lint/build; chưa chạy CI remote trong phiên |
-| Tài liệu | Đã đồng bộ hủy Session/deadline, README local và sơ đồ nền tảng F01 |
+| Database | PostgreSQL 17, Flyway V1 audit và V2 identity; Hibernate validate schema |
+| Authentication | Local auth, JWT, refresh rotation/reuse, logout-all và multi-role F03; Actuator vẫn đóng |
+| Frontend | Design system, workspace shell, form auth, bootstrap và workspace resolution tích hợp API thật |
+| Redis, WebSocket | Redis 7.4 lưu refresh session/hash và chạy Lua atomic; WebSocket chưa triển khai |
+| OpenAPI | Health và 7 auth endpoints; schema lỗi và convention pagination dùng chung |
+| Testing | 43 backend, 44 unit frontend, 9 auth browser, 8 workspace, 1 production và 1 health test pass local |
+| CI | Backend Testcontainers, frontend lint/typecheck/unit/browser/auth/build/production; chưa xác nhận remote |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F03 |
 
-**F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành;
-F03–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
+**F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
+**F03 đã triển khai và kiểm chứng local ngày 28/09/2026**; bàn giao Git/PR theo Definition of Done.
+F04–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -142,18 +143,31 @@ Chi tiết và sơ đồ: [Kiến trúc F02](../architecture/f02-frontend-founda
 **Nguồn:** UC-AUTH-01, 02, 04, 05, 06.  
 **Phụ thuộc:** F01–F02.
 
-- [ ] Tạo User, role collection và Local AuthIdentity; email chuẩn hóa có unique constraint; password được hash.
-- [ ] Đăng ký chỉ nhận `PARTICIPANT`, `CREATOR` hoặc cả hai; đăng ký thành công chuyển Login.
-- [ ] Triển khai login, refresh, logout, logout-all và thông tin người dùng hiện tại.
-- [ ] JWT 15 phút trả qua JSON và lưu memory; refresh token opaque 7 ngày qua HttpOnly Cookie, chỉ lưu hash trong Redis.
-- [ ] Rotation atomic, lưu dấu token đã dùng để phát hiện reuse và revoke family.
-- [ ] Frontend bootstrap sau reload, shared refresh promise, retry request tối đa một lần sau refresh.
-- [ ] Cấu hình CORS, CSRF cho endpoint dùng cookie và cookie production theo architecture.
-- [ ] Switch workspace không logout; chỉ hiện workspace có role tương ứng.
+- [x] Tạo User, role collection và Local AuthIdentity; email chuẩn hóa có unique constraint; password được hash.
+- [x] Đăng ký chỉ nhận `PARTICIPANT`, `CREATOR` hoặc cả hai; đăng ký thành công chuyển Login.
+- [x] Triển khai login, refresh, logout, logout-all và thông tin người dùng hiện tại.
+- [x] JWT 15 phút trả qua JSON và lưu memory; refresh token opaque 7 ngày qua HttpOnly Cookie, chỉ lưu hash trong Redis.
+- [x] Rotation atomic, lưu dấu token đã dùng để phát hiện reuse và revoke family.
+- [x] Frontend bootstrap sau reload, shared refresh promise, retry request tối đa một lần sau refresh.
+- [x] Cấu hình CORS, CSRF cho endpoint dùng cookie và cookie production theo architecture.
+- [x] Switch workspace không logout; chỉ hiện workspace có role tương ứng.
 
 **API/UI:** Nhóm `/api/v1/auth`; `/login`, `/register`, workspace resolution.
 
 **Nghiệm thu:** Reject tự cấp ADMIN; duplicate email không tạo hai User; refresh đồng thời và reuse có kết quả nhất quán; logout-all vô hiệu refresh trên mọi thiết bị; không lưu token trong browser storage.
+
+**Kết quả kiểm chứng ngày 28/09/2026:**
+
+- Backend `mvnw.cmd -B verify`: 43 test pass, không fail/error/skip, PostgreSQL 17/Redis 7.4 thật.
+- Frontend lint, TypeScript và production build thành công; 44 unit test pass.
+- 9 browser auth test, 8 workspace regression test, 1 production route test và 1 health integration test pass.
+- OpenAPI parse thành công, 8 paths và 43 internal references hợp lệ.
+- Đã kiểm tra cookie/CORS qua Edge, reload hai tab, logout-all hai browser context, offline/retry,
+  role isolation, focus, responsive và reduced motion. Không có mock fallback trong auth flow.
+- Local Windows/Edge, Java 21/Node 24. CI Node 22/Chromium/Linux đã cấu hình nhưng chưa xác nhận remote;
+  chưa kiểm thử deployment HTTPS/cookie Secure thực tế. Google Login/profile/ADMIN bootstrap thuộc feature sau.
+
+Chi tiết và sơ đồ: [Kiến trúc F03](../architecture/f03-local-authentication.md).
 
 ### F04 — Google Login, onboarding và link account
 
