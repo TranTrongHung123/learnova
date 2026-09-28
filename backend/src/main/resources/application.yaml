@@ -49,6 +49,12 @@ learnova:
     issuer: ${JWT_ISSUER:learnova}
     cookie-secure: ${AUTH_COOKIE_SECURE:true}
     allowed-origins: ${AUTH_ALLOWED_ORIGINS:http://localhost:3000}
+    google:
+      enabled: ${GOOGLE_AUTH_ENABLED:false}
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+      redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/v1/auth/google/callback}
+      frontend-url: ${GOOGLE_FRONTEND_URL:http://localhost:3000}
 
 # Hibernate có thể ghi giá trị vi phạm constraint; không để lộ dữ liệu identity.
 logging:

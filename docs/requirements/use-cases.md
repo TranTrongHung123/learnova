@@ -512,6 +512,15 @@ Luồng:
 - Không tạo duplicate User nếu cùng một account đã được link.
 - Không truyền Learnova Access Token trong URL redirect.
 - Google OAuth chỉ xác thực identity; Learnova vẫn dùng session/token riêng.
+- User mới chưa onboarding không có Learnova session; đăng nhập lại resume cùng User.
+- Email phải verified; Google `sub` là định danh ổn định. Không tự đổi email/profile/role
+  của User đã link khi Google claims thay đổi.
+- Mỗi User có tối đa một identity mỗi provider. Google-only email trùng nhưng subject
+  khác bị từ chối; không tự gộp User.
+- Link account có hai bước riêng: xác minh mật khẩu Local và xác nhận liên kết.
+  Flow tạm hết hạn sau 10 phút; xác minh không gia hạn TTL, tối đa 5 lần mỗi flow.
+- Hủy không xóa identity/User; mất response có thể đọc lại trạng thái hoặc đăng nhập
+  Google lại để phục hồi. Account bị khóa/ngừng hoạt động không được cấp session.
 
 ---
 

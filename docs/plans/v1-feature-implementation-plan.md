@@ -14,19 +14,22 @@ Nguồn đối chiếu:
 | Thành phần | Hiện trạng |
 |---|---|
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
-| Database | PostgreSQL 17, Flyway V1 audit và V2 identity; Hibernate validate schema |
-| Authentication | Local auth, JWT, refresh rotation/reuse, logout-all và multi-role F03; Actuator vẫn đóng |
-| Frontend | Design system, workspace shell, form auth, bootstrap và workspace resolution tích hợp API thật |
-| Redis, WebSocket | Redis 7.4 lưu refresh session/hash và chạy Lua atomic; WebSocket chưa triển khai |
-| OpenAPI | Health và 7 auth endpoints; schema lỗi và convention pagination dùng chung |
-| Testing | 43 backend, 44 unit frontend, 9 auth browser, 8 workspace, 1 production và 1 health test pass local |
-| CI | Backend và frontend pass trên GitHub Actions cho F03; Java 21/Node 22/Chromium/Linux |
-| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F03 |
+| Database | PostgreSQL 17, Flyway V1 audit, V2 identity và V3 onboarding; Hibernate validate schema |
+| Authentication | Local/Google login, onboarding, link account, JWT, refresh rotation/reuse, logout-all và multi-role; Actuator vẫn đóng |
+| Frontend | Workspace shell, Local/Google auth, onboarding/link, bootstrap và workspace resolution tích hợp API thật |
+| Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; WebSocket chưa triển khai |
+| OpenAPI | Health và 15 auth endpoints; schema lỗi và convention pagination dùng chung |
+| Testing | 56 backend, 47 unit frontend, 5 Google browser, 9 Local auth browser, 8 workspace và 1 production test pass local |
+| CI | F03 đã pass remote; F04 bổ sung Google browser suite, chưa chạy remote. Java 21/Node 22/Chromium/Linux |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F04 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
 **F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
-[PR #3](https://github.com/TranTrongHung123/learnova/pull/3), chưa merge.
-F04–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
+[PR #3](https://github.com/TranTrongHung123/learnova/pull/3). Khi bắt đầu F04, `origin/main`
+đã có F03 tại commit `869c52c`.
+**F04 đã triển khai và kiểm chứng local ngày 28/09/2026**; chưa kiểm chứng OAuth Google
+thật/HTTPS hoặc CI remote. Người dùng tự push nhánh và mở PR.
+F05–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -176,15 +179,40 @@ Chi tiết và sơ đồ: [Kiến trúc F03](../architecture/f03-local-authentic
 **Nguồn:** UC-AUTH-03.  
 **Phụ thuộc:** F03.
 
-- [ ] Triển khai Google authentication qua backend, kiểm tra identity và verified email.
-- [ ] User mới chọn role qua onboarding trước khi truy cập nghiệp vụ.
-- [ ] Email trùng Local account yêu cầu xác thực account hiện tại và xác nhận link.
-- [ ] Identity đã link luôn trở về cùng User; unique constraint ngăn liên kết trùng.
-- [ ] Sau callback dùng Learnova refresh cookie để lấy access token; không đưa token vào URL.
+- [x] Triển khai Google authentication qua backend, kiểm tra identity và verified email.
+- [x] User mới chọn role qua onboarding trước khi truy cập nghiệp vụ.
+- [x] Email trùng Local account yêu cầu xác thực account hiện tại và xác nhận link.
+- [x] Identity đã link luôn trở về cùng User; unique constraint ngăn liên kết trùng.
+- [x] Sau callback dùng Learnova refresh cookie để lấy access token; không đưa token vào URL.
 
 **API/UI:** Google auth/callback, onboarding và link-account; các route đã có trong Screen Flow.
 
 **Nghiệm thu:** Kiểm tra identity mới, đã link, email trùng, callback lỗi và link đồng thời; không tự link âm thầm.
+
+**Kết quả kiểm chứng ngày 28/09/2026:**
+
+- Backend `mvnw.cmd -B verify`: 56 test pass, không fail/error/skip, gồm 13 Google integration tests.
+  PostgreSQL 17/Redis 7.4 thật; kiểm tra ID token signature/issuer/audience/expiry/nonce,
+  email verified, state/browser binding, replay, role escalation, link hai bước và concurrency.
+- Migration V3 được kiểm chứng trên database mới và schema V2 có User/role cũ.
+  Kiểm tra Redis outage, flow hết hạn/thay thế, giới hạn xác minh và phục hồi khi DB đã
+  commit nhưng chưa cấp được session. Local authentication regression vẫn pass.
+- Frontend `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`: thành công;
+  47 unit test pass. `npm run test:google`: 5 test pass với backend thật và OIDC provider
+  chỉ trong test classpath; không có mock fallback trong ứng dụng.
+- `npm run test:auth`: 9 test pass; `npm run test:e2e`: 8 test pass;
+  `npm run test:production`: 1 test pass. Không chạy lại health smoke riêng của F03.
+- Browser kiểm tra onboarding/link, reload, hủy, sai mật khẩu, provider denial, mất mạng,
+  hai tab, keyboard/focus, reduced motion và viewport 375/768/1024/1440/640x450.
+  Đã xem ảnh xác nhận link và onboarding mobile; viewport thấp cuộn dọc để tới action.
+- OpenAPI parse thành công: 16 paths và 72 internal references hợp lệ; `git diff --check` sạch.
+- Local Windows/Edge, Java 21/Node 24. CI đã thêm Google browser suite nhưng chưa chạy remote.
+  Chưa kiểm chứng Google OAuth client thật, consent screen hoặc deployment HTTPS/cookie Secure.
+  Hướng dẫn cấu hình nằm trong README và `.env.example`; Google mặc định tắt khi chưa cấu hình.
+- Nhánh `feat/f04-google-authentication` tạo từ `origin/main` đã có F03. Bàn giao bằng
+  Conventional Commit local; agent không tự push, mở PR hoặc merge.
+
+Chi tiết và sơ đồ: [Kiến trúc F04](../architecture/f04-google-authentication.md).
 
 ### F05 — Profile và bảo mật tài khoản
 
@@ -492,7 +520,7 @@ Chi tiết và sơ đồ: [Kiến trúc F03](../architecture/f03-local-authentic
 - [ ] Tài liệu được đồng bộ; feature quan trọng có sơ đồ trong `docs/architecture/`.
 - [ ] Không chứa secret hoặc sửa đè thay đổi đang có của người dùng.
 - [ ] Có commit Conventional Commits sau khi feature hoàn thành.
-- [ ] Đã push nhánh feature và mở pull request vào `main`, ghi kết quả kiểm chứng; không tự merge khi chưa được yêu cầu.
+- [ ] Đã bàn giao commit local và kết quả kiểm chứng để người dùng tự push nhánh, mở pull request và merge. Agent không tự push, mở PR hoặc merge nếu chưa có yêu cầu rõ ràng mới.
 
 Checkbox đã đánh dấu ở F01 phản ánh công việc đã triển khai và kiểm chứng nêu trên.
 Các checkbox còn lại là công việc chưa hoàn thành; Definition of Done là checklist

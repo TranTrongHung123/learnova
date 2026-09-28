@@ -41,6 +41,40 @@ const problem = (status: number, code: string) =>
   );
 
 describe("auth session reliability", () => {
+  it("Google completion serializes mutation and refresh, keeps credentials out of the mutation response", async () => {
+    const paths: string[] = [];
+    const fetcher = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      paths.push(path);
+      if (path.endsWith("/csrf")) return csrf();
+      if (path.endsWith("/google/onboarding")) {
+        expect(new Headers(init?.headers).get("X-XSRF-TOKEN")).toBe("csrf");
+        expect(new Headers(init?.headers).has("Authorization")).toBe(false);
+        expect(JSON.parse(String(init?.body))).toEqual({ roles: ["PARTICIPANT"] });
+        return new Response(null, { status: 204 });
+      }
+      if (path.endsWith("/refresh")) return response(tokens("google-token"));
+      throw new Error("Unexpected request");
+    });
+    const session = new AuthSession("http://localhost:8080", fetcher);
+    await session.googleAction("onboarding", { roles: ["PARTICIPANT"] });
+    expect(paths).toEqual(["/api/v1/auth/csrf", "/api/v1/auth/google/onboarding", "/api/v1/auth/csrf", "/api/v1/auth/refresh"]);
+    expect(session.getSnapshot().user).toEqual(user);
+  });
+  it("shares Google callback resolution and does not issue a refresh for pending onboarding", async () => {
+    const fetcher = vi.fn(async () => response({ state: "ONBOARDING", email: user.email }));
+    const session = new AuthSession("http://localhost:8080", fetcher);
+    const values = await Promise.all([session.resolveGoogleCallback(), session.resolveGoogleCallback()]);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(values[0]?.state).toBe("ONBOARDING");
+    expect(session.getSnapshot().user).toBeNull();
+  });
+  it("does not treat an unavailable Google flow as a completed login", async () => {
+    const fetcher = vi.fn(async () => problem(503, "SERVICE_UNAVAILABLE"));
+    const session = new AuthSession("http://localhost:8080", fetcher);
+    await expect(session.resolveGoogleCallback()).rejects.toMatchObject({ status: 503 });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
   it("bootstrap shares one refresh and concurrent 401 retries only once", async () => {
     let refreshes = 0;
     let calls = 0;

@@ -22,12 +22,18 @@ export type AuthState = {
 };
 export const initialAuth: AuthState = { status: "BOOTSTRAPPING", user: null };
 
+export type GoogleFlow = {
+  state: "ONBOARDING" | "LINK_REQUIRED" | "LINK_CONFIRMATION";
+  email: string;
+};
+
 export class AuthSession {
   private token: string | null = null;
   private generation = 0;
   private state: AuthState = initialAuth;
   private listeners = new Set<() => void>();
   private refreshing?: Promise<void>;
+  private googleResolving?: Promise<GoogleFlow | null>;
   private queue: Promise<unknown> = Promise.resolve();
   private channel?: BroadcastChannel;
   private raw;
@@ -161,6 +167,45 @@ export class AuthSession {
       }),
     );
   }
+  googleConfig(signal?: AbortSignal) {
+    return this.raw.request<{ enabled: boolean }>("/api/v1/auth/google/config", {
+      authenticated: false, signal,
+    });
+  }
+  get googleUrl() { return new URL("/api/v1/auth/google", this.baseUrl).href; }
+  googleFlow() {
+    return this.raw.request<GoogleFlow>("/api/v1/auth/google/flow", { authenticated: false });
+  }
+  resolveGoogleCallback(): Promise<GoogleFlow | null> {
+    // Strict Mode và nhiều component cùng dùng kết quả callback, không rotate hai lần.
+    if (this.googleResolving) return this.googleResolving;
+    this.googleResolving = (async () => {
+      try { return await this.googleFlow(); }
+      catch (error) {
+        if (!(error instanceof ApiError) || error.problem?.code !== "GOOGLE_FLOW_EXPIRED") throw error;
+        await this.refresh();
+        this.channel?.postMessage("session-changed");
+        return null;
+      }
+    })().finally(() => { this.googleResolving = undefined; });
+    return this.googleResolving;
+  }
+  async googleAction(action: "onboarding" | "link/verify" | "link/confirm" | "cancel", input?: unknown) {
+    const completes = action === "onboarding" || action === "link/confirm";
+    const generation = completes ? ++this.generation : this.generation;
+    return this.locked(async () => {
+      await this.raw.request<void>(`/api/v1/auth/google/${action}`, {
+        method: "POST", authenticated: false, headers: await this.csrf(), json: input,
+      });
+      if (completes) {
+        const result = await this.raw.request<Tokens>("/api/v1/auth/refresh", {
+          method: "POST", authenticated: false, headers: await this.csrf(),
+        });
+        this.accept(result, generation);
+        if (generation === this.generation) this.channel?.postMessage("session-changed");
+      }
+    });
+  }
   async login(email: string, password: string) {
     // Vô hiệu phản hồi refresh đang bay trước khi người dùng đổi tài khoản.
     const generation = ++this.generation;
@@ -223,6 +268,11 @@ export function authMessage(error: unknown): string {
       ACCOUNT_LOCKED: "Tài khoản đang bị khóa. Vui lòng liên hệ quản trị viên.",
       ACCOUNT_DISABLED: "Tài khoản đã ngừng hoạt động.",
       CSRF_INVALID: "Phiên thao tác đã thay đổi. Vui lòng thử lại.",
+      GOOGLE_FLOW_EXPIRED: "Phiên Google đã hết hạn hoặc đã hoàn tất. Vui lòng đăng nhập lại.",
+      GOOGLE_FLOW_CHANGED: "Phiên Google đã thay đổi ở một thao tác khác. Vui lòng tải lại trạng thái.",
+      GOOGLE_IDENTITY_CONFLICT: "Không thể liên kết tài khoản Google này. Vui lòng đăng nhập bằng phương thức đã có.",
+      GOOGLE_LINK_ATTEMPTS_EXCEEDED: "Đã vượt số lần xác minh. Vui lòng bắt đầu đăng nhập Google lại.",
+      ONBOARDING_REQUIRED: "Vui lòng đăng nhập Google và hoàn tất chọn vai trò.",
       VALIDATION_FAILED: "Vui lòng kiểm tra thông tin đã nhập.",
     };
     return messages[error.problem?.code ?? ""] ?? error.message;

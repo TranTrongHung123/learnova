@@ -51,6 +51,10 @@ public class SecurityConfiguration {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/google", "/api/v1/auth/google/config",
+                                "/api/v1/auth/google/flow").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/google/onboarding", "/api/v1/auth/google/link/verify",
+                                "/api/v1/auth/google/link/confirm", "/api/v1/auth/google/cancel").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
                                 "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()

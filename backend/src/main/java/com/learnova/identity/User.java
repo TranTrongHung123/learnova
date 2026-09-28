@@ -14,6 +14,7 @@ class User {
     @Column(nullable = false, length = 100) String displayName;
     @Column(nullable = false, length = 16) String status;
     @Column(nullable = false) Instant createdAt;
+    @Column(nullable = false) boolean onboardingCompleted = true;
     @ElementCollection
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role", nullable = false, length = 16)

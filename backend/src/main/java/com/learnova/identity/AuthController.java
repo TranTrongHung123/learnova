@@ -84,6 +84,15 @@ class AuthController {
         try { sessions.revoke(sessions.lookup(token)); }
         catch (AuthFailure ignored) { /* Logout lặp lại vẫn thành công khi token không còn hợp lệ. */ }
     }
+    void googleSession(UUID userId, HttpServletRequest request, HttpServletResponse response) {
+        identity.activeUser(userId);
+        if (request.getCookies() != null)
+            for (var cookie : request.getCookies())
+                if (COOKIE.equals(cookie.getName())) logoutSession(cookie.getValue());
+        var issued = sessions.create(userId);
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie(issued.token(),
+                Duration.between(clock.instant(), issued.session().expiresAt())).toString());
+    }
     private AuthDtos.TokenResponse respond(AuthDtos.UserSummary user, RefreshSessions.Issued issued,
             HttpServletResponse response) {
         var result = tokens.issue(user, issued.session().sessionId());
