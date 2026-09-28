@@ -10,6 +10,7 @@ import { ApiError } from "@/lib/api/client";
 import { useAuth } from "./auth-provider";
 import { authMessage } from "./session";
 import { resolveWorkspace } from "./workspace-resolution";
+import { GoogleButton } from "./google-button";
 import type { Workspace } from "@/features/workspace/navigation";
 
 export function AuthForm({
@@ -249,6 +250,7 @@ export function AuthForm({
                     : "Đăng nhập"}
               </Button>
             </form>
+            <GoogleButton />
             <p className="mt-6 text-sm text-muted-foreground">
               {register ? "Đã có tài khoản? " : "Chưa có tài khoản? "}
               <Link

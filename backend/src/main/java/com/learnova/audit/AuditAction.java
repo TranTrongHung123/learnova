@@ -1,6 +1,8 @@
 package com.learnova.audit;
 
 public enum AuditAction {
+    GOOGLE_ACCOUNT_LINKED,
+    ONBOARDING_COMPLETED,
     ROLE_CHANGED,
     ACCOUNT_LOCKED,
     ACCOUNT_UNLOCKED,

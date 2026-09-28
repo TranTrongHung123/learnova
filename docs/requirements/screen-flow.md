@@ -353,8 +353,8 @@ Các POST auth phối hợp Web Locks giữa tabs; reload bootstrap bằng refre
 
 # 8. Authentication Screens
 
-F03 chỉ cung cấp Local Login. Action Google bên dưới được bật khi F04 hoàn thành;
-không hiển thị action đăng nhập Google giả hoặc mock fallback.
+F04 cung cấp Google Login qua backend. Action Google đọc trạng thái cấu hình từ API;
+khi backend chưa bật, hiển thị disabled cùng thông báo chưa cấu hình. Không có mock fallback.
 
 # 8.1. Login Screen
 
@@ -533,6 +533,12 @@ Existing linked identity?
         └── No → Role Onboarding
 ```
 
+Backend nhận OAuth callback riêng tại `/api/v1/auth/google/callback`, sau đó redirect
+về route frontend này. Frontend đọc flow tạm; nếu không còn flow, dùng shared refresh
+để nhận Learnova access token. Không đọc token/identity từ URL. Identity đã có nhưng
+chưa onboarding tiếp tục Role Onboarding, chưa được cấp session.
+Callback lỗi có thông báo an toàn, action đăng nhập Google lại và về Local Login.
+
 ---
 
 # 8.4. Role Onboarding
@@ -566,6 +572,9 @@ Create/complete account
    ↓
 Workspace
 ```
+
+Reload đọc lại pending flow từ server; chọn role không cấp ADMIN. Hiển thị loading/error
+và nút Hủy; hết hạn thì yêu cầu đăng nhập lại. Lỗi mất response có action tải lại trạng thái.
 
 ---
 
@@ -604,6 +613,11 @@ Continue
 ```
 
 UI cần tránh gây hiểu nhầm rằng tạo tài khoản mới.
+
+Bước đầu hiển thị email từ flow server và ô mật khẩu Local. Xác minh thành công chuyển
+sang màn xác nhận riêng, chưa tạo identity. Reload giữ bước xác nhận khi flow còn hiệu lực.
+Chỉ nút “Xác nhận liên kết Google” mới link. Có Hủy, lỗi cạnh field và error summary nhận
+focus. Giới hạn 5 lần xác minh mỗi flow, TTL 10 phút; flow mới thay thế flow tạm cũ.
 
 ---
 

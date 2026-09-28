@@ -270,6 +270,8 @@ Nếu Google identity hợp lệ và chưa thuộc User nào:
 - Learnova tạo User.
 - User thực hiện onboarding.
 - User chọn `PARTICIPANT`, `CREATOR` hoặc cả hai.
+- Chưa hoàn tất onboarding thì chưa cấp Learnova session và chưa truy cập nghiệp vụ.
+  Đăng nhập Google lần sau tiếp tục onboarding của cùng User; không tạo User mới.
 
 ### Email đã tồn tại với Local Login
 
@@ -280,6 +282,12 @@ User phải:
 1. Xác thực account hiện tại.
 2. Xác nhận link Google.
 3. Sau đó Google identity mới được gắn vào cùng User.
+
+Identity Google được nhận diện bằng provider `sub`; email phải được Google xác minh.
+Identity đã link luôn dùng cùng User, không tự cập nhật email Learnova khi Google email
+thay đổi. V1 mỗi User có tối đa một identity mỗi provider. Nếu email đã thuộc Google-only
+User nhưng `sub` khác, từ chối liên kết; không suy ra quyền sở hữu chỉ từ email.
+Hủy hoặc hết hạn flow không xóa User/identity đã tạo.
 
 Mục tiêu:
 

@@ -12,6 +12,7 @@ info:
     Lỗi dùng application/problem+json với code ổn định và fieldErrors.
     detail là thông báo an toàn cho người dùng; không có trường message trùng nghĩa.
     F03 bổ sung local authentication, refresh rotation và multi-role.
+    F04 bổ sung Google OIDC, onboarding và liên kết Local account có xác nhận.
     Actuator không được expose qua HTTP. Endpoint chưa khai báo vẫn bị từ chối.
     Các list API sau này dùng Page/Size và PageResponse; sort được định nghĩa riêng
     theo whitelist của từng endpoint, không nhận property persistence tùy ý.
@@ -22,11 +23,196 @@ servers:
 
 tags:
   - name: Authentication
-    description: Local authentication và multi-role. Refresh token chỉ truyền qua HttpOnly cookie.
+    description: Local/Google authentication và multi-role. Refresh token chỉ truyền qua HttpOnly cookie.
   - name: Health
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+
+  /api/v1/auth/google/config:
+    get:
+      tags: [Authentication]
+      operationId: getGoogleAvailability
+      summary: Kiểm tra cấu hình Google Login
+      security: []
+      responses:
+        '200':
+          description: Google Login đã được bật bằng cấu hình backend; không kiểm tra kết nối provider.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enabled]
+                properties:
+                  enabled: {type: boolean}
+
+  /api/v1/auth/google:
+    get:
+      tags: [Authentication]
+      operationId: startGoogleLogin
+      summary: Bắt đầu Google OIDC bằng browser navigation
+      security: []
+      description: |
+        Redirect tới Google với scopes openid/email/profile, state, nonce và PKCE S256.
+        Giao dịch Redis TTL 10 phút ràng buộc cookie learnova_google_flow HttpOnly, host-only,
+        SameSite=Lax, Path=/api/v1/auth/google, Secure ở production. Flow mới hủy flow tạm cũ.
+        Không nhận returnTo hoặc redirect_uri từ client. Khi chưa bật, redirect về frontend
+        callback với error=GOOGLE_UNAVAILABLE. Không dùng fetch để bắt đầu OAuth.
+      responses:
+        '302':
+          description: Redirect tới Google hoặc frontend callback lỗi.
+          headers:
+            Location: {schema: {type: string, format: uri}}
+            Set-Cookie: {schema: {type: string}}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
+  /api/v1/auth/google/callback:
+    get:
+      tags: [Authentication]
+      operationId: receiveGoogleCallback
+      summary: Backend nhận authorization code từ Google
+      security: [{googleFlowCookie: []}]
+      parameters:
+        - {name: state, in: query, required: true, schema: {type: string}}
+        - {name: code, in: query, schema: {type: string}}
+        - {name: error, in: query, schema: {type: string}}
+      description: |
+        Chỉ nhận một trong code/error, kiểm tra browser binding/state một lần, đổi code server-side,
+        xác minh chữ ký/issuer/audience/expiry/nonce và email_verified. Google sub là identity key.
+        Identity đã link và onboarding hoàn tất nhận Learnova refresh cookie; user mới hoặc email
+        trùng nhận flow tạm. Redirect về /auth/google/callback của frontend đã cấu hình.
+        Không đưa Learnova token/pending credential vào URL, không lưu Google tokens lâu dài.
+        Lỗi redirect chỉ chứa code an toàn: GOOGLE_AUTH_FAILED, GOOGLE_EMAIL_UNVERIFIED,
+        GOOGLE_IDENTITY_INVALID, GOOGLE_IDENTITY_CONFLICT, ACCOUNT_LOCKED, ACCOUNT_DISABLED,
+        SERVICE_UNAVAILABLE. Endpoint callback không bật khi Google Login chưa được cấu hình.
+      responses:
+        '302':
+          description: Frontend đọc flow hoặc gọi refresh; callback lỗi có query error an toàn.
+          headers:
+            Location: {schema: {type: string, format: uri}}
+            Set-Cookie: {schema: {type: string}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+
+  /api/v1/auth/google/flow:
+    get:
+      tags: [Authentication]
+      operationId: getGoogleFlow
+      summary: Đọc trạng thái Google flow của browser
+      security: [{googleFlowCookie: []}]
+      responses:
+        '200':
+          description: Trạng thái authoritative; no-store, không trả userId/subject/token.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [state, email]
+                properties:
+                  state: {type: string, enum: [ONBOARDING, LINK_REQUIRED, LINK_CONFIRMATION]}
+                  email: {type: string, format: email}
+        '401': {$ref: '#/components/responses/GoogleFlowUnauthorized'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
+  /api/v1/auth/google/onboarding:
+    post:
+      tags: [Authentication]
+      operationId: completeGoogleOnboarding
+      summary: Hoàn tất vai trò cho Google User mới
+      security: [{googleFlowCookie: []}]
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      description: |
+        Chỉ ONBOARDING flow. Không nhận userId; role không được ghi đè sau khi onboarding hoàn tất.
+        Consume flow một lần, khóa User và ghi audit cùng transaction; sau commit cấp refresh cookie.
+        Client gọi refresh nhận access token. Nếu mất response, đọc lại flow rồi refresh;
+        nếu không còn flow/session, bắt đầu Google Login lại để phục hồi từ database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles]
+              properties:
+                roles:
+                  type: array
+                  minItems: 1
+                  maxItems: 2
+                  uniqueItems: true
+                  items: {type: string, enum: [PARTICIPANT, CREATOR]}
+      responses:
+        '204': {$ref: '#/components/responses/GoogleCompleted'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/GoogleFlowUnauthorized'}
+        '403': {$ref: '#/components/responses/AuthForbidden'}
+        '409': {$ref: '#/components/responses/GoogleFlowConflict'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
+  /api/v1/auth/google/link/verify:
+    post:
+      tags: [Authentication]
+      operationId: verifyGoogleLinkAccount
+      summary: Xác minh mật khẩu Local account trước khi link
+      security: [{googleFlowCookie: []}]
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      description: |
+        Email/User lấy từ pending flow. Chỉ LINK_REQUIRED chuyển sang LINK_CONFIRMATION;
+        chưa tạo identity hoặc cấp session. Tối đa 5 lần xác minh mỗi flow, không gia hạn TTL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: {type: string, maxLength: 256, writeOnly: true}
+      responses:
+        '204': {description: Đã xác minh; cần xác nhận link riêng.}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/GoogleFlowUnauthorized'}
+        '403': {$ref: '#/components/responses/AuthForbidden'}
+        '409': {$ref: '#/components/responses/GoogleFlowConflict'}
+        '429':
+          description: GOOGLE_LINK_ATTEMPTS_EXCEEDED; bắt đầu Google Login lại.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
+  /api/v1/auth/google/link/confirm:
+    post:
+      tags: [Authentication]
+      operationId: confirmGoogleLinkAccount
+      summary: Xác nhận thêm Google Identity vào Local User đã xác minh
+      security: [{googleFlowCookie: []}]
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      description: |
+        Chỉ LINK_CONFIRMATION. Consume flow một lần; recheck User ACTIVE và identity uniqueness.
+        Không chuyển identity của User khác, không ghi đè profile/role/password. Audit cùng transaction.
+        Nếu DB đã commit nhưng session thất bại, Google Login lần sau dùng identity đã liên kết.
+      responses:
+        '204': {$ref: '#/components/responses/GoogleCompleted'}
+        '401': {$ref: '#/components/responses/GoogleFlowUnauthorized'}
+        '403': {$ref: '#/components/responses/AuthForbidden'}
+        '409': {$ref: '#/components/responses/GoogleFlowConflict'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
+  /api/v1/auth/google/cancel:
+    post:
+      tags: [Authentication]
+      operationId: cancelGoogleFlow
+      summary: Hủy flow Google tạm của browser
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      description: Idempotent; xóa flow/cookie, không xóa User hoặc identity đã tạo, không logout phiên Learnova khác.
+      responses:
+        '204': {description: Flow đã hủy hoặc không còn tồn tại.}
+        '403': {$ref: '#/components/responses/CsrfForbidden'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
 
   /api/v1/auth/csrf:
     get:
@@ -210,6 +396,10 @@ paths:
 components:
 
   securitySchemes:
+    googleFlowCookie:
+      type: apiKey
+      in: cookie
+      name: learnova_google_flow
     bearerAuth:
       type: http
       scheme: bearer
@@ -247,6 +437,20 @@ components:
         default: 20
 
   responses:
+    GoogleCompleted:
+      description: Clear flow cookie, set learnova_refresh HttpOnly cookie như Local Login; gọi POST /auth/refresh để lấy access token.
+      headers:
+        Set-Cookie: {schema: {type: string}}
+    GoogleFlowUnauthorized:
+      description: GOOGLE_FLOW_EXPIRED khi cookie/flow thiếu, hết hạn hoặc đã consume; INVALID_CREDENTIALS nếu mật khẩu sai.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    GoogleFlowConflict:
+      description: GOOGLE_FLOW_CHANGED khi thao tác không khớp state hoặc xảy ra đồng thời; GOOGLE_IDENTITY_CONFLICT khi identity không thể link.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
     AuthTokens:
       description: |
         Token mới; Cache-Control no-store. Set learnova_refresh HttpOnly, host-only,

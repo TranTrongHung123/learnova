@@ -119,8 +119,38 @@ user/password mặc định và không mở quyền ADMIN cho Actuator.
 - [OpenAPI](docs/api/openapi.yaml) định nghĩa health, auth, ProblemDetail và pagination.
 - [Authentication F03](docs/architecture/f03-local-authentication.md) mô tả JWT, refresh rotation,
   CSRF/CORS, workspace resolution và giới hạn vận hành.
+- [Google Authentication F04](docs/architecture/f04-google-authentication.md) mô tả OAuth,
+  onboarding, link account và phục hồi khi callback/network lỗi.
 - [Nền tảng F01](docs/architecture/f01-platform-foundation.md) mô tả security boundary,
   cách dùng pagination và ghi audit cùng transaction nghiệp vụ.
+
+## Google Login
+
+Tạo OAuth client loại **Web application** trong Google Cloud, cấu hình consent screen
+và test users nếu ứng dụng còn ở chế độ testing. Đăng ký chính xác redirect URI backend:
+`http://localhost:8080/api/v1/auth/google/callback` khi chạy local. Frontend callback
+`/auth/google/callback` chỉ xử lý kết quả Learnova, không phải redirect URI đăng ký với Google.
+
+Đặt biến môi trường backend theo `.env.example`:
+
+```text
+GOOGLE_AUTH_ENABLED=true
+GOOGLE_CLIENT_ID=<OAuth client ID>
+GOOGLE_CLIENT_SECRET=<OAuth client secret>
+GOOGLE_REDIRECT_URI=http://localhost:8080/api/v1/auth/google/callback
+GOOGLE_FRONTEND_URL=http://localhost:3000
+```
+
+Nạp chúng cùng các biến database/JWT theo hướng dẫn khởi động backend ở trên.
+Giữ secret ngoài Git và ngoài mọi biến `NEXT_PUBLIC_*`. Production dùng HTTPS,
+`AUTH_COOKIE_SECURE=true`, CORS allowlist và frontend/backend cùng site theo kiến trúc F03.
+Không cấu hình deployment cross-site với cookie SameSite=Lax rồi kỳ vọng browser gửi cookie.
+Mặc định Google Login tắt; UI thông báo chưa cấu hình và Local Login vẫn dùng được.
+
+User Google mới chọn role trước khi nhận session. Email trùng Local account cần mật khẩu
+và xác nhận link riêng. Nếu flow hết hạn/lỗi sau commit, đăng nhập Google lại để tiếp tục.
+Google thật cần kiểm chứng thủ công với OAuth client của bạn; provider trong test không
+chứng minh consent screen hoặc HTTPS deployment đã hoạt động.
 
 ## Kiểm chứng
 
@@ -138,6 +168,7 @@ npm test
 npm run typecheck
 npm run test:e2e
 npm run test:auth
+npm run test:google
 npm run build
 npm run test:production
 # Khi backend local đã chạy:
@@ -152,6 +183,8 @@ environment, mặc định localhost:8080; không tự nạp `.env.local`.
 Build frontend hiện tải font qua `next/font/google`, cần truy cập mạng.
 Auth browser test tự chạy backend ở 8081 và frontend ở 3104 cùng Testcontainers riêng;
 không cần đọc `.env` hoặc dùng database của bạn. Tắt server ở cổng này để tạo môi trường mới.
+Google browser test dùng backend 8082, frontend 3105 và OIDC provider test 8092;
+provider chỉ tồn tại trong test classpath, không dùng OAuth credentials thật.
 Không ghi trace auth chứa password/token; ảnh form rỗng nằm trong test-results.
 Nếu Docker báo thiếu named pipe, khởi động Docker Desktop và chờ Linux engine sẵn sàng.
 Nếu cổng đã dùng, đổi port trong `.env` trước khi chạy Compose/backend.
@@ -165,7 +198,7 @@ nhưng giữ named volume; không dùng `down -v` nếu cần giữ dữ liệu.
 - Fetch `origin`, tạo và chuyển sang nhánh `feat/<feature-id>-<slug>` từ `origin/main` đã cập nhật, ví dụ `feat/f03-local-authentication`.
 - Nếu đang ở đúng nhánh của feature đang làm, tiếp tục trên nhánh đó; không tạo nhánh trùng.
 - Không triển khai hoặc commit feature trực tiếp trên `main`.
-- Hoàn thành feature bằng kiểm thử phù hợp, Conventional Commit, push nhánh và pull request vào `main`. Không tự merge khi chưa được yêu cầu.
+- Hoàn thành feature bằng kiểm thử phù hợp và Conventional Commit local. Người dùng tự push nhánh, mở pull request vào `main` và merge. Agent không tự thực hiện các thao tác GitHub này nếu chưa có yêu cầu rõ ràng mới.
 - `AGENTS.md` local cũng ghi quy tắc này nhưng đang bị Git ignore; README và Definition of Done là bản được lưu trên GitHub.
 
 ## UI/UX workflow
