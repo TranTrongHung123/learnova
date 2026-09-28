@@ -163,5 +163,8 @@ F05 sẽ tái sử dụng logout-all tại Security. UI dùng Master F02, không
   logout khi offline và retry, keyboard/focus, reduced motion, viewport 375/768/1024/1440px
   và 640x450px. Đã review ảnh form mobile. Không xác nhận mọi screen reader/browser zoom.
 - OpenAPI parse thành công: 8 paths, 43 internal references resolve được; diff không có whitespace error.
-- Local Java 21/Node 24; CI cấu hình Java 21/Node 22/Chromium/Linux, chưa xác nhận CI remote
-  tại thời điểm ghi kết quả này. Chưa kiểm thử deployment HTTPS/cookie Secure thực tế.
+- Local Java 21/Node 24. CI Java 21/Node 22/Chromium/Linux đã pass backend và frontend
+  cho commit `b85c0d8`: [workflow run](https://github.com/TranTrongHung123/learnova/actions/runs/36371174077).
+  Chưa kiểm thử deployment HTTPS/cookie Secure thực tế.
+- Đã push nhánh `feat/f03-local-authentication` và mở [PR #3](https://github.com/TranTrongHung123/learnova/pull/3);
+  chưa merge vào main.

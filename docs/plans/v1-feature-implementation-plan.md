@@ -20,11 +20,12 @@ Nguồn đối chiếu:
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash và chạy Lua atomic; WebSocket chưa triển khai |
 | OpenAPI | Health và 7 auth endpoints; schema lỗi và convention pagination dùng chung |
 | Testing | 43 backend, 44 unit frontend, 9 auth browser, 8 workspace, 1 production và 1 health test pass local |
-| CI | Backend Testcontainers, frontend lint/typecheck/unit/browser/auth/build/production; chưa xác nhận remote |
+| CI | Backend và frontend pass trên GitHub Actions cho F03; Java 21/Node 22/Chromium/Linux |
 | Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F03 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
-**F03 đã triển khai và kiểm chứng local ngày 28/09/2026**; bàn giao Git/PR theo Definition of Done.
+**F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
+[PR #3](https://github.com/TranTrongHung123/learnova/pull/3), chưa merge.
 F04–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
@@ -164,8 +165,9 @@ Chi tiết và sơ đồ: [Kiến trúc F02](../architecture/f02-frontend-founda
 - OpenAPI parse thành công, 8 paths và 43 internal references hợp lệ.
 - Đã kiểm tra cookie/CORS qua Edge, reload hai tab, logout-all hai browser context, offline/retry,
   role isolation, focus, responsive và reduced motion. Không có mock fallback trong auth flow.
-- Local Windows/Edge, Java 21/Node 24. CI Node 22/Chromium/Linux đã cấu hình nhưng chưa xác nhận remote;
-  chưa kiểm thử deployment HTTPS/cookie Secure thực tế. Google Login/profile/ADMIN bootstrap thuộc feature sau.
+- Local Windows/Edge, Java 21/Node 24; CI Java 21/Node 22/Chromium/Linux pass cho commit `b85c0d8`
+  tại [GitHub Actions](https://github.com/TranTrongHung123/learnova/actions/runs/36371174077).
+  Chưa kiểm thử deployment HTTPS/cookie Secure thực tế. Google Login/profile/ADMIN bootstrap thuộc feature sau.
 
 Chi tiết và sơ đồ: [Kiến trúc F03](../architecture/f03-local-authentication.md).
 
