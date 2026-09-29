@@ -12,6 +12,7 @@ public class User {
     @Id UUID id;
     @Column(nullable = false, unique = true, length = 254) String email;
     @Column(nullable = false, length = 100) String displayName;
+    @Column(length = 2048) String avatarUrl;
     @Column(nullable = false, length = 16) String status;
     @Column(nullable = false) Instant createdAt;
     @Column(nullable = false) boolean onboardingCompleted = true;
@@ -35,6 +36,15 @@ public class User {
     public String getEmail() { return email; }
 
     public String getDisplayName() { return displayName; }
+
+    public String getAvatarUrl() { return avatarUrl; }
+
+    public Instant getCreatedAt() { return createdAt; }
+
+    public void updateProfile(String displayName, String avatarUrl) {
+        this.displayName = displayName;
+        this.avatarUrl = avatarUrl;
+    }
 
     public String getStatus() { return status; }
 

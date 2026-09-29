@@ -97,6 +97,27 @@ public class RefreshSessions {
                 """, List.of(userKey(userId)));
     }
 
+    public void revokeOthers(UUID userId, String currentSessionId) {
+        if (currentSessionId == null || !currentSessionId.matches("[0-9a-f-]{36}"))
+            throw new AuthFailure(401, "AUTHENTICATION_REQUIRED");
+        // Membership và expiry được kiểm tra trong cùng script với revoke, không thể phục hồi session đã mất.
+        long result = run("""
+                local expiry = redis.call('ZSCORE', KEYS[1], KEYS[2])
+                if not expiry or tonumber(expiry) <= tonumber(ARGV[1])
+                    or redis.call('EXISTS', KEYS[2]) == 0 then return 0 end
+                local sessions = redis.call('ZRANGE', KEYS[1], 0, -1)
+                for _, key in ipairs(sessions) do
+                    if key ~= KEYS[2] then
+                        redis.call('DEL', key)
+                        redis.call('ZREM', KEYS[1], key)
+                    end
+                end
+                redis.call('PEXPIREAT', KEYS[1], expiry)
+                return 1
+                """, List.of(userKey(userId), sessionKey(currentSessionId)), millis(clock.instant()));
+        if (result != 1) throw new AuthFailure(401, "AUTHENTICATION_REQUIRED");
+    }
+
     private long run(String script, List<String> keys, String... arguments) {
         Long result = redis.execute(new DefaultRedisScript<>(script, Long.class), keys, (Object[]) arguments);
         if (result == null) throw new IllegalStateException("Missing Redis result");

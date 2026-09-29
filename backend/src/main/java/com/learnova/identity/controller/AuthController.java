@@ -48,9 +48,8 @@ public class AuthController {
     @PostMapping("/login")
     AuthDtos.TokenResponse login(@Valid @RequestBody AuthDtos.LoginRequest request,
             @CookieValue(name = COOKIE, required = false) String previous, HttpServletResponse response) {
-        var user = identity.authenticate(request);
-        logoutSession(previous);
-        return respond(user, sessions.create(user.id()), response);
+        var login = identity.login(request, previous);
+        return respond(login.user(), login.issued(), response);
     }
 
     @PostMapping("/refresh")

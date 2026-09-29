@@ -18,9 +18,9 @@ public final class AuthDtos {
             @NotNull @Size(max = 256) String password) {
         @Override public String toString() { return "LoginRequest[redacted]"; }
     }
-    public record UserSummary(UUID id, String email, String displayName, String status, List<String> roles) {
+    public record UserSummary(UUID id, String email, String displayName, String avatarUrl, String status, List<String> roles) {
         public static UserSummary from(User user) {
-            return new UserSummary(user.getId(), user.getEmail(), user.getDisplayName(), user.getStatus(),
+            return new UserSummary(user.getId(), user.getEmail(), user.getDisplayName(), user.getAvatarUrl(), user.getStatus(),
                     user.getRoles().stream().sorted().toList());
         }
     }

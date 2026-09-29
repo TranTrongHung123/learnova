@@ -5,9 +5,11 @@ export type CurrentUser = {
   id: string;
   email: string;
   displayName: string;
+  avatarUrl: string | null;
   status: "ACTIVE" | "LOCKED" | "DISABLED";
   roles: Workspace[];
 };
+export type Profile = CurrentUser & { createdAt: string; hasLocalIdentity: boolean };
 type Tokens = {
   accessToken: string;
   tokenType: "Bearer";
@@ -257,12 +259,55 @@ export class AuthSession {
       }
     });
   }
+
+  getProfile(signal?: AbortSignal) {
+    return this.api.request<Profile>("/api/v1/auth/profile", { signal });
+  }
+  async saveProfile(input: { displayName: string; avatarUrl: string | null }) {
+    return this.accountMutation<Profile>("/api/v1/auth/profile", "PUT", input, (profile) => {
+      if (this.state.user?.id === profile.id)
+        this.publish({ ...this.state, user: { ...this.state.user, displayName: profile.displayName, avatarUrl: profile.avatarUrl } });
+    });
+  }
+  changePassword(input: { currentPassword: string; newPassword: string }) {
+    return this.accountMutation<void>("/api/v1/auth/change-password", "POST", input);
+  }
+  private accountMutation<T>(path: string, method: string, input: unknown, accept?: (value: T) => void) {
+    const generation = this.generation;
+    return this.locked(async () => {
+      const assertCurrent = () => {
+        if (generation !== this.generation) throw new DOMException("Authentication changed", "AbortError");
+      };
+      assertCurrent();
+      // Refresh trong cùng khóa cookie; không gọi refresh() lồng vì sẽ tự chờ hàng đợi.
+      try {
+        const result = await this.raw.request<Tokens>("/api/v1/auth/refresh", {
+          method: "POST", authenticated: false, headers: await this.csrf(),
+        });
+        assertCurrent();
+        this.accept(result, generation);
+      } catch (error) {
+        if (generation === this.generation && error instanceof ApiError &&
+            (error.status === 401 || ["ACCOUNT_LOCKED", "ACCOUNT_DISABLED"].includes(error.problem?.code ?? ""))) this.clear();
+        throw error;
+      }
+      const headers = await this.csrf();
+      assertCurrent();
+      // Không tự gửi lại command khi chưa biết server đã commit hay chưa.
+      const result = await this.raw.request<T>(path, { method, headers, json: input });
+      assertCurrent();
+      accept?.(result);
+      return result;
+    });
+  }
 }
 
 export function authMessage(error: unknown): string {
   if (error instanceof ApiError) {
     const messages: Record<string, string> = {
       INVALID_CREDENTIALS: "Email hoặc mật khẩu chưa đúng.",
+      CURRENT_PASSWORD_INCORRECT: "Mật khẩu hiện tại chưa đúng.",
+      LOCAL_IDENTITY_REQUIRED: "Tài khoản Google chưa hỗ trợ đổi mật khẩu tại Learnova.",
       EMAIL_ALREADY_EXISTS:
         "Email này không thể đăng ký. Vui lòng đăng nhập hoặc dùng email khác.",
       ACCOUNT_LOCKED: "Tài khoản đang bị khóa. Vui lòng liên hệ quản trị viên.",

@@ -10,6 +10,7 @@ const user = {
   id: "u1",
   email: "a@example.com",
   displayName: "A",
+  avatarUrl: null,
   status: "ACTIVE" as const,
   roles: ["PARTICIPANT" as const],
 };
@@ -41,6 +42,42 @@ const problem = (status: number, code: string) =>
   );
 
 describe("auth session reliability", () => {
+  it("profile save publishes only the server-confirmed name and avatar with fresh auth and CSRF", async () => {
+    const profile = { ...user, displayName: "Server name", avatarUrl: "https://example.com/a.png", createdAt: "2026-09-29T00:00:00Z", hasLocalIdentity: true };
+    const fetcher = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
+      if (String(input).endsWith("/csrf")) return csrf();
+      if (String(input).endsWith("/refresh")) return response(tokens("fresh"));
+      expect(init?.method).toBe("PUT");
+      expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer fresh");
+      expect(new Headers(init?.headers).get("X-XSRF-TOKEN")).toBe("csrf");
+      return response(profile);
+    });
+    const session = new AuthSession("http://localhost:8080", fetcher);
+    await session.saveProfile({ displayName: "Client name", avatarUrl: null });
+    expect(session.getSnapshot().user).toEqual({ ...user, displayName: profile.displayName, avatarUrl: profile.avatarUrl });
+  });
+  it.each([400, 401, 503])("does not replay a password command after HTTP %s", async (status) => {
+    let commands = 0;
+    const fetcher = vi.fn(async (input: URL | RequestInfo) => {
+      if (String(input).endsWith("/csrf")) return csrf();
+      if (String(input).endsWith("/refresh")) return response(tokens("fresh"));
+      commands++;
+      return problem(status, "CHANGE_FAILED");
+    });
+    const session = new AuthSession("http://localhost:8080", fetcher);
+    await expect(session.changePassword({ currentPassword: "old", newPassword: "new" })).rejects.toMatchObject({ status });
+    expect(commands).toBe(1);
+  });
+  it("failed profile save leaves the confirmed profile in memory", async () => {
+    const fetcher = vi.fn(async (input: URL | RequestInfo) => {
+      if (String(input).endsWith("/csrf")) return csrf();
+      if (String(input).endsWith("/refresh")) return response(tokens("fresh"));
+      return problem(400, "VALIDATION_FAILED");
+    });
+    const session = new AuthSession("http://localhost:8080", fetcher);
+    await expect(session.saveProfile({ displayName: "Rejected", avatarUrl: null })).rejects.toMatchObject({ status: 400 });
+    expect(session.getSnapshot().user).toEqual(user);
+  });
   it("Google completion serializes mutation and refresh, keeps credentials out of the mutation response", async () => {
     const paths: string[] = [];
     const fetcher = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {

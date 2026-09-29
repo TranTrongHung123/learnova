@@ -50,7 +50,10 @@ describe("Workspace navigation", () => {
     (workspace) => {
       expect(
         navigationFor(workspace).filter((item) => item.available),
-      ).toHaveLength(1);
+      ).toEqual([
+        expect.objectContaining({ icon: "dashboard" }),
+        expect.objectContaining({ href: "/profile", icon: "profile" }),
+      ]);
     },
   );
 });
