@@ -709,6 +709,21 @@ Logout All Devices
 
 Email change không có trong V1.
 
+F05: `/profile` tải hồ sơ bằng API thật, có loading và lỗi kèm nút thử lại. Form chỉ báo
+đã lưu sau response thành công, đồng bộ tên/avatar trên workspace. URL ảnh lỗi dùng chữ cái
+đầu tên; URL chỉ tải tại browser, không gửi qua image optimizer phía server.
+
+Form có lỗi tại field và error summary được focus, giữ dữ liệu khi mạng lỗi. Tên dài 1–100
+Unicode code point; avatar HTTPS hoặc để trống để xóa. Không hỗ trợ upload ảnh trong V1.
+
+Chỉ hiển thị Change Password khi backend trả `hasLocalIdentity=true`; Google-only hiển thị
+giải thích. Yêu cầu mật khẩu hiện tại, mật khẩu mới 12–128 Unicode code point và xác nhận khớp.
+Thành công xóa các ô password, giữ phiên hiện tại và thông báo thu hồi refresh session khác.
+Không tự retry đổi mật khẩu khi mất response; hiển thị hướng dẫn khi chưa xác nhận kết quả.
+
+Logout All Devices mở hộp thoại xác nhận, hỗ trợ Hủy/Escape và trả focus về nút mở.
+Thành công trở về login; thất bại không báo đã thu hồi phiên thành công.
+
 ---
 
 # 11. Notifications Screen

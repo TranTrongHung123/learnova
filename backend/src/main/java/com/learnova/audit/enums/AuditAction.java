@@ -1,6 +1,7 @@
 package com.learnova.audit.enums;
 
 public enum AuditAction {
+    PASSWORD_CHANGED,
     GOOGLE_ACCOUNT_LINKED,
     ONBOARDING_COMPLETED,
     ROLE_CHANGED,

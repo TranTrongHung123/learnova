@@ -31,4 +31,6 @@ public class AuthIdentity {
     public UUID getUserId() { return userId; }
 
     public String getPasswordHash() { return passwordHash; }
+
+    public void changePassword(String hash) { passwordHash = hash; }
 }

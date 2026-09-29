@@ -13,6 +13,7 @@ info:
     detail là thông báo an toàn cho người dùng; không có trường message trùng nghĩa.
     F03 bổ sung local authentication, refresh rotation và multi-role.
     F04 bổ sung Google OIDC, onboarding và liên kết Local account có xác nhận.
+    F05 bổ sung profile, avatar và đổi mật khẩu Local giữ refresh session hiện tại.
     Actuator không được expose qua HTTP. Endpoint chưa khai báo vẫn bị từ chối.
     Các list API sau này dùng Page/Size và PageResponse; sort được định nghĩa riêng
     theo whitelist của từng endpoint, không nhận property persistence tùy ý.
@@ -367,6 +368,84 @@ paths:
         '403': {$ref: '#/components/responses/CsrfForbidden'}
         '503': {$ref: '#/components/responses/AuthUnavailable'}
 
+  /api/v1/auth/profile:
+    get:
+      tags: [Authentication]
+      operationId: getProfile
+      summary: Xem hồ sơ cá nhân
+      security: [{bearerAuth: []}]
+      description: User từ JWT subject, phải ACTIVE và đã hoàn tất onboarding. Áp dụng cho mọi role.
+      responses:
+        '200':
+          description: Hồ sơ và khả năng đổi mật khẩu của tài khoản hiện tại.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Profile'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/AuthForbidden'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+    put:
+      tags: [Authentication]
+      operationId: updateProfile
+      summary: Sửa tên và ảnh đại diện
+      security: [{bearerAuth: []}]
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      description: |
+        Chỉ nhận displayName và avatarUrl; từ chối field khác, không cập nhật một phần payload lỗi.
+        Tên được strip, dài 1–100 Unicode code point. Avatar chỉ nhận HTTPS không có userinfo,
+        tối đa 2048 UTF-16 code unit trước strip; null, bỏ field hoặc chuỗi trắng xóa avatar.
+        Backend chỉ lưu URL, không tải ảnh. User phải ACTIVE và đã hoàn tất onboarding.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UpdateProfileRequest'}
+      responses:
+        '200':
+          description: Hồ sơ đã lưu.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Profile'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/ProfileForbidden'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
+  /api/v1/auth/change-password:
+    post:
+      tags: [Authentication]
+      operationId: changePassword
+      summary: Đổi mật khẩu Local và thu hồi các refresh session khác
+      security: [{bearerAuth: []}]
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      description: |
+        User phải ACTIVE, hoàn tất onboarding và có Local Identity; Google-only bị từ chối.
+        Xác minh currentPassword, newPassword dài 12–128 Unicode code point, không trim.
+        JWT sid phải thuộc refresh session còn hoạt động của User. Giữ nguyên session đó và
+        thời hạn của nó; revoke các refresh session khác atomically. JWT đã cấp còn hiệu lực
+        tối đa 15 phút. Login Local và đổi mật khẩu khóa cùng User để ngăn dùng credentials cũ
+        tạo session sống sót sau đổi mật khẩu. Password và audit cùng DB transaction.
+        Lỗi Redis ngăn commit mật khẩu; DB rollback không khôi phục session đã revoke.
+        Không tự retry command khi mất response vì kết quả commit có thể chưa xác định.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ChangePasswordRequest'}
+      responses:
+        '204':
+          description: Đã đổi mật khẩu; không cấp token hoặc thay refresh cookie.
+        '400':
+          description: CURRENT_PASSWORD_INCORRECT (field currentPassword), VALIDATION_FAILED hoặc INVALID_REQUEST.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/ProfileForbidden'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+
   /api/v1/health:
     get:
       tags:
@@ -481,6 +560,11 @@ components:
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/ApiProblem'}
+    ProfileForbidden:
+      description: CSRF_INVALID, ACCOUNT_LOCKED, ACCOUNT_DISABLED, ONBOARDING_REQUIRED hoặc LOCAL_IDENTITY_REQUIRED (đổi mật khẩu).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
     BadRequest:
       description: INVALID_REQUEST hoặc VALIDATION_FAILED; không trả rejectedValue.
       content:
@@ -523,6 +607,31 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    Profile:
+      allOf:
+        - $ref: '#/components/schemas/UserSummary'
+        - type: object
+          required: [createdAt, hasLocalIdentity]
+          properties:
+            createdAt: {type: string, format: date-time}
+            hasLocalIdentity: {type: boolean}
+    UpdateProfileRequest:
+      type: object
+      additionalProperties: false
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          maxLength: 200
+          description: Giới hạn đầu vào 200 UTF-16 code unit; sau strip phải có 1–100 Unicode code point.
+        avatarUrl: {type: [string, 'null'], maxLength: 2048}
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: {type: string, format: password, maxLength: 256, writeOnly: true}
+        newPassword: {type: string, format: password, minLength: 12, maxLength: 128, writeOnly: true}
     RegisterRequest:
       type: object
       required: [email, password, displayName, roles]
@@ -544,11 +653,12 @@ components:
         password: {type: string, format: password, maxLength: 256, writeOnly: true}
     UserSummary:
       type: object
-      required: [id, email, displayName, status, roles]
+      required: [id, email, displayName, avatarUrl, status, roles]
       properties:
         id: {type: string, format: uuid}
         email: {type: string, format: email}
         displayName: {type: string}
+        avatarUrl: {type: [string, 'null']}
         status: {type: string, enum: [ACTIVE, LOCKED, DISABLED]}
         roles:
           type: array

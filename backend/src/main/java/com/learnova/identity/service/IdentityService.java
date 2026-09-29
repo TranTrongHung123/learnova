@@ -6,6 +6,7 @@ import com.learnova.identity.entity.User;
 import com.learnova.identity.exception.AuthFailure;
 import com.learnova.identity.repository.AuthIdentityRepository;
 import com.learnova.identity.repository.UserRepository;
+import com.learnova.identity.security.RefreshSessions;
 import java.time.Clock;
 import java.util.Locale;
 import java.util.Set;
@@ -21,13 +22,32 @@ public class IdentityService {
     private final PasswordEncoder passwords;
     private final Clock clock;
     private final String dummyHash;
+    private final RefreshSessions sessions;
 
-    IdentityService(UserRepository users, AuthIdentityRepository identities, PasswordEncoder passwords, Clock clock) {
+    IdentityService(UserRepository users, AuthIdentityRepository identities, PasswordEncoder passwords, Clock clock,
+            RefreshSessions sessions) {
         this.users = users;
         this.identities = identities;
         this.passwords = passwords;
         this.clock = clock;
+        this.sessions = sessions;
         dummyHash = passwords.encode(UUID.randomUUID().toString());
+    }
+
+    public record Login(AuthDtos.UserSummary user, RefreshSessions.Issued issued) {
+        @Override public String toString() { return "Login[redacted]"; }
+    }
+
+    @Transactional
+    public Login login(AuthDtos.LoginRequest request, String previous) {
+        // Giữ khóa đến sau cấp session để mật khẩu cũ không vượt qua một lần đổi mật khẩu đồng thời.
+        users.lockByEmail(normalizeEmail(request.email()));
+        var user = authenticate(request);
+        if (previous != null) {
+            try { sessions.revoke(sessions.lookup(previous)); }
+            catch (AuthFailure ignored) { /* Cookie cũ không hợp lệ không ngăn đăng nhập mới. */ }
+        }
+        return new Login(user, sessions.create(user.id()));
     }
 
     @Transactional
