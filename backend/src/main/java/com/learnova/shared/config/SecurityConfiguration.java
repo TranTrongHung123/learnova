@@ -9,6 +9,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfException;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import jakarta.servlet.DispatcherType;
@@ -46,7 +48,15 @@ public class SecurityConfiguration {
         converter.setJwtGrantedAuthoritiesConverter(authorities);
         return http
                 .cors(config -> config.configurationSource(source))
-                .csrf(config -> config.csrfTokenRepository(csrf))
+                .csrf(config -> config.csrfTokenRepository(csrf)
+                        .withObjectPostProcessor(new ObjectPostProcessor<CsrfFilter>() {
+                            @Override
+                            public <O extends CsrfFilter> O postProcess(O filter) {
+                                // Auth API vẫn yêu cầu CSRF khi có bearer, không dùng exemption mặc định của resource server.
+                                filter.setRequireCsrfProtectionMatcher(CsrfFilter.DEFAULT_CSRF_MATCHER);
+                                return filter;
+                            }
+                        }))
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
@@ -58,6 +68,9 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
                                 "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/profile").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/auth/profile").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/change-password").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout-all").authenticated()
                         .requestMatchers("/actuator", "/actuator/**").denyAll()
                         .anyRequest().denyAll())

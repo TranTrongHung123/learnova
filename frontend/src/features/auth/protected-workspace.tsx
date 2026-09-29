@@ -18,18 +18,25 @@ export function ProtectedWorkspace({
   workspace,
   title,
   selection = false,
+  children,
 }: {
   workspace?: Workspace;
   title: string;
   selection?: boolean;
+  children?: React.ReactNode | ((actions: { logoutAll: () => void }) => React.ReactNode);
 }) {
   const { status, user, error, session } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const confirmation = useRef<HTMLDialogElement>(null);
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const [busy, setBusy] = useState(false);
   const [retryAll, setRetryAll] = useState(false);
+  useEffect(() => {
+    if (confirmingLogout) confirmation.current?.showModal();
+    else confirmation.current?.close();
+  }, [confirmingLogout]);
   useEffect(() => {
     if (status === "UNAUTHENTICATED" && !busy && !logoutError)
       router.replace(`/login?returnTo=${encodeURIComponent(pathname)}`);
@@ -112,17 +119,17 @@ export function ProtectedWorkspace({
     <WorkspaceShell
       workspace={selected}
       roles={user.roles}
-      user={{ displayName: user.displayName, subtitle: user.email }}
+      user={{ displayName: user.displayName, subtitle: user.email, avatarUrl: user.avatarUrl }}
       pathname={pathname}
       onWorkspaceChange={(role) => {
         rememberWorkspace(user.id, role);
         router.push(workspaceInfo[role].href);
       }}
       onLogout={() => void logout()}
-      onLogoutAll={() => confirmation.current?.showModal()}
+      onLogoutAll={() => setConfirmingLogout(true)}
     >
       <h1 className="text-3xl font-bold">{title}</h1>
-      {selection ? (
+      {children ? <div key={user.id}>{typeof children === "function" ? children({ logoutAll: () => setConfirmingLogout(true) }) : children}</div> : selection ? (
         <section
           className="grid gap-4 sm:grid-cols-2"
           aria-label="Không gian làm việc"
@@ -155,6 +162,7 @@ export function ProtectedWorkspace({
       )}
       <dialog
         ref={confirmation}
+        onClose={() => setConfirmingLogout(false)}
         aria-labelledby="logout-all-title"
         className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-border bg-surface p-6 text-foreground backdrop:bg-scrim"
       >

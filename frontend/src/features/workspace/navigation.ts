@@ -77,7 +77,7 @@ export function navigationFor(workspace: Workspace): NavigationItem[] {
   }
   if (workspace !== "ADMIN")
     pending("Thông báo", "/notifications", "notifications");
-  pending("Hồ sơ", "/profile", "profile");
+  items.push({ label: "Hồ sơ", href: "/profile", icon: "profile", available: true });
   return items;
 }
 export function isActiveNavigation(

@@ -14,14 +14,14 @@ Nguồn đối chiếu:
 | Thành phần | Hiện trạng |
 |---|---|
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
-| Database | PostgreSQL 17, Flyway V1 audit, V2 identity và V3 onboarding; Hibernate validate schema |
+| Database | PostgreSQL 17, Flyway V1 audit, V2 identity, V3 onboarding và V4 avatar; Hibernate validate schema |
 | Authentication | Local/Google login, onboarding, link account, JWT, refresh rotation/reuse, logout-all và multi-role; Actuator vẫn đóng |
-| Frontend | Workspace shell, Local/Google auth, onboarding/link, bootstrap và workspace resolution tích hợp API thật |
+| Frontend | Workspace shell, Local/Google auth, onboarding/link, profile/security, bootstrap và workspace resolution tích hợp API thật |
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; WebSocket chưa triển khai |
-| OpenAPI | Health và 15 auth endpoints; schema lỗi và convention pagination dùng chung |
-| Testing | 56 backend, 47 unit frontend, 5 Google browser, 9 Local auth browser, 8 workspace và 1 production test pass local |
+| OpenAPI | Health và auth/profile/password; 18 paths, schema lỗi và convention pagination dùng chung |
+| Testing | 71 backend, 52 unit frontend, 5 Google browser, 11 Local auth/profile browser, 8 workspace và 1 production test pass local |
 | CI | F03 đã pass remote; F04 bổ sung Google browser suite, chưa chạy remote. Java 21/Node 22/Chromium/Linux |
-| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F04 |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F05 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
 **F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
@@ -29,7 +29,8 @@ Nguồn đối chiếu:
 đã có F03 tại commit `869c52c`.
 **F04 đã triển khai và kiểm chứng local ngày 28/09/2026**; chưa kiểm chứng OAuth Google
 thật/HTTPS hoặc CI remote. Người dùng tự push nhánh và mở PR.
-F05–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
+**F05 đã triển khai và kiểm chứng local ngày 29/09/2026**; bàn giao bằng commit local.
+F06–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -219,15 +220,36 @@ Chi tiết và sơ đồ: [Kiến trúc F04](../architecture/f04-google-authenti
 **Nguồn:** UC-USER-01..03.  
 **Phụ thuộc:** F03–F04.
 
-- [ ] Xem profile; chỉ sửa `displayName`, `avatarUrl`.
-- [ ] Đổi mật khẩu cho User có Local Identity, bắt buộc xác minh mật khẩu hiện tại.
-- [ ] Sau đổi mật khẩu giữ phiên hiện tại, revoke các refresh session khác.
-- [ ] Google-only account không hiện chức năng đổi mật khẩu chưa được hỗ trợ.
-- [ ] Tích hợp logout-all vào phần Security.
+- [x] Xem profile; chỉ sửa `displayName`, `avatarUrl`.
+- [x] Đổi mật khẩu cho User có Local Identity, bắt buộc xác minh mật khẩu hiện tại.
+- [x] Sau đổi mật khẩu giữ phiên hiện tại, revoke các refresh session khác.
+- [x] Google-only account không hiện chức năng đổi mật khẩu chưa được hỗ trợ.
+- [x] Tích hợp logout-all vào phần Security.
 
 **API/UI:** Nhóm profile hiện tại; `/profile`.
 
 **Nghiệm thu:** Không sửa được email, role hoặc status qua profile payload; password cũ sai bị từ chối; session khác không refresh tiếp được.
+
+**Kết quả kiểm chứng ngày 29/09/2026:**
+
+- Backend `mvnw.cmd -B verify`: 71 test pass, không fail/error/skip, gồm 15 profile integration
+  tests với PostgreSQL 17/Redis thật. Kiểm tra JWT/CSRF thật, mass assignment, Unicode,
+  Local/Google-only/linked identity, race login/change/refresh/logout, Redis outage, rollback,
+  audit và migration V3→V4. CSRF được áp dụng cả bearer auth mutation theo contract.
+- Frontend `npm test`: 52 test pass; lint và typecheck pass. Profile dùng API thật, auth
+  summary cập nhật sau save; không tự replay password command khi chưa xác định kết quả.
+- `npm run build`, `npm run test:e2e` (8 test), `npm run test:production` (1 test): pass.
+- `npm run test:auth`: 11 test pass; `npm run test:google`: 5 test pass với OIDC test provider.
+  Kiểm chứng sửa profile/reload, password sai, giữ current session, thu hồi thiết bị khác,
+  logout-all, Google-only không có form password và lỗi mạng có thể thử lại.
+- Chạy lại 2 profile E2E sau bổ sung kiểm tra lưu/xóa avatar và fallback khi tải ảnh lỗi: pass.
+- Responsive kiểm tra 375/768/1024/1440px và landscape 640px, reduced motion, error focus,
+  dialog Escape/trả focus; không có horizontal overflow. Avatar lỗi dùng chữ cái tên.
+- OpenAPI YAML parse thành công, 91 internal refs resolve được, operation IDs không trùng.
+- Chưa kiểm chứng CI remote, OAuth Google production hoặc HTTPS triển khai. JWT đã cấp có
+  thể còn hiệu lực tối đa 15 phút; Redis revoke không rollback cùng PostgreSQL.
+
+Chi tiết và sơ đồ: [Kiến trúc F05](../architecture/f05-profile-security.md).
 
 ### F06 — Classroom và membership
 

@@ -132,6 +132,8 @@ user/password mặc định và không mở quyền ADMIN cho Actuator.
   CSRF/CORS, workspace resolution và giới hạn vận hành.
 - [Google Authentication F04](docs/architecture/f04-google-authentication.md) mô tả OAuth,
   onboarding, link account và phục hồi khi callback/network lỗi.
+- [Profile và bảo mật F05](docs/architecture/f05-profile-security.md) mô tả sửa hồ sơ,
+  đổi mật khẩu, thu hồi phiên và giới hạn transaction PostgreSQL–Redis.
 - [Nền tảng F01](docs/architecture/f01-platform-foundation.md) mô tả security boundary,
   cách dùng pagination và ghi audit cùng transaction nghiệp vụ.
 

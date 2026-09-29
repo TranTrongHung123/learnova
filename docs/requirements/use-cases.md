@@ -622,6 +622,10 @@ Role không chỉnh trong Profile endpoint.
 
 Status không chỉnh từ User Profile.
 
+F05: tên được strip và dài 1–100 Unicode code point. Avatar dùng URL HTTPS không chứa
+thông tin đăng nhập; để trống/null để xóa. Backend không tải ảnh từ URL này.
+Payload có field ngoài `displayName`, `avatarUrl` bị từ chối, không cập nhật một phần.
+
 ---
 
 ## UC-USER-03 - Đổi mật khẩu
@@ -637,7 +641,12 @@ Status không chỉnh từ User Profile.
 5. Hash password mới.
 6. Cập nhật credentials.
 7. Revoke các refresh session khác để tăng bảo mật.
-8. Có thể giữ hoặc revoke session hiện tại tùy implementation; V1 ưu tiên revoke các session khác.
+8. Giữ refresh session hiện tại còn hoạt động, không gia hạn thời hạn session.
+
+Mật khẩu mới dài 12–128 Unicode code point, giữ nguyên khoảng trắng. Sai mật khẩu hiện tại
+không thay credentials hoặc revoke session. JWT của các phiên khác có thể còn hiệu lực tối đa
+15 phút; refresh bị từ chối sau revoke. User phải ACTIVE và đã hoàn tất onboarding.
+Redis lỗi ngăn commit mật khẩu; nếu DB rollback sau revoke, các session đã thu hồi không được phục hồi.
 
 Google-only User chưa có Local Identity phải tạo password bằng flow riêng trước khi dùng chức năng này.
 

@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
 import {
   availableWorkspaces,
   isActiveNavigation,
@@ -47,7 +48,7 @@ const icons = {
 type ShellProps = {
   workspace: Workspace;
   roles: readonly string[];
-  user: { displayName: string; subtitle?: string };
+  user: { displayName: string; subtitle?: string; avatarUrl?: string | null };
   pathname: string;
   children: ReactNode;
   onWorkspaceChange: (workspace: Workspace) => void;
@@ -284,9 +285,7 @@ export function WorkspaceShell({
             className="flex min-h-11 max-w-full items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted"
             onClick={() => setMenuOpen((value) => !value)}
           >
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-primary">
-              <UserRound size={20} aria-hidden="true" />
-            </span>
+            <Avatar name={user.displayName} url={user.avatarUrl} />
             <span className="hidden max-w-48 text-left sm:block">
               <span className="block break-words text-sm font-semibold">
                 {user.displayName}
@@ -308,14 +307,14 @@ export function WorkspaceShell({
               <p className="break-words px-3 py-2 text-sm font-semibold">
                 {user.displayName}
               </p>
-              <button
-                type="button"
-                disabled
+              <Link
+                href={hrefFor("/profile")}
+                onClick={() => setMenuOpen(false)}
                 className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-muted-foreground"
               >
                 <Settings2 size={16} aria-hidden="true" />
-                Hồ sơ · Sắp có
-              </button>
+                Hồ sơ
+              </Link>
               <Button
                 variant="ghost"
                 className="w-full justify-start"

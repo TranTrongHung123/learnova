@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @Order(0)
-@RestControllerAdvice(assignableTypes = {AuthController.class, GoogleController.class})
+@RestControllerAdvice(assignableTypes = {AuthController.class, GoogleController.class, ProfileController.class})
 class AuthExceptionHandler {
     private final ApiProblems problems;
     AuthExceptionHandler(ApiProblems problems) { this.problems = problems; }
