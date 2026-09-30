@@ -14,8 +14,9 @@ info:
     F03 bổ sung local authentication, refresh rotation và multi-role.
     F04 bổ sung Google OIDC, onboarding và liên kết Local account có xác nhận.
     F05 bổ sung profile, avatar và đổi mật khẩu Local giữ refresh session hiện tại.
+    F06 bổ sung Classroom theo owner, membership và Join Code có preview trước khi join.
     Actuator không được expose qua HTTP. Endpoint chưa khai báo vẫn bị từ chối.
-    Các list API sau này dùng Page/Size và PageResponse; sort được định nghĩa riêng
+    Các list API dùng page/size và PageResponse; sort được định nghĩa riêng
     theo whitelist của từng endpoint, không nhận property persistence tùy ý.
 
 servers:
@@ -23,12 +24,880 @@ servers:
     description: Local development
 
 tags:
+  - name: Classrooms
+    description: F06 classroom ownership, membership and join codes.
   - name: Authentication
     description: Local/Google authentication và multi-role. Refresh token chỉ truyền qua HttpOnly cookie.
   - name: Health
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+
+  /api/v1/classrooms:
+    get:
+      tags:
+      - Classrooms
+      operationId: listOwnedClassrooms
+      summary: List classrooms owned by the Creator
+      description: CREATOR only. Search by case-insensitive name substring; literal percent/underscore. Ordered updatedAt
+        descending then id. No join-code value in list. Requires bearer authentication; refresh cookies never authenticate
+        these endpoints. No CSRF header is required for this bearer-only API. Unknown body fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomPage'
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 200
+          default: ''
+    post:
+      tags:
+      - Classrooms
+      operationId: createClassroom
+      summary: Create classroom
+      description: CREATOR becomes immutable owner. No join code is created automatically. Requires bearer authentication;
+        refresh cookies never authenticate these endpoints. No CSRF header is required for this bearer-only API. Unknown
+        body fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomDetail'
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: CLASSROOM_CONFLICT. Refetch before retrying.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WriteClassroom'
+  /api/v1/classrooms/{classId}:
+    get:
+      tags:
+      - Classrooms
+      operationId: getClassroom
+      summary: Read owner classroom detail
+      description: CREATOR owner only. Includes ACTIVE member count and join-code state. Requires bearer authentication;
+        refresh cookies never authenticate these endpoints. No CSRF header is required for this bearer-only API. Unknown
+        body fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomDetail'
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      parameters:
+      - name: classId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags:
+      - Classrooms
+      operationId: updateClassroom
+      summary: Update classroom name and description
+      description: CREATOR owner only. Does not alter owner or membership. Requires bearer authentication; refresh
+        cookies never authenticate these endpoints. No CSRF header is required for this bearer-only API. Unknown body
+        fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomDetail'
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: CLASSROOM_CONFLICT. Refetch before retrying.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WriteClassroom'
+      parameters:
+      - name: classId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/classrooms/{classId}/participants/lookup:
+    get:
+      tags:
+      - Classrooms
+      operationId: lookupClassroomParticipant
+      summary: Find one eligible Participant by exact email
+      description: CREATOR owner only. Trim and lowercase complete email; return only ACTIVE, onboarded users with
+        PARTICIPANT role. Never creates accounts or searches partial email. Requires bearer authentication; refresh
+        cookies never authenticate these endpoints. No CSRF header is required for this bearer-only API. Unknown body
+        fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomParticipant'
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      parameters:
+      - name: classId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: email
+        in: query
+        required: true
+        schema:
+          type: string
+          maxLength: 254
+  /api/v1/classrooms/{classId}/members:
+    get:
+      tags:
+      - Classrooms
+      operationId: listClassroomMembers
+      summary: Search classroom members
+      description: CREATOR owner only. Case-insensitive name/email substring; absent status includes ACTIVE and REMOVED.
+        Ordered joinedAt descending then id. Requires bearer authentication; refresh cookies never authenticate these
+        endpoints. No CSRF header is required for this bearer-only API. Unknown body fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomMemberPage'
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      parameters:
+      - name: classId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 254
+          default: ''
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - REMOVED
+    post:
+      tags:
+      - Classrooms
+      operationId: addClassroomMember
+      summary: Add or reactivate Participant by userId
+      description: CREATOR owner only. Revalidates target eligibility. ACTIVE membership is an idempotent no-op; REMOVED
+        reuses the existing membership. Does not create a user. Requires bearer authentication; refresh cookies never
+        authenticate these endpoints. No CSRF header is required for this bearer-only API. Unknown body fields are
+        rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomMembership'
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: CLASSROOM_CONFLICT. Refetch before retrying.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddClassroomMember'
+      parameters:
+      - name: classId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/classrooms/{classId}/members/{userId}:
+    delete:
+      tags:
+      - Classrooms
+      operationId: removeClassroomMember
+      summary: Remove Participant from classroom
+      description: CREATOR owner only. Changes membership to REMOVED; repeated removal is a no-op. No membership/history
+        deletion. Existing attempts remain completable; future start eligibility is checked by F13. Requires bearer
+        authentication; refresh cookies never authenticate these endpoints. No CSRF header is required for this bearer-only
+        API. Unknown body fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Success.
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: CLASSROOM_CONFLICT. Refetch before retrying.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      parameters:
+      - name: classId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/classrooms/{classId}/join-code:
+    post:
+      tags:
+      - Classrooms
+      operationId: generateClassroomJoinCode
+      summary: Create or regenerate join code
+      description: CREATOR owner only. Random 16-character code valid for exactly 7 days; invalidates the old code.
+        Each call issues a new code, so on an ambiguous network result refetch detail before deciding to generate
+        again. Requires bearer authentication; refresh cookies never authenticate these endpoints. No CSRF header
+        is required for this bearer-only API. Unknown body fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomJoinCode'
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: CLASSROOM_CONFLICT. Refetch before retrying.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      parameters:
+      - name: classId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags:
+      - Classrooms
+      operationId: revokeClassroomJoinCode
+      summary: Revoke join code
+      description: CREATOR owner only. Immediate revoke. Already revoked or never-created code is a no-op; current
+        members are unaffected. Requires bearer authentication; refresh cookies never authenticate these endpoints.
+        No CSRF header is required for this bearer-only API. Unknown body fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Success.
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: CLASSROOM_CONFLICT. Refetch before retrying.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      parameters:
+      - name: classId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/classrooms/join-preview:
+    post:
+      tags:
+      - Classrooms
+      operationId: previewClassroomJoin
+      summary: Preview classroom before joining
+      description: PARTICIPANT only. Validates current code without changing membership. Returns no roster, member
+        emails or code. Preview is not a reservation; join validates again. Requires bearer authentication; refresh
+        cookies never authenticate these endpoints. No CSRF header is required for this bearer-only API. Unknown body
+        fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomPreview'
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: CLASSROOM_CONFLICT. Refetch before retrying.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassroomCodeRequest'
+  /api/v1/classrooms/join:
+    post:
+      tags:
+      - Classrooms
+      operationId: joinClassroom
+      summary: Confirm joining by code
+      description: PARTICIPANT only. Revalidates code after acquiring classroom lock, serializing with regenerate/revoke
+        and membership changes. Unique membership per classroom/user; ACTIVE is a no-op, REMOVED reactivates. Requires
+        bearer authentication; refresh cookies never authenticate these endpoints. No CSRF header is required for
+        this bearer-only API. Unknown body fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomMembership'
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: CLASSROOM_CONFLICT. Refetch before retrying.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassroomCodeRequest'
+  /api/v1/classrooms/joined:
+    get:
+      tags:
+      - Classrooms
+      operationId: listJoinedClassrooms
+      summary: List current Participant classrooms
+      description: PARTICIPANT only. Includes only ACTIVE memberships; ordered first joinedAt descending then classroom
+        id. No roster or join codes. Requires bearer authentication; refresh cookies never authenticate these endpoints.
+        No CSRF header is required for this bearer-only API. Unknown body fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinedClassroomPage'
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+  /api/v1/classrooms/{classId}/leave:
+    post:
+      tags:
+      - Classrooms
+      operationId: leaveClassroom
+      summary: Leave classroom
+      description: PARTICIPANT only; acts on bearer subject. REMOVED is a no-op; absent membership returns 404. Preserves
+        all history and existing attempts. Requires bearer authentication; refresh cookies never authenticate these
+        endpoints. No CSRF header is required for this bearer-only API. Unknown body fields are rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '204':
+          description: Success.
+        '400':
+          description: VALIDATION_FAILED, invalid path/query/pagination, or JOIN_CODE_INVALID for an unknown, expired,
+            regenerated or revoked code.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN for a missing business role; ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED
+            for current account restrictions.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: CLASSROOM_NOT_FOUND for missing/not-owned classroom; PARTICIPANT_NOT_FOUND for unavailable
+            lookup/add target; MEMBERSHIP_NOT_FOUND for missing membership.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: SERVICE_UNAVAILABLE. Retry after recovery.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: CLASSROOM_CONFLICT. Refetch before retrying.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      parameters:
+      - name: classId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
 
   /api/v1/auth/google/config:
     get:
@@ -607,6 +1476,288 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    WriteClassroom:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Trimmed; must contain non-whitespace text.
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+          description: Plain text. Missing, blank or null clears the description.
+      additionalProperties: false
+    AddClassroomMember:
+      type: object
+      required:
+      - userId
+      properties:
+        userId:
+          type: string
+          format: uuid
+      additionalProperties: false
+    ClassroomCodeRequest:
+      type: object
+      required:
+      - code
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Trimmed and uppercased. Never put the code in URLs or logs.
+      additionalProperties: false
+    ClassroomJoinCode:
+      type: object
+      required:
+      - status
+      - code
+      - expiresAt
+      properties:
+        status:
+          type: string
+          enum:
+          - NOT_CREATED
+          - ACTIVE
+          - EXPIRED
+          - REVOKED
+        code:
+          type:
+          - string
+          - 'null'
+        expiresAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      description: Only the owner detail and generate operation expose the current ACTIVE code. Code is null for NOT_CREATED,
+        EXPIRED or REVOKED. expiresAt is null only for NOT_CREATED. Expiry is exclusive and decided by backend time.
+    ClassroomSummary:
+      type: object
+      required:
+      - id
+      - name
+      - description
+      - activeParticipants
+      - joinCodeStatus
+      - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        activeParticipants:
+          type: integer
+          minimum: 0
+        joinCodeStatus:
+          type: string
+          enum:
+          - NOT_CREATED
+          - ACTIVE
+          - EXPIRED
+          - REVOKED
+        updatedAt:
+          type: string
+          format: date-time
+    ClassroomDetail:
+      type: object
+      required:
+      - id
+      - name
+      - description
+      - activeParticipants
+      - joinCode
+      - createdAt
+      - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        activeParticipants:
+          type: integer
+          minimum: 0
+        joinCode:
+          $ref: '#/components/schemas/ClassroomJoinCode'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ClassroomParticipant:
+      type: object
+      required:
+      - userId
+      - email
+      - displayName
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+    ClassroomMembership:
+      type: object
+      required:
+      - id
+      - classroomId
+      - userId
+      - status
+      - joinedAt
+      - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        classroomId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - REMOVED
+        joinedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      description: joinedAt is the first join time; reactivation preserves id and joinedAt. updatedAt changes only on
+        a state transition. Timestamps use microsecond precision.
+    ClassroomMember:
+      type: object
+      required:
+      - id
+      - userId
+      - email
+      - displayName
+      - status
+      - joinedAt
+      - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+        displayName:
+          type: string
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - REMOVED
+        joinedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    JoinedClassroom:
+      type: object
+      required:
+      - id
+      - name
+      - description
+      - creatorName
+      - joinedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        creatorName:
+          type: string
+        joinedAt:
+          type: string
+          format: date-time
+    ClassroomPreview:
+      type: object
+      required:
+      - id
+      - name
+      - description
+      - creatorName
+      - membershipStatus
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        creatorName:
+          type: string
+        membershipStatus:
+          type:
+          - string
+          - 'null'
+          enum:
+          - ACTIVE
+          - REMOVED
+          - null
+    ClassroomPage:
+      allOf:
+      - $ref: '#/components/schemas/PageResponse'
+      - type: object
+        properties:
+          content:
+            type: array
+            items:
+              $ref: '#/components/schemas/ClassroomSummary'
+    ClassroomMemberPage:
+      allOf:
+      - $ref: '#/components/schemas/PageResponse'
+      - type: object
+        properties:
+          content:
+            type: array
+            items:
+              $ref: '#/components/schemas/ClassroomMember'
+    JoinedClassroomPage:
+      allOf:
+      - $ref: '#/components/schemas/PageResponse'
+      - type: object
+        properties:
+          content:
+            type: array
+            items:
+              $ref: '#/components/schemas/JoinedClassroom'
     Profile:
       allOf:
         - $ref: '#/components/schemas/UserSummary'
