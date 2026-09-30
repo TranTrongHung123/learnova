@@ -14,14 +14,14 @@ Nguồn đối chiếu:
 | Thành phần | Hiện trạng |
 |---|---|
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
-| Database | PostgreSQL 17, Flyway V1 audit, V2 identity, V3 onboarding và V4 avatar; Hibernate validate schema |
+| Database | PostgreSQL 17, Flyway V1–V5 gồm identity, audit và classroom/membership; Hibernate validate schema |
 | Authentication | Local/Google login, onboarding, link account, JWT, refresh rotation/reuse, logout-all và multi-role; Actuator vẫn đóng |
-| Frontend | Workspace shell, Local/Google auth, onboarding/link, profile/security, bootstrap và workspace resolution tích hợp API thật |
+| Frontend | Workspace shell, Local/Google auth, onboarding/link, profile/security và Classroom hai workspace tích hợp API thật |
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; WebSocket chưa triển khai |
-| OpenAPI | Health và auth/profile/password; 18 paths, schema lỗi và convention pagination dùng chung |
-| Testing | 71 backend, 52 unit frontend, 5 Google browser, 11 Local auth/profile browser, 8 workspace và 1 production test pass local |
-| CI | F03 đã pass remote; F04 bổ sung Google browser suite, chưa chạy remote. Java 21/Node 22/Chromium/Linux |
-| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F05 |
+| OpenAPI | Health, auth/profile/password và Classroom; 28 paths, schema lỗi và convention pagination dùng chung |
+| Testing | 86 backend, 52 unit frontend, 5 Classroom, 5 Google, 11 auth/profile, 8 workspace và 1 production browser test pass local |
+| CI | Java 21/Node 22/Chromium/Linux; đã bổ sung Classroom browser suite, F06 chưa kiểm chứng remote |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F06 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
 **F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
@@ -30,7 +30,8 @@ Nguồn đối chiếu:
 **F04 đã triển khai và kiểm chứng local ngày 28/09/2026**; chưa kiểm chứng OAuth Google
 thật/HTTPS hoặc CI remote. Người dùng tự push nhánh và mở PR.
 **F05 đã triển khai và kiểm chứng local ngày 29/09/2026**; bàn giao bằng commit local.
-F06–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
+**F06 đã triển khai và kiểm chứng local ngày 30/09/2026**; bàn giao bằng commit local.
+F07–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -256,16 +257,39 @@ Chi tiết và sơ đồ: [Kiến trúc F05](../architecture/f05-profile-securit
 **Nguồn:** UC-CLASS-01..11.  
 **Phụ thuộc:** F03, F05.
 
-- [ ] Tạo, sửa, liệt kê và xem lớp theo Creator owner.
-- [ ] Tìm Participant bằng email; thêm membership bằng `userId`.
-- [ ] Tạo, regenerate, revoke Join Code; mặc định hết hạn sau 7 ngày.
-- [ ] Participant xem thông tin lớp qua code rồi xác nhận join; revalidate code khi join.
-- [ ] Join lặp không tạo membership trùng; membership `REMOVED` có thể được kích hoạt lại bằng code hợp lệ.
-- [ ] Remove/leave chuyển trạng thái membership, giữ lịch sử.
+- [x] Tạo, sửa, liệt kê và xem lớp theo Creator owner.
+- [x] Tìm Participant bằng email; thêm membership bằng `userId`.
+- [x] Tạo, regenerate, revoke Join Code; mặc định hết hạn sau 7 ngày.
+- [x] Participant xem thông tin lớp qua code rồi xác nhận join; revalidate code khi join.
+- [x] Join lặp không tạo membership trùng; membership `REMOVED` có thể được kích hoạt lại bằng code hợp lệ.
+- [x] Remove/leave chuyển trạng thái membership, giữ lịch sử.
 
 **API/UI:** Nhóm classrooms, members, join-code; màn hình lớp của Creator và Participant.
 
 **Nghiệm thu:** Ownership đúng; code cũ mất hiệu lực sau regenerate; concurrent join không trùng; bổ sung test liên module ở F13 để chứng minh remove không chặn hoàn tất Attempt hiện tại.
+
+**Kiểm chứng F06 ngày 30/09/2026:**
+
+- Backend `mvnw.cmd -B verify`: 86 test pass, không fail/error/skip, trong đó 15 Classroom
+  integration tests với PostgreSQL 17/Redis 7.4. Kiểm tra ownership/role hiện tại, tài khoản
+  locked/onboarding, cookie không thay bearer, validation, migration V4→V5, DB constraints,
+  join/add đồng thời, join chờ khóa gặp regenerate/revoke, expiry boundary và audit rollback.
+- Frontend: 52 unit test pass; lint, typecheck và production build thành công. `test:classroom`: 5 test pass
+  với API thật, gồm CRUD, lookup email, remove/reactivate, preview/join, hai tab reload,
+  revoke sau preview, lỗi mạng/retry, workspace/ownership và confirmation focus.
+- Regression: `test:auth` 11, `test:google` 5, `test:e2e` 8, `test:production` 1 test pass.
+  `git diff --check` sạch; không chạy lại health smoke riêng của F03.
+- UI đã tra cứu UI/UX Pro Max theo web/Next.js/Tailwind và giữ Master hiện có, không cần
+  override. Kiểm tra 375/768/1024/1440px và 640×450, reduced motion, keyboard/Escape/return
+  focus, nội dung dài; đã xem ảnh desktop/mobile. Chưa kiểm chứng screen reader hoặc
+  mọi mức browser zoom; viewport thấp chỉ kiểm tra reflow tương đương.
+- OpenAPI YAML parse được: 28 paths, 213 internal references hợp lệ, 33 operationId duy nhất.
+- Session trong lớp được tích hợp ở F11–F12; invariant Attempt đang làm tiếp tục sau
+  remove/leave kiểm chứng ở F13; in-app CLASS_JOINED tích hợp F18. Không có mock fallback.
+- Local Windows/Edge, Java 21/Node 24. Chưa chạy CI remote hoặc deployment HTTPS.
+  Bàn giao commit local trên `feat/f06-classroom-membership`; người dùng tự push/mở PR/merge.
+
+Chi tiết và sơ đồ: [Kiến trúc F06](../architecture/f06-classroom-membership.md).
 
 ### F07 — Question Bank
 

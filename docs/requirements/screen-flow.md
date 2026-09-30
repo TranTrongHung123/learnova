@@ -1288,6 +1288,10 @@ Class detail có thể dùng Drawer/Detail state trong cùng page V1 nếu dữ 
 
 Không bắt buộc tạo route class detail riêng cho Participant.
 
+F06 dùng dialog xem thông tin lớp và dialog xác nhận rời lớp; danh sách có phân trang,
+chỉ hiển thị membership ACTIVE. Upcoming Exams được bổ sung khi tích hợp Session ở F11–F12,
+không hiển thị số liệu giả hoặc số 0 khi tính năng chưa có.
+
 ---
 
 # 13.2. Join Classroom
@@ -1330,8 +1334,11 @@ Errors:
 Invalid code
 Expired
 Revoked
-Already joined
 ```
+
+Đã tham gia là trạng thái thành công, không phải lỗi: hiển thị link về My Classes.
+Thay đổi mã nhập sẽ xóa preview cũ; khi xác nhận join, backend kiểm tra lại mã.
+Membership REMOVED có thể tham gia lại bằng mã còn hợp lệ.
 
 ---
 
@@ -1469,6 +1476,13 @@ Overview
 Participants
 Exam Sessions
 ```
+
+F06 triển khai Tổng quan và Thành viên; sửa tên/mô tả ngay trong Tổng quan.
+Exam Sessions và Upcoming Sessions trong danh sách lớp được tích hợp ở F11.
+Danh sách lớp có tìm theo tên và phân trang. Danh sách thành viên có tìm tên/email,
+lọc ACTIVE/REMOVED/tất cả và phân trang; F06 dùng card responsive thay bảng rộng.
+Thêm Participant yêu cầu email đầy đủ, xác nhận thông tin tìm được rồi gửi userId.
+Tạo lại/thu hồi mã có dialog xác nhận; chỉ owner thấy mã đang còn hiệu lực.
 
 ## Overview
 

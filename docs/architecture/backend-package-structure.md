@@ -12,13 +12,21 @@ com.learnova
 ├── identity
 │   ├── controller       AuthController, GoogleController, AuthExceptionHandler
 │   ├── dto              AuthDtos
-│   ├── service          IdentityService, GoogleAccounts
+│   ├── service          IdentityService, GoogleAccounts, ParticipantDirectory
 │   ├── entity           User, AuthIdentity
 │   ├── repository       UserRepository, AuthIdentityRepository
 │   ├── security         AccessTokens, RefreshSessions
 │   │   └── google       GoogleFlowStore, GoogleAuthorizationRequests
 │   ├── config           AuthConfiguration, GoogleOAuthConfiguration
 │   └── exception        AuthFailure
+├── classroom
+│   ├── controller       ClassroomController, ClassroomExceptionHandler
+│   ├── dto              ClassroomDtos
+│   ├── service          ClassroomService
+│   ├── entity           Classroom, ClassroomMembership, ClassroomJoinCode
+│   ├── repository       JPA repositories và ClassroomQueries
+│   ├── exception        ClassroomFailure
+│   └── enums            MembershipStatus
 ├── audit
 │   ├── service          AuditService
 │   ├── entity           AuditRecord
@@ -54,6 +62,9 @@ com.learnova
 - Java `public` không đồng nghĩa public API liên module. Module khác gọi service/contract
   có chủ đích; không truy cập repository/entity nội bộ. Hiện `identity` dùng
   `audit.service.AuditService` và `audit.enums.AuditAction` để ghi audit.
+- `classroom` dùng contract `identity.service.IdentityService` / `ParticipantDirectory`
+  để kiểm tra actor và tìm Participant, cùng audit service để ghi lịch sử. Read projection
+  có thể join tên/email từ users qua JDBC mà không expose identity entity/repository.
 - Integration test có thể nằm ở package gốc module; test hỗ trợ provider vẫn chỉ ở
   test classpath. Không đổi assertion để thích nghi với lỗi do refactor.
 

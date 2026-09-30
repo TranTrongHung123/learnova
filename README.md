@@ -31,12 +31,14 @@ các loại class vào package gốc của module hoặc tạo technical layer c
 - Docker
 - Docker Compose
 
-## Chạy local (F01–F03)
+## Chạy local (F01–F06)
 
 Yêu cầu Java 21, Node.js 22 + npm và Docker Desktop đang chạy Linux containers.
 Backend dùng Maven Wrapper; PostgreSQL 17 và Redis 7.4 chạy qua Compose.
-Frontend có design system, workspace shell và Local authentication F03.
+Frontend có design system, workspace shell, Local/Google authentication, profile và Classroom.
 Đăng ký tại `/register`, đăng nhập tại `/login`; multi-role có thể đổi workspace.
+Creator quản lý lớp tại `/creator/classes`; Participant xem lớp và tham gia bằng mã
+tại `/participant/classes`. Mã tham gia mặc định có hiệu lực 7 ngày.
 Các tính năng nghiệp vụ chưa triển khai giữ trạng thái chưa sẵn sàng, không có mock fallback.
 Sau `npm run dev`, mở [preview workspace](http://localhost:3000/dev/workspace-preview)
 để kiểm tra shell, tập role và các trạng thái UI. Preview trả 404 ở production.
@@ -134,6 +136,8 @@ user/password mặc định và không mở quyền ADMIN cho Actuator.
   onboarding, link account và phục hồi khi callback/network lỗi.
 - [Profile và bảo mật F05](docs/architecture/f05-profile-security.md) mô tả sửa hồ sơ,
   đổi mật khẩu, thu hồi phiên và giới hạn transaction PostgreSQL–Redis.
+- [Classroom và membership F06](docs/architecture/f06-classroom-membership.md) mô tả
+  ownership, mã tham gia, concurrency và bảo toàn lịch sử membership.
 - [Nền tảng F01](docs/architecture/f01-platform-foundation.md) mô tả security boundary,
   cách dùng pagination và ghi audit cùng transaction nghiệp vụ.
 
@@ -182,6 +186,7 @@ npm run typecheck
 npm run test:e2e
 npm run test:auth
 npm run test:google
+npm run test:classroom
 npm run build
 npm run test:production
 # Khi backend local đã chạy:
@@ -196,6 +201,7 @@ environment, mặc định localhost:8080; không tự nạp `.env.local`.
 Build frontend hiện tải font qua `next/font/google`, cần truy cập mạng.
 Auth browser test tự chạy backend ở 8081 và frontend ở 3104 cùng Testcontainers riêng;
 không cần đọc `.env` hoặc dùng database của bạn. Tắt server ở cổng này để tạo môi trường mới.
+Classroom browser test dùng cùng cấu hình cổng với auth; chạy hai suite tuần tự.
 Google browser test dùng backend 8082, frontend 3105 và OIDC provider test 8092;
 provider chỉ tồn tại trong test classpath, không dùng OAuth credentials thật.
 Không ghi trace auth chứa password/token; ảnh form rỗng nằm trong test-results.

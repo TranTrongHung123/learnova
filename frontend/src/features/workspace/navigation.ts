@@ -63,12 +63,12 @@ export function navigationFor(workspace: Workspace): NavigationItem[] {
   if (workspace === "PARTICIPANT") {
     pending("Kỳ thi của tôi", `${base}/exams`, "exam");
     pending("Kết quả", `${base}/results`, "results");
-    pending("Lớp học của tôi", `${base}/classes`, "classes");
+    items.push({ label: "Lớp học của tôi", href: `${base}/classes`, icon: "classes", available: true });
   } else if (workspace === "CREATOR") {
     pending("Ngân hàng câu hỏi", `${base}/questions`, "questions");
     pending("Đề thi", `${base}/exams`, "exam");
     pending("Kỳ thi", `${base}/sessions`, "sessions");
-    pending("Lớp học", `${base}/classes`, "classes");
+    items.push({ label: "Lớp học", href: `${base}/classes`, icon: "classes", available: true });
     pending("Giám sát", undefined, "monitor");
     pending("Báo cáo", undefined, "reports");
   } else {
