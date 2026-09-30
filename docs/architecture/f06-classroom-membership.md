@@ -114,3 +114,20 @@ Chạy backend `mvnw.cmd -B verify`; frontend lint, typecheck, unit, build,
 `test:classroom` cùng regression auth/Google/workspace/production. Browser suite dùng
 PostgreSQL/Redis/backend thật, không mock API nghiệp vụ. CI đã thêm suite Classroom;
 không suy ra CI remote pass từ kết quả local.
+
+### Regression reload hai tab
+
+CI đã phát hiện test Participant đôi lúc về Login sau reload; lặp bản test cũ local
+5 lần tái hiện 1 lần cùng lỗi. Test cũ reload ngay sau `goto`, trước khi tab mới hoàn tất
+bootstrap. Việc ngắt refresh ban đầu là giả thuyết gây mất phiên; snapshot Login không
+đủ chứng minh HTTP refresh nào thất bại.
+
+Test hiện chờ URL danh sách và heading lớp trên cả hai tab trước khi reload đồng thời,
+sau đó kiểm tra lại cả URL và heading của từng tab. Không tăng timeout, thêm sleep/retry
+hoặc thay rotation/reuse detection để làm test pass. Khi Classroom test fail, fixture
+ghi diagnostics refresh gồm path cố định, HTTP status, code lỗi và trạng thái request
+thất bại; không ghi token, cookie, header hoặc body thành công. Diagnostics xuất vào
+console CI và attachment Playwright, không cần bật trace chứa credential.
+
+Phép thử này xác minh reload hai tab đã bootstrap xong. Reload giữa một request refresh
+đang chạy là tình huống reliability riêng, chưa được bản sửa test này chứng minh đã xử lý.

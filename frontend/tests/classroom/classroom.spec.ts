@@ -1,8 +1,43 @@
-import { expect, test, type Page, type APIRequestContext } from "@playwright/test";
+import { expect, test as base, type Page, type APIRequestContext, type Response, type Request } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 
 const api = "http://localhost:8081/api/v1";
 const password = "Classroom test password 123";
+const test = base.extend<{ refreshDiagnostics: void }>({
+  refreshDiagnostics: [async ({ context }, runTest, testInfo) => {
+    const events: { path: string; status?: number; code?: string; outcome?: string }[] = [];
+    const pending: Promise<void>[] = [];
+    const isRefresh = (url: string) => url === `${api}/auth/refresh`;
+    const onResponse = (response: Response) => {
+      if (!isRefresh(response.url())) return;
+      const event: (typeof events)[number] = { path: "/api/v1/auth/refresh", status: response.status() };
+      events.push(event);
+      // Chỉ đọc code lỗi; không đọc body thành công chứa access token hoặc ghi header/cookie.
+      if (!response.ok()) pending.push((async () => {
+        try {
+          const body: unknown = await response.json();
+          if (body && typeof body === "object" && "code" in body && typeof body.code === "string"
+              && /^[A-Z][A-Z0-9_]{0,79}$/.test(body.code)) event.code = body.code;
+        } catch { event.outcome = "error-body-unavailable"; }
+      })());
+    };
+    const onFailed = (request: Request) => {
+      if (isRefresh(request.url())) events.push({ path: "/api/v1/auth/refresh", outcome: "request-failed" });
+    };
+    context.on("response", onResponse);
+    context.on("requestfailed", onFailed);
+    try { await runTest(); } finally {
+      context.off("response", onResponse);
+      context.off("requestfailed", onFailed);
+      await Promise.all(pending);
+      if (testInfo.status !== testInfo.expectedStatus) {
+        const diagnostics = JSON.stringify(events, null, 2);
+        console.error(`Refresh diagnostics: ${diagnostics}`);
+        await testInfo.attach("refresh-diagnostics", { body: diagnostics, contentType: "application/json" });
+      }
+    }
+  }, { auto: true }],
+});
 async function account(request: APIRequestContext, roles = ["PARTICIPANT", "CREATOR"]) {
   const email = `${randomUUID()}@example.com`;
   const csrf = await (await request.get(`${api}/auth/csrf`)).json();
@@ -97,9 +132,17 @@ test("Participant previews, joins, reloads two tabs, leaves and rejoins the same
   await expect(page.getByRole("status")).toContainText("Đã tham gia lớp thành công");
   const first = await (await request.post(`${api}/classrooms/join`, { headers: user.headers, data: { code } })).json();
   await page.getByRole("link", { name: "Đến lớp học của tôi" }).click();
+  await expect(page).toHaveURL(/\/participant\/classes$/);
+  await expect(page.getByRole("heading", { name: "Lớp tự ôn tập", exact: true })).toBeVisible();
   const other = await context.newPage(); await other.goto("/participant/classes");
+  // Chờ bootstrap xong để phép thử reload hai phiên ổn định không ngắt refresh ban đầu.
+  await expect(other).toHaveURL(/\/participant\/classes$/);
+  await expect(other.getByRole("heading", { name: "Lớp tự ôn tập", exact: true })).toBeVisible();
   await Promise.all([page.reload(), other.reload()]);
-  await expect(other.getByRole("heading", { name: "Lớp tự ôn tập" })).toBeVisible();
+  for (const tab of [page, other]) {
+    await expect(tab).toHaveURL(/\/participant\/classes$/);
+    await expect(tab.getByRole("heading", { name: "Lớp tự ôn tập", exact: true })).toBeVisible();
+  }
   await page.getByRole("button", { name: "Xem lớp Lớp tự ôn tập" }).click();
   await expect(page.getByRole("dialog")).toContainText("Lớp ôn tập dành cho Participant");
   await page.keyboard.press("Escape");

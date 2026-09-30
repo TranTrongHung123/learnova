@@ -20,7 +20,7 @@ Nguồn đối chiếu:
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; WebSocket chưa triển khai |
 | OpenAPI | Health, auth/profile/password và Classroom; 28 paths, schema lỗi và convention pagination dùng chung |
 | Testing | 86 backend, 52 unit frontend, 5 Classroom, 5 Google, 11 auth/profile, 8 workspace và 1 production browser test pass local |
-| CI | Java 21/Node 22/Chromium/Linux; đã bổ sung Classroom browser suite, F06 chưa kiểm chứng remote |
+| CI | Java 21/Node 22/Chromium/Linux; F06 từng fail test reload hai tab, bản sửa bước chờ chưa kiểm chứng remote |
 | Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F06 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
@@ -290,6 +290,21 @@ Chi tiết và sơ đồ: [Kiến trúc F05](../architecture/f05-profile-securit
   Bàn giao commit local trên `feat/f06-classroom-membership`; người dùng tự push/mở PR/merge.
 
 Chi tiết và sơ đồ: [Kiến trúc F06](../architecture/f06-classroom-membership.md).
+
+**Sửa regression CI reload hai tab ngày 01/10/2026:**
+
+- Tái hiện bản test cũ local: 1/5 lần fail tại heading sau reload; error context là Login.
+  Test chưa chờ bootstrap của tab mới trước khi reload. Chưa có HTTP diagnostics của
+  lần fail để khẳng định chi tiết refresh bị ngắt/rotation.
+- Bổ sung chờ URL và heading lớp trên cả hai tab trước reload đồng thời, rồi kiểm tra
+  cả hai tab sau reload. Không tăng timeout/retry hoặc thay auth behavior.
+- Fixture ghi path/status/code lỗi refresh khi test fail vào console và attachment;
+  không ghi token/cookie/header/body thành công. Bản sửa pass 20/20 lượt lặp local
+  Windows/Edge; lint và typecheck pass. CI Linux/Chromium cần kiểm chứng sau khi push.
+- Regression sau bản sửa: toàn bộ 5 Classroom test và 1 auth test reload hai tab pass;
+  `git diff --check` sạch. Không chạy lại backend/build vì chỉ sửa test và tài liệu.
+- Reload khi refresh còn đang chạy vẫn là tình huống reliability riêng; kết quả này
+  chỉ chứng minh kịch bản hai tab đã bootstrap xong trong các lượt kiểm tra đã chạy.
 
 ### F07 — Question Bank
 
