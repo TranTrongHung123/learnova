@@ -53,7 +53,10 @@ public class SecurityConfiguration {
                             @Override
                             public <O extends CsrfFilter> O postProcess(O filter) {
                                 // Auth API vẫn yêu cầu CSRF khi có bearer, không dùng exemption mặc định của resource server.
-                                filter.setRequireCsrfProtectionMatcher(CsrfFilter.DEFAULT_CSRF_MATCHER);
+                                // Classroom chỉ nhận bearer; cookie auth vẫn luôn được bảo vệ CSRF.
+                                filter.setRequireCsrfProtectionMatcher(request -> CsrfFilter.DEFAULT_CSRF_MATCHER.matches(request)
+                                        && !(request.getRequestURI().substring(request.getContextPath().length()).equals("/api/v1/classrooms")
+                                        || request.getRequestURI().substring(request.getContextPath().length()).startsWith("/api/v1/classrooms/")));
                                 return filter;
                             }
                         }))
@@ -72,6 +75,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/auth/profile").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/change-password").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout-all").authenticated()
+                        .requestMatchers("/api/v1/classrooms", "/api/v1/classrooms/**").authenticated()
                         .requestMatchers("/actuator", "/actuator/**").denyAll()
                         .anyRequest().denyAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -795,6 +795,9 @@ Hỗ trợ:
 4. Nếu membership `REMOVED` và code còn hợp lệ → cho phép re-activate.
 5. Nếu đang ACTIVE → trả trạng thái đã tham gia.
 
+UI kiểm tra mã để xem trước tên/mô tả lớp và người tạo trước khi xác nhận tham gia.
+Preview không tạo membership; backend kiểm tra lại hiệu lực mã tại lúc join.
+
 ---
 
 ## UC-CLASS-10 - Xem lớp đang tham gia
