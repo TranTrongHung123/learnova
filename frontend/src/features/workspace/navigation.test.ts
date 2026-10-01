@@ -53,6 +53,7 @@ describe("Workspace navigation", () => {
         navigationFor(workspace).filter((item) => item.available),
       ).toEqual([
         expect.objectContaining({ icon: "dashboard" }),
+        ...(workspace === "CREATOR" ? [expect.objectContaining({ icon: "questions", available: true })] : []),
         ...(workspace === "ADMIN" ? [] : [expect.objectContaining({ href: `${workspaceInfo[workspace].href}/classes`, icon: "classes" })]),
         expect.objectContaining({ href: "/profile", icon: "profile" }),
       ]);

@@ -479,6 +479,11 @@ ARCHIVED
 - `ACTIVE`: có thể sử dụng cho đề mới.
 - `ARCHIVED`: không dùng cho đề mới nhưng vẫn giữ lịch sử.
 
+F07: DRAFT cho phép nội dung/đáp án chưa hoàn chỉnh nhưng vẫn kiểm tra kiểu dữ liệu,
+giới hạn và tolerance không âm. ACTIVE bắt buộc nội dung cùng đáp án hợp lệ theo loại.
+ACTIVE được sửa với validation đầy đủ, không chuyển ngược về DRAFT. ARCHIVED chỉ xem
+hoặc restore: nội dung hợp lệ trở về ACTIVE, chưa hoàn chỉnh trở về DRAFT để tiếp tục soạn.
+
 Question đã từng được sử dụng không được hard-delete làm mất lịch sử.
 
 ---
@@ -514,6 +519,14 @@ tolerance
 ```text
 0
 ```
+
+F07 dùng category text tùy chọn, tags/topic là cùng danh sách nhãn tự nhập; difficulty
+tùy chọn `EASY`, `MEDIUM`, `HARD`. Nội dung/explanation plain text tối đa 10.000 ký tự;
+tối đa 20 options, mỗi option 2.000 ký tự; category 100 ký tự; tối đa 20 tags, 50 ký tự/tag.
+Numeric dùng số chính xác, tối đa 20 chữ số phần nguyên và 10 chữ số thập phân;
+truyền chuỗi thập phân qua API, không tự làm tròn. Tolerance mặc định 0, không âm.
+Khi ACTIVE: SINGLE_CHOICE có ít nhất 2 options và đúng 1 đáp án; MULTIPLE_CHOICE có
+ít nhất 2 options và ít nhất 1 đáp án; TRUE_FALSE chọn boolean; NUMERIC_ANSWER có correctValue.
 
 ---
 

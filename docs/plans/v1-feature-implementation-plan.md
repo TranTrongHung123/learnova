@@ -31,7 +31,8 @@ Nguồn đối chiếu:
 thật/HTTPS hoặc CI remote. Người dùng tự push nhánh và mở PR.
 **F05 đã triển khai và kiểm chứng local ngày 29/09/2026**; bàn giao bằng commit local.
 **F06 đã triển khai và kiểm chứng local ngày 30/09/2026**; bàn giao bằng commit local.
-F07–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
+**F07 đã triển khai và kiểm chứng local ngày 01/10/2026**; bàn giao bằng commit local.
+F08–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -327,16 +328,38 @@ Chi tiết và sơ đồ: [Kiến trúc F06](../architecture/f06-classroom-membe
 **Nguồn:** UC-QB-01..07.  
 **Phụ thuộc:** F03.
 
-- [ ] Hỗ trợ bốn loại câu hỏi, options, đáp án, explanation, difficulty, category và tags/topic.
-- [ ] Tạo/sửa Draft, kích hoạt sau validation; archive và restore theo lifecycle.
-- [ ] Question private theo Creator; search/filter/pagination xử lý phía backend.
-- [ ] Numeric answer dùng số chính xác, tolerance mặc định 0 và không âm.
-- [ ] Nội dung V1 dùng plain text; chưa thêm rich-text editor hoặc upload media.
-- [ ] Câu archived chỉ xem hoặc restore; không sửa trực tiếp.
+- [x] Hỗ trợ bốn loại câu hỏi, options, đáp án, explanation, difficulty, category và tags/topic.
+- [x] Tạo/sửa Draft, kích hoạt sau validation; archive và restore theo lifecycle.
+- [x] Question private theo Creator; search/filter/pagination xử lý phía backend.
+- [x] Numeric answer dùng số chính xác, tolerance mặc định 0 và không âm.
+- [x] Nội dung V1 dùng plain text; chưa thêm rich-text editor hoặc upload media.
+- [x] Câu archived chỉ xem hoặc restore; không sửa trực tiếp.
 
 **API/UI:** Nhóm questions; danh sách, tạo, chi tiết và chỉnh sửa.
 
 **Nghiệm thu:** Validation đúng từng loại; Creator khác không xem/sửa/reuse; restore chỉ thành ACTIVE khi nội dung hợp lệ.
+
+**Hoàn tất và kiểm chứng local ngày 01/10/2026:**
+
+- API `/api/v1/questions` và UI list/new/detail/edit dùng dữ liệu thật; Flyway V6,
+  OpenAPI, requirements và [sơ đồ F07](../architecture/f07-question-bank.md) đã đồng bộ.
+- Giữ nháp linh hoạt; restore về ACTIVE nếu hợp lệ, DRAFT nếu chưa đủ. Update/archive/restore
+  khóa theo owner và kiểm tra revision; stale request trả 409, audit cùng transaction.
+- Numeric lưu `numeric(30,10)` / `BigDecimal`, truyền chuỗi; form để trống tolerance
+  gửi `null` để backend áp dụng 0. Browser test kiểm tra cả precision và mặc định này.
+- Backend `./mvnw.cmd -B verify`: **93 tests pass**, không skip, gồm 7 Question integration tests
+  cho validation, ownership/current role, lifecycle, filter, race, rollback và migration V5 → V6.
+- Frontend lint, typecheck, **52 unit tests** và production build pass.
+- Playwright `--retries=0`: Question **4/4**, workspace **8/8**, auth/profile **11/11**,
+  Google **5/5**, Classroom **6/6**, production routes **1/1**. API integration dùng
+  PostgreSQL/Redis thật; Google dùng OIDC provider test, không dùng credential thật.
+- Review UI bằng UI/UX Pro Max theo Master; xem ảnh form/list ở 375 và 1440px,
+  kiểm tra không tràn ngang ở 375/768/1024/1440 và 640×450, focus/Escape, reduced motion,
+  validation, lỗi mạng và conflict hai tab. Không có mock fallback trong feature.
+- OpenAPI YAML parse thành công, 273 local references resolve; `git diff --check` pass.
+- Môi trường local Windows/Edge, Java 21, Node 24. CI cấu hình Node 22/Linux/Chromium
+  đã thêm suite Question nhưng chưa chạy remote. Snapshot/versioning thuộc F09;
+  F07 không triển khai hoặc tuyên bố đã kiểm chứng luồng đề/Attempt chưa tồn tại.
 
 ### F08 — Excel import có preview
 

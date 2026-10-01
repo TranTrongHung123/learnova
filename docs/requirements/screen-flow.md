@@ -1548,6 +1548,12 @@ An attempt already in progress can still be completed.
 
 # 16.1. Question Bank List
 
+F07 đã tích hợp API thật. Desktop dùng bảng, mobile dùng card; filter và page nằm
+trong URL. Mặc định xem DRAFT + ACTIVE; chọn ARCHIVED để xem câu lưu trữ. Search là
+substring content không phân biệt hoa/thường; category exact không phân biệt hoa/thường;
+tag exact có phân biệt hoa/thường. Sắp xếp updatedAt DESC rồi id DESC, page size 20.
+Import Excel hiển thị disabled “Sắp có” cho đến F08.
+
 **Route**
 
 ```text
@@ -1704,6 +1710,17 @@ Restore
 ---
 
 # 16.4. Edit Question
+
+Form dùng plain text và metadata tự nhập, difficulty tùy chọn EASY/MEDIUM/HARD.
+Create/DRAFT có “Lưu nháp” và “Lưu và kích hoạt”; ACTIVE chỉ “Lưu thay đổi” và phải
+đủ đáp án hợp lệ. Chuyển loại xóa answer fields không tương thích, có xác nhận khi
+form đang có thay đổi. Lỗi validation hiển thị gần field và focus error summary.
+Lỗi mạng/409 giữ input; 409 cho mở dữ liệu mới nhất ở tab khác để đối chiếu.
+Với NUMERIC_ANSWER, để trống sai số tuyệt đối sẽ dùng mặc định 0 từ backend.
+Không lưu nội dung vào browser storage. Reload khi chưa lưu có cảnh báo trình duyệt.
+
+ARCHIVED không hiển thị form sửa; chỉ xem/restore. Restore về ACTIVE nếu nội dung
+hợp lệ, nếu chưa hoàn chỉnh về DRAFT. Archive có dialog xác nhận và giữ lịch sử.
 
 **Route**
 
