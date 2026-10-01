@@ -114,3 +114,46 @@ Chạy backend `mvnw.cmd -B verify`; frontend lint, typecheck, unit, build,
 `test:classroom` cùng regression auth/Google/workspace/production. Browser suite dùng
 PostgreSQL/Redis/backend thật, không mock API nghiệp vụ. CI đã thêm suite Classroom;
 không suy ra CI remote pass từ kết quả local.
+
+### Regression reload hai tab
+
+CI đã phát hiện test Participant đôi lúc về Login sau reload; lặp bản test cũ local
+5 lần tái hiện 1 lần cùng lỗi. Test cũ reload ngay sau `goto`, trước khi tab mới hoàn tất
+bootstrap. Việc ngắt refresh ban đầu là giả thuyết gây mất phiên; snapshot Login không
+đủ chứng minh HTTP refresh nào thất bại.
+
+Test hiện chờ URL danh sách và heading lớp trên cả hai tab trước khi reload đồng thời,
+sau đó kiểm tra lại cả URL và heading của từng tab. Không tăng timeout, thêm sleep/retry
+hoặc thay rotation/reuse detection để làm test pass. Khi Classroom test fail, fixture
+ghi diagnostics refresh gồm path cố định, HTTP status, code lỗi và trạng thái request
+thất bại; không ghi token, cookie, header hoặc body thành công. Diagnostics xuất vào
+console CI và attachment Playwright, không cần bật trace chứa credential.
+
+Phép thử này xác minh reload hai tab đã bootstrap xong. Reload giữa một request refresh
+đang chạy là tình huống reliability riêng, chưa được bản sửa test này chứng minh đã xử lý.
+
+### Bootstrap trước khi tạo lớp
+
+CI sau bản sửa reload tiếp tục báo `REFRESH_REUSED`, lần này ở hai scenario gọi
+`login()` rồi `create()` ngay lập tức. Helper login chỉ đợi `goto` tải document,
+chưa đợi bootstrap trước khi helper create điều hướng tiếp. Scenario Creator có chờ
+danh sách rỗng ở giữa nên không gặp cùng lỗi trong báo cáo CI. `INVALID_REFRESH_TOKEN`
+ở bootstrap trước đăng nhập có thể là bình thường; cần xem thứ tự request để phân biệt.
+
+Helper login hiện nhận heading đích mong đợi, chờ cả URL và heading trước khi trả về;
+case forbidden/not-found chờ đúng trạng thái đó. Helper create đợi chi tiết lớp hiển thị
+sau khi tạo. Diagnostics bổ sung thứ tự request/navigation, tab và giai đoạn; theo dõi
+CSRF/login/refresh nhưng chỉ xuất pathname, status và code lỗi, không query/credential.
+
+Regression giữ request refresh của trang đích rồi chuyển tiếp đến backend thật, kiểm tra
+test chưa sang bước create trước khi bootstrap hoàn tất. Đối chứng tạm bỏ bước chờ mới
+khiến regression fail do đã rời trạng thái loading trước khi gate được thả; khôi phục
+bước chờ khiến regression pass. Không mock token/cookie hoặc thay authentication policy.
+Kết quả này xác nhận lỗi đồng bộ helper; chưa chứng minh xử lý được mọi trường hợp người
+dùng thực tế điều hướng trong lúc server đang rotate refresh token.
+
+Kiểm chứng lại ngày 01/10/2026 trên Windows/Edge: lint, typecheck, 52 unit test,
+6 Classroom test và 11 auth/profile browser test đều pass. Regression bootstrap và
+scenario reload hai tab lặp 5 lần mỗi scenario đạt 10/10, không retry. Các browser test
+dùng backend/PostgreSQL/Redis thật. Không chạy lại backend verify hoặc production build
+cho thay đổi chỉ ở test/tài liệu; CI Linux/Chromium chưa được kiểm chứng remote.
