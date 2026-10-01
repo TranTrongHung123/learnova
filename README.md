@@ -31,7 +31,7 @@ các loại class vào package gốc của module hoặc tạo technical layer c
 - Docker
 - Docker Compose
 
-## Chạy local (F01–F06)
+## Chạy local (F01–F07)
 
 Yêu cầu Java 21, Node.js 22 + npm và Docker Desktop đang chạy Linux containers.
 Backend dùng Maven Wrapper; PostgreSQL 17 và Redis 7.4 chạy qua Compose.
@@ -138,6 +138,10 @@ user/password mặc định và không mở quyền ADMIN cho Actuator.
   đổi mật khẩu, thu hồi phiên và giới hạn transaction PostgreSQL–Redis.
 - [Classroom và membership F06](docs/architecture/f06-classroom-membership.md) mô tả
   ownership, mã tham gia, concurrency và bảo toàn lịch sử membership.
+- [Question Bank F07](docs/architecture/f07-question-bank.md) mô tả bốn loại câu hỏi,
+  validation DRAFT/ACTIVE, restore, numeric precision và chống ghi đè đồng thời.
+  Creator truy cập `/creator/questions`; câu hỏi private theo owner, plain text.
+  Chạy browser integration bằng `npm run test:question` trong `frontend` với Docker.
 - [Nền tảng F01](docs/architecture/f01-platform-foundation.md) mô tả security boundary,
   cách dùng pagination và ghi audit cùng transaction nghiệp vụ.
 
@@ -187,6 +191,7 @@ npm run test:e2e
 npm run test:auth
 npm run test:google
 npm run test:classroom
+npm run test:question
 npm run build
 npm run test:production
 # Khi backend local đã chạy:
@@ -201,7 +206,7 @@ environment, mặc định localhost:8080; không tự nạp `.env.local`.
 Build frontend hiện tải font qua `next/font/google`, cần truy cập mạng.
 Auth browser test tự chạy backend ở 8081 và frontend ở 3104 cùng Testcontainers riêng;
 không cần đọc `.env` hoặc dùng database của bạn. Tắt server ở cổng này để tạo môi trường mới.
-Classroom browser test dùng cùng cấu hình cổng với auth; chạy hai suite tuần tự.
+Classroom và Question Bank browser test dùng cùng cấu hình cổng với auth; chạy các suite tuần tự.
 Google browser test dùng backend 8082, frontend 3105 và OIDC provider test 8092;
 provider chỉ tồn tại trong test classpath, không dùng OAuth credentials thật.
 Không ghi trace auth chứa password/token; ảnh form rỗng nằm trong test-results.

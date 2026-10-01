@@ -65,7 +65,7 @@ export function navigationFor(workspace: Workspace): NavigationItem[] {
     pending("Kết quả", `${base}/results`, "results");
     items.push({ label: "Lớp học của tôi", href: `${base}/classes`, icon: "classes", available: true });
   } else if (workspace === "CREATOR") {
-    pending("Ngân hàng câu hỏi", `${base}/questions`, "questions");
+    items.push({ label: "Ngân hàng câu hỏi", href: `${base}/questions`, icon: "questions", available: true });
     pending("Đề thi", `${base}/exams`, "exam");
     pending("Kỳ thi", `${base}/sessions`, "sessions");
     items.push({ label: "Lớp học", href: `${base}/classes`, icon: "classes", available: true });

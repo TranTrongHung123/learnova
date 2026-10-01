@@ -1,6 +1,10 @@
 package com.learnova.audit.enums;
 
 public enum AuditAction {
+    QUESTION_CREATED,
+    QUESTION_UPDATED,
+    QUESTION_ARCHIVED,
+    QUESTION_RESTORED,
     CLASSROOM_CREATED,
     CLASSROOM_UPDATED,
     CLASSROOM_MEMBER_ADDED,
