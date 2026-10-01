@@ -19,8 +19,8 @@ Nguồn đối chiếu:
 | Frontend | Workspace shell, Local/Google auth, onboarding/link, profile/security và Classroom hai workspace tích hợp API thật |
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; WebSocket chưa triển khai |
 | OpenAPI | Health, auth/profile/password và Classroom; 28 paths, schema lỗi và convention pagination dùng chung |
-| Testing | 86 backend, 52 unit frontend, 5 Classroom, 5 Google, 11 auth/profile, 8 workspace và 1 production browser test pass local |
-| CI | Java 21/Node 22/Chromium/Linux; F06 từng fail test reload hai tab, bản sửa bước chờ chưa kiểm chứng remote |
+| Testing | 86 backend, 52 unit frontend, 6 Classroom, 5 Google, 11 auth/profile, 8 workspace và 1 production browser test pass local; thời điểm kiểm chứng ghi tại từng feature |
+| CI | Java 21/Node 22/Chromium/Linux; F06 từng fail reload hai tab và bootstrap trước tạo lớp, các bản sửa bước chờ chưa kiểm chứng remote |
 | Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F06 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
@@ -305,6 +305,22 @@ Chi tiết và sơ đồ: [Kiến trúc F06](../architecture/f06-classroom-membe
   `git diff --check` sạch. Không chạy lại backend/build vì chỉ sửa test và tài liệu.
 - Reload khi refresh còn đang chạy vẫn là tình huống reliability riêng; kết quả này
   chỉ chứng minh kịch bản hai tab đã bootstrap xong trong các lượt kiểm tra đã chạy.
+
+**Hoàn tất bản sửa bootstrap trước tạo lớp ngày 01/10/2026:**
+
+- Helper login chờ URL và heading đích, gồm forbidden/not-found; helper tạo lớp chờ
+  heading chi tiết trước khi trả về. Không đổi API, business rule hoặc refresh rotation.
+- Thêm regression giữ request refresh của trang đích để kiểm tra helper chưa tạo lớp
+  trước khi bootstrap xong; luôn giải phóng request và chuyển tiếp tới backend thật.
+- Diagnostics khi fail ghi thứ tự request/navigation, tab, giai đoạn, pathname,
+  status và code lỗi CSRF/login/refresh; không ghi query, credential, token hoặc cookie.
+- Kiểm chứng local Windows/Edge: lint, typecheck và 52 unit test pass; toàn bộ 6 Classroom
+  test pass với backend/PostgreSQL/Redis thật. Hai scenario bootstrap và reload hai tab
+  lặp 5 lần mỗi scenario đạt 10/10, `--retries=0`.
+- Toàn bộ 11 auth/profile browser test pass. Không chạy lại backend verify hoặc build
+  trong đợt này vì thay đổi chỉ nằm ở test và tài liệu.
+- CI Linux/Chromium chưa kiểm chứng remote. Không suy rộng kết quả này thành bảo đảm
+  điều hướng/reload giữa lúc server đang rotate refresh token.
 
 ### F07 — Question Bank
 

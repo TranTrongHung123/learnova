@@ -131,3 +131,29 @@ console CI và attachment Playwright, không cần bật trace chứa credential
 
 Phép thử này xác minh reload hai tab đã bootstrap xong. Reload giữa một request refresh
 đang chạy là tình huống reliability riêng, chưa được bản sửa test này chứng minh đã xử lý.
+
+### Bootstrap trước khi tạo lớp
+
+CI sau bản sửa reload tiếp tục báo `REFRESH_REUSED`, lần này ở hai scenario gọi
+`login()` rồi `create()` ngay lập tức. Helper login chỉ đợi `goto` tải document,
+chưa đợi bootstrap trước khi helper create điều hướng tiếp. Scenario Creator có chờ
+danh sách rỗng ở giữa nên không gặp cùng lỗi trong báo cáo CI. `INVALID_REFRESH_TOKEN`
+ở bootstrap trước đăng nhập có thể là bình thường; cần xem thứ tự request để phân biệt.
+
+Helper login hiện nhận heading đích mong đợi, chờ cả URL và heading trước khi trả về;
+case forbidden/not-found chờ đúng trạng thái đó. Helper create đợi chi tiết lớp hiển thị
+sau khi tạo. Diagnostics bổ sung thứ tự request/navigation, tab và giai đoạn; theo dõi
+CSRF/login/refresh nhưng chỉ xuất pathname, status và code lỗi, không query/credential.
+
+Regression giữ request refresh của trang đích rồi chuyển tiếp đến backend thật, kiểm tra
+test chưa sang bước create trước khi bootstrap hoàn tất. Đối chứng tạm bỏ bước chờ mới
+khiến regression fail do đã rời trạng thái loading trước khi gate được thả; khôi phục
+bước chờ khiến regression pass. Không mock token/cookie hoặc thay authentication policy.
+Kết quả này xác nhận lỗi đồng bộ helper; chưa chứng minh xử lý được mọi trường hợp người
+dùng thực tế điều hướng trong lúc server đang rotate refresh token.
+
+Kiểm chứng lại ngày 01/10/2026 trên Windows/Edge: lint, typecheck, 52 unit test,
+6 Classroom test và 11 auth/profile browser test đều pass. Regression bootstrap và
+scenario reload hai tab lặp 5 lần mỗi scenario đạt 10/10, không retry. Các browser test
+dùng backend/PostgreSQL/Redis thật. Không chạy lại backend verify hoặc production build
+cho thay đổi chỉ ở test/tài liệu; CI Linux/Chromium chưa được kiểm chứng remote.
