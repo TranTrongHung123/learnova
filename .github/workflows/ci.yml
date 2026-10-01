@@ -95,6 +95,10 @@ jobs:
         working-directory: frontend
         run: npm run test:classroom
 
+      - name: Question Bank browser integration with PostgreSQL and Redis
+        working-directory: frontend
+        run: npm run test:question
+
       - name: Build
         working-directory: frontend
         run: npm run build

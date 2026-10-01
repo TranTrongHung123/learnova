@@ -24,6 +24,8 @@ servers:
     description: Local development
 
 tags:
+  - name: Questions
+    description: F07 private Creator Question Bank, draft validation and archive/restore lifecycle.
   - name: Classrooms
     description: F06 classroom ownership, membership and join codes.
   - name: Authentication
@@ -32,6 +34,350 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/questions:
+    get:
+      tags: [Questions]
+      operationId: listQuestions
+      summary: List owned questions
+      security:
+        - bearerAuth: []
+      description: |
+        ACTIVE account with CREATOR role and resource ownership required. Other owners return 404.
+        Bearer-only API; refresh cookies do not authenticate it and no CSRF header is required.
+        Unknown body fields are rejected. Mutations are transactional with audit and revision checks.
+        Default excludes ARCHIVED; sort updatedAt DESC then id DESC. Keyword is a case-insensitive
+        literal content substring, category case-insensitive exact match, tag case-sensitive exact match.
+        Filters combine with AND. List never includes answers or explanation.
+      parameters:
+        - in: query
+          name: keyword
+          schema: {type: string, maxLength: 200}
+        - in: query
+          name: type
+          schema: {$ref: '#/components/schemas/QuestionType'}
+        - in: query
+          name: difficulty
+          schema: {$ref: '#/components/schemas/QuestionDifficulty'}
+        - in: query
+          name: category
+          schema: {type: string, maxLength: 100}
+        - in: query
+          name: tag
+          schema: {type: string, maxLength: 50}
+        - in: query
+          name: status
+          schema: {$ref: '#/components/schemas/QuestionStatus'}
+        - in: query
+          name: page
+          schema: {type: integer, minimum: 0, default: 0}
+        - in: query
+          name: size
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuestionPage'}
+        '400':
+          description: 'VALIDATION_FAILED or INVALID_REQUEST; invalid type, numeric precision, answer shape or pagination. Field errors identify invalid inputs.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401':
+          description: 'AUTHENTICATION_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '403':
+          description: 'FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '404':
+          description: 'QUESTION_NOT_FOUND; includes resources belonging to another Creator.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '409':
+          description: 'QUESTION_REVISION_CONFLICT or QUESTION_STATE_CONFLICT; refetch before deciding how to retry.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: 'SERVICE_UNAVAILABLE'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+    post:
+      tags: [Questions]
+      operationId: createQuestion
+      summary: Create a draft or active question
+      security:
+        - bearerAuth: []
+      description: |
+        ACTIVE account with CREATOR role and resource ownership required. Other owners return 404.
+        Bearer-only API; refresh cookies do not authenticate it and no CSRF header is required.
+        Unknown body fields are rejected. Mutations are transactional with audit and revision checks.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/QuestionWrite'}
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuestionDetail'}
+        '400':
+          description: 'VALIDATION_FAILED or INVALID_REQUEST; invalid type, numeric precision, answer shape or pagination. Field errors identify invalid inputs.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401':
+          description: 'AUTHENTICATION_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '403':
+          description: 'FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '404':
+          description: 'QUESTION_NOT_FOUND; includes resources belonging to another Creator.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '409':
+          description: 'QUESTION_REVISION_CONFLICT or QUESTION_STATE_CONFLICT; refetch before deciding how to retry.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: 'SERVICE_UNAVAILABLE'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+  /api/v1/questions/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      tags: [Questions]
+      operationId: getQuestion
+      summary: Read owned question including answers
+      security:
+        - bearerAuth: []
+      description: |
+        ACTIVE account with CREATOR role and resource ownership required. Other owners return 404.
+        Bearer-only API; refresh cookies do not authenticate it and no CSRF header is required.
+        Unknown body fields are rejected. Mutations are transactional with audit and revision checks.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuestionDetail'}
+        '400':
+          description: 'VALIDATION_FAILED or INVALID_REQUEST; invalid type, numeric precision, answer shape or pagination. Field errors identify invalid inputs.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401':
+          description: 'AUTHENTICATION_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '403':
+          description: 'FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '404':
+          description: 'QUESTION_NOT_FOUND; includes resources belonging to another Creator.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '409':
+          description: 'QUESTION_REVISION_CONFLICT or QUESTION_STATE_CONFLICT; refetch before deciding how to retry.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: 'SERVICE_UNAVAILABLE'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+    put:
+      tags: [Questions]
+      operationId: updateQuestion
+      summary: Update a non-archived question
+      security:
+        - bearerAuth: []
+      description: |
+        ACTIVE account with CREATOR role and resource ownership required. Other owners return 404.
+        Bearer-only API; refresh cookies do not authenticate it and no CSRF header is required.
+        Unknown body fields are rejected. Mutations are transactional with audit and revision checks.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/QuestionWrite'}
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuestionDetail'}
+        '400':
+          description: 'VALIDATION_FAILED or INVALID_REQUEST; invalid type, numeric precision, answer shape or pagination. Field errors identify invalid inputs.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401':
+          description: 'AUTHENTICATION_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '403':
+          description: 'FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '404':
+          description: 'QUESTION_NOT_FOUND; includes resources belonging to another Creator.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '409':
+          description: 'QUESTION_REVISION_CONFLICT or QUESTION_STATE_CONFLICT; refetch before deciding how to retry.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: 'SERVICE_UNAVAILABLE'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+  /api/v1/questions/{id}/archive:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [Questions]
+      operationId: archiveQuestion
+      summary: archive owned question
+      security:
+        - bearerAuth: []
+      description: |
+        ACTIVE account with CREATOR role and resource ownership required. Other owners return 404.
+        Bearer-only API; refresh cookies do not authenticate it and no CSRF header is required.
+        Unknown body fields are rejected. Mutations are transactional with audit and revision checks.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/QuestionRevision'}
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuestionDetail'}
+        '400':
+          description: 'VALIDATION_FAILED or INVALID_REQUEST; invalid type, numeric precision, answer shape or pagination. Field errors identify invalid inputs.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401':
+          description: 'AUTHENTICATION_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '403':
+          description: 'FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '404':
+          description: 'QUESTION_NOT_FOUND; includes resources belonging to another Creator.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '409':
+          description: 'QUESTION_REVISION_CONFLICT or QUESTION_STATE_CONFLICT; refetch before deciding how to retry.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: 'SERVICE_UNAVAILABLE'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+  /api/v1/questions/{id}/restore:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      tags: [Questions]
+      operationId: restoreQuestion
+      summary: restore owned question
+      security:
+        - bearerAuth: []
+      description: |
+        ACTIVE account with CREATOR role and resource ownership required. Other owners return 404.
+        Bearer-only API; refresh cookies do not authenticate it and no CSRF header is required.
+        Unknown body fields are rejected. Mutations are transactional with audit and revision checks.
+        Restore validates the stored content: valid questions become ACTIVE, incomplete ones become DRAFT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/QuestionRevision'}
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuestionDetail'}
+        '400':
+          description: 'VALIDATION_FAILED or INVALID_REQUEST; invalid type, numeric precision, answer shape or pagination. Field errors identify invalid inputs.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401':
+          description: 'AUTHENTICATION_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '403':
+          description: 'FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '404':
+          description: 'QUESTION_NOT_FOUND; includes resources belonging to another Creator.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '409':
+          description: 'QUESTION_REVISION_CONFLICT or QUESTION_STATE_CONFLICT; refetch before deciding how to retry.'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: 'SERVICE_UNAVAILABLE'
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
 
   /api/v1/classrooms:
     get:
@@ -1476,6 +1822,108 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    QuestionType:
+      type: string
+      enum: [SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, NUMERIC_ANSWER]
+    QuestionStatus:
+      type: string
+      enum: [DRAFT, ACTIVE, ARCHIVED]
+    QuestionDifficulty:
+      type: [string, 'null']
+      enum: [EASY, MEDIUM, HARD, null]
+    QuestionOption:
+      type: object
+      additionalProperties: false
+      description: Draft options may omit content/correct; ACTIVE requires nonblank content. Responses always include both fields.
+      properties:
+        content: {type: [string, 'null'], maxLength: 2000}
+        correct: {type: boolean, default: false}
+    QuestionWrite:
+      type: object
+      additionalProperties: false
+      required: [type, status]
+      description: |
+        DRAFT may omit content/answers. ACTIVE requires nonblank content; choice questions
+        need 2–20 nonblank options, SINGLE_CHOICE exactly one correct, MULTIPLE_CHOICE at least one.
+        TRUE_FALSE requires correctBoolean; NUMERIC_ANSWER requires correctValue.
+        Irrelevant answer fields are rejected. ACTIVE cannot return to DRAFT.
+        revision is required on update and must be omitted on create.
+        Tags are trimmed and deduplicated. Strings render as plain text.
+      properties:
+        type: {$ref: '#/components/schemas/QuestionType'}
+        status: {type: string, enum: [DRAFT, ACTIVE]}
+        content: {type: [string, 'null'], maxLength: 10000, default: ''}
+        explanation: {type: [string, 'null'], maxLength: 10000}
+        difficulty: {$ref: '#/components/schemas/QuestionDifficulty'}
+        category: {type: [string, 'null'], maxLength: 100}
+        tags:
+          type: [array, 'null']
+          maxItems: 20
+          items: {type: string, minLength: 1, maxLength: 50}
+        options:
+          type: [array, 'null']
+          maxItems: 20
+          items: {$ref: '#/components/schemas/QuestionOption'}
+        correctBoolean: {type: [boolean, 'null']}
+        correctValue:
+          type: [string, 'null']
+          pattern: '^-?[0-9]+(\.[0-9]{1,10})?$'
+          maxLength: 42
+          description: Exact decimal string; at most 20 integer and 10 fractional digits. No exponent or rounding.
+        tolerance:
+          type: [string, 'null']
+          pattern: '^[0-9]+(\.[0-9]{1,10})?$'
+          maxLength: 42
+          default: '0'
+          description: Nonnegative absolute tolerance. Same precision as correctValue.
+        revision: {type: [integer, 'null'], format: int64, minimum: 0}
+    QuestionRevision:
+      type: object
+      additionalProperties: false
+      required: [revision]
+      properties:
+        revision: {type: integer, format: int64, minimum: 0}
+    QuestionSummary:
+      type: object
+      required: [id, type, status, contentPreview, difficulty, category, tags, revision, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        type: {$ref: '#/components/schemas/QuestionType'}
+        status: {$ref: '#/components/schemas/QuestionStatus'}
+        contentPreview: {type: string, maxLength: 240}
+        difficulty: {$ref: '#/components/schemas/QuestionDifficulty'}
+        category: {type: [string, 'null']}
+        tags: {type: array, items: {type: string}}
+        revision: {type: integer, format: int64}
+        updatedAt: {type: string, format: date-time}
+    QuestionDetail:
+      type: object
+      required: [id, type, status, content, explanation, difficulty, category, tags, options, correctBoolean, correctValue, tolerance, revision, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        type: {$ref: '#/components/schemas/QuestionType'}
+        status: {$ref: '#/components/schemas/QuestionStatus'}
+        content: {type: string}
+        explanation: {type: [string, 'null']}
+        difficulty: {$ref: '#/components/schemas/QuestionDifficulty'}
+        category: {type: [string, 'null']}
+        tags: {type: array, items: {type: string}}
+        options: {type: array, items: {$ref: '#/components/schemas/QuestionOption'}}
+        correctBoolean: {type: [boolean, 'null']}
+        correctValue: {type: [string, 'null']}
+        tolerance: {type: string}
+        revision: {type: integer, format: int64}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    QuestionPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content: {type: array, items: {$ref: '#/components/schemas/QuestionSummary'}}
+        page: {type: integer}
+        size: {type: integer}
+        totalElements: {type: integer, format: int64}
+        totalPages: {type: integer}
     WriteClassroom:
       type: object
       required:

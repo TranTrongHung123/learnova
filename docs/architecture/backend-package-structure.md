@@ -27,6 +27,14 @@ com.learnova
 │   ├── repository       JPA repositories và ClassroomQueries
 │   ├── exception        ClassroomFailure
 │   └── enums            MembershipStatus
+├── question
+│   ├── controller       QuestionController, QuestionExceptionHandler
+│   ├── dto              QuestionDtos
+│   ├── service          QuestionService, QuestionValidation
+│   ├── entity           Question và AnswerOption
+│   ├── repository       QuestionRepository
+│   ├── exception        QuestionFailure
+│   └── enums            QuestionType, QuestionStatus, Difficulty
 ├── audit
 │   ├── service          AuditService
 │   ├── entity           AuditRecord

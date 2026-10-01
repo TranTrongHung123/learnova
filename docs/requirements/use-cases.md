@@ -940,7 +940,10 @@ ARCHIVED
 → ACTIVE
 ```
 
-sau khi validate nội dung vẫn hợp lệ.
+sau khi validate nội dung vẫn hợp lệ. Nếu nội dung chưa hoàn chỉnh, khôi phục về
+`DRAFT` để Creator tiếp tục soạn. Quyết định F07 ngày 01/10/2026 cho phép lưu nháp
+thiếu nội dung/đáp án; không cho sửa trực tiếp câu ARCHIVED. ACTIVE được sửa với
+validation đầy đủ và không hạ về DRAFT. Backend trả trạng thái thực tế sau restore.
 
 ---
 
