@@ -12,6 +12,12 @@ import org.springframework.stereotype.Component;
 public class QuestionValidation {
     public record Numbers(BigDecimal value, BigDecimal tolerance) {}
     public Numbers validate(WriteQuestion input) {
+        return validate(input, input.status() == QuestionStatus.ACTIVE);
+    }
+    public Numbers validateComplete(WriteQuestion input) {
+        return validate(input, true);
+    }
+    private Numbers validate(WriteQuestion input, boolean complete) {
         var errors = new ArrayList<FieldError>();
         if (input.type() == null) error(errors, "type", "Chọn loại câu hỏi.");
         if (input.status() == null || input.status() == QuestionStatus.ARCHIVED) error(errors, "status", "Chỉ được lưu DRAFT hoặc ACTIVE.");
@@ -40,7 +46,7 @@ public class QuestionValidation {
             error(errors, "correctBoolean", "Đáp án đúng/sai chỉ dùng cho TRUE_FALSE.");
         boolean choice = input.type() == QuestionType.SINGLE_CHOICE || input.type() == QuestionType.MULTIPLE_CHOICE;
         if (!choice && !options.isEmpty()) error(errors, "options", "Loại câu hỏi này không có lựa chọn tùy biến.");
-        if (input.status() == QuestionStatus.ACTIVE) {
+        if (complete) {
             if (input.content() == null || input.content().isBlank()) error(errors, "content", "Nhập nội dung trước khi kích hoạt.");
             if (choice) {
                 if (options.size() < 2) error(errors, "options", "Cần ít nhất hai lựa chọn.");

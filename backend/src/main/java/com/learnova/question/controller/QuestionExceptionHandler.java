@@ -9,7 +9,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-@Order(0) @RestControllerAdvice(assignableTypes = QuestionController.class)
+@Order(0) @RestControllerAdvice(assignableTypes = {QuestionController.class, QuestionImportController.class})
 class QuestionExceptionHandler {
     private final ApiProblems problems;
     QuestionExceptionHandler(ApiProblems problems) { this.problems = problems; }
@@ -23,4 +23,6 @@ class QuestionExceptionHandler {
     ResponseEntity<?> authentication(AuthFailure ex, HttpServletRequest request) { return failure(new QuestionFailure(ex.status, ex.code), request); }
     @ExceptionHandler(DataAccessException.class)
     ResponseEntity<?> database(DataAccessException ex, HttpServletRequest request) { return failure(new QuestionFailure(503, "SERVICE_UNAVAILABLE"), request); }
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    ResponseEntity<?> oversized(HttpServletRequest request) { return failure(new QuestionFailure(413, "IMPORT_FILE_TOO_LARGE"), request); }
 }

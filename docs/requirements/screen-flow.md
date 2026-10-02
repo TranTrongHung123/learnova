@@ -1552,7 +1552,7 @@ F07 đã tích hợp API thật. Desktop dùng bảng, mobile dùng card; filter
 trong URL. Mặc định xem DRAFT + ACTIVE; chọn ARCHIVED để xem câu lưu trữ. Search là
 substring content không phân biệt hoa/thường; category exact không phân biệt hoa/thường;
 tag exact có phân biệt hoa/thường. Sắp xếp updatedAt DESC rồi id DESC, page size 20.
-Import Excel hiển thị disabled “Sắp có” cho đến F08.
+Import Excel dẫn tới `/creator/questions/import` (F08).
 
 **Route**
 
@@ -1758,7 +1758,7 @@ UI:
 
 ```text
 Upload .xlsx
-Download Template (nếu frontend/backend cung cấp template)
+Download Template (.xlsx, sheet Questions và Instructions)
 ```
 
 Sau upload:
@@ -1768,6 +1768,10 @@ Parsing...
 ```
 
 Không import thật ngay.
+
+F08: giới hạn 5 MiB/file và 1.000 câu hỏi. Hiển thị rõ upload đang xử lý, lỗi file và cách sửa.
+Thông báo lỗi nhận focus và liên kết với input; giữ file đã chọn khi request thất bại để thử lại.
+Template có một sheet dữ liệu chung cho bốn loại; hướng dẫn dùng Text cho đáp án số chính xác.
 
 ---
 
@@ -1796,7 +1800,7 @@ Valid
 Invalid
 ```
 
-Table:
+Danh sách dòng responsive (F08):
 
 ```text
 Row
@@ -1817,6 +1821,18 @@ Confirm Import
 Nếu có invalid row, UI phải hiển thị rõ.
 
 Không tự bỏ qua lỗi mà không thông báo.
+
+F08 dùng đúng route với `importId`; reload lấy preview đã lưu phía server, không dựa browser storage.
+Hiển thị thời điểm hết hạn sau 24 giờ, lọc tất cả/hợp lệ/lỗi, phân trang 20 dòng và mở rộng nội dung/đáp án.
+Danh sách xếp dọc để giữ action, nội dung và lỗi dễ đọc trên mobile; desktop dùng cùng thứ tự thông tin.
+
+- Không có lỗi: bật confirm số dòng hợp lệ.
+- Có lỗi: checkbox “Chỉ import N dòng hợp lệ, bỏ qua M dòng lỗi” mặc định chưa chọn; chỉ bật confirm sau opt-in.
+- Không có dòng hợp lệ: khóa confirm, hướng dẫn sửa file/upload lại.
+- Thành công: thông báo số câu **DRAFT** đã tạo/số dòng bỏ qua, link tới danh sách nháp và import file khác.
+- Mất response confirm: đọc lại trạng thái server trước khi cho thử lại; không tự upload lô mới.
+- Preview hết hạn: thông báo và action upload lại. Import người khác/không tồn tại hiển thị not-found.
+- Hủy trở về Question Bank; Upload file khác trở về form upload. Không tạo Question, payload cũ tự hết hạn.
 
 ---
 

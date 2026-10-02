@@ -577,6 +577,19 @@ Business Rule:
 - Không import âm thầm dữ liệu lỗi.
 - Creator phải xác nhận trước khi dữ liệu thật được tạo.
 
+Quyết định F08:
+
+- Template có một sheet `Questions` chung cho bốn loại câu hỏi và sheet `Instructions` chứa ví dụ.
+- Giới hạn 5 MiB/file, 1.000 câu hỏi. Preview gắn owner, được lưu phía server và có hiệu lực 24 giờ.
+- Các dòng import phải đủ nội dung/đáp án hợp lệ; confirm tạo Question **DRAFT** để Creator rà soát
+  và kích hoạt. Quy tắc nháp linh hoạt khi soạn thủ công của F07 không thay đổi.
+- Mặc định confirm toàn bộ chỉ khi không có lỗi. Khi có lỗi, Creator phải chọn rõ chỉ nhập dòng hợp lệ;
+  không có dòng hợp lệ thì không cho confirm. Summary hiển thị số đã nhập và bỏ qua.
+- Confirm chỉ dùng preview đã validate phía server; cùng `importId` được confirm nhiều lần hoặc
+  đồng thời vẫn chỉ tạo một lô Question. Mỗi upload mới là lô riêng, không tự khử trùng nội dung.
+- Hết hạn thì upload lại; không chỉnh sửa trực tiếp preview. Payload tạm được dọn, nhưng Question,
+  audit và summary đã confirm được giữ để bảo toàn lịch sử và hỗ trợ retry.
+
 Ví dụ:
 
 ```text

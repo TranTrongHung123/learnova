@@ -977,6 +977,10 @@ size
 3. Parse dữ liệu tạm.
 4. Chưa import vào Question Bank ngay.
 
+F08 cung cấp template `.xlsx` có sheet `Questions` chung cho bốn loại và sheet `Instructions`.
+Giới hạn 5 MiB, 1.000 dòng câu hỏi; kiểm tra file OOXML thực tế và tài nguyên giải nén.
+Không nhận macro/liên kết ngoài; công thức và ô lỗi được báo theo dòng, không thực thi.
+
 ---
 
 ## UC-QB-09 - Preview Import
@@ -1002,6 +1006,11 @@ Preview phải cho thấy:
 - Dòng lỗi.
 - Lý do lỗi.
 
+Preview lưu tại server, gắn Creator và `importId`, có hiệu lực 24 giờ; reload cùng URL lấy lại dữ liệu.
+Có lọc tất cả/hợp lệ/lỗi và phân trang, giữ số dòng Excel thật. Creator mở chi tiết để kiểm tra
+nội dung/đáp án. Dòng chỉ hợp lệ nếu đủ nội dung và đáp án như điều kiện kích hoạt F07.
+Sửa trong file Excel rồi upload lại; không gửi nội dung preview từ client để thay thế dữ liệu server.
+
 ---
 
 ## UC-QB-10 - Xác nhận Import
@@ -1016,6 +1025,11 @@ Preview phải cho thấy:
 V1 ưu tiên:
 
 > Nếu file có lỗi, Creator phải sửa hoặc xác nhận chỉ import các dòng hợp lệ theo UI được thiết kế rõ ràng. Không import âm thầm dữ liệu lỗi.
+
+F08 mặc định `validRowsOnly=false`; nhập dòng hợp lệ khi có lỗi cần opt-in rõ ràng, tối thiểu một dòng hợp lệ.
+Question được tạo **DRAFT**, owner là Creator hiện tại. Cả lô, audit và trạng thái confirm cùng transaction;
+lỗi giữa chừng rollback toàn bộ. Confirm lặp/đồng thời cùng `importId` trả summary cũ, không tạo thêm Question.
+Preview hết hạn trả lỗi và yêu cầu upload lại; summary đã confirm vẫn đọc/retry được sau khi payload đã dọn.
 
 ---
 
