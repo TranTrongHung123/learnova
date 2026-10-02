@@ -16,7 +16,7 @@ export function QuestionList() {
   const completed = (question: QuestionDetail) => { setNotice(`Đã cập nhật: ${statusLabels[question.status]}.`); query.reload(); };
   function page(number: number) { const next = new URLSearchParams(params); next.set("page", String(number)); router.push(`/creator/questions?${next}`); }
   return <div className="space-y-6">
-    <div className="flex flex-wrap items-center justify-between gap-4"><p className="max-w-xl text-muted-foreground">Soạn và quản lý câu hỏi riêng của bạn. Chỉ câu đã kích hoạt mới có thể dùng cho đề mới.</p><div className="flex flex-wrap gap-3"><LinkButton href="/creator/questions/new">Tạo câu hỏi</LinkButton><Button variant="secondary" disabled>Import Excel · Sắp có</Button></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-4"><p className="max-w-xl text-muted-foreground">Soạn và quản lý câu hỏi riêng của bạn. Chỉ câu đã kích hoạt mới có thể dùng cho đề mới.</p><div className="flex flex-wrap gap-3"><LinkButton href="/creator/questions/new">Tạo câu hỏi</LinkButton><LinkButton variant="secondary" href="/creator/questions/import">Import Excel</LinkButton></div></div>
     <form key={params.toString()} className={`${panel} grid gap-4 sm:grid-cols-2 xl:grid-cols-3`} onSubmit={event => {
       event.preventDefault(); const next = new URLSearchParams();
       new FormData(event.currentTarget).forEach((value, key) => { if (String(value).trim()) next.set(key, String(value).trim()); });

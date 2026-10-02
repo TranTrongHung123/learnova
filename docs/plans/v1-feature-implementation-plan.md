@@ -14,14 +14,14 @@ Nguồn đối chiếu:
 | Thành phần | Hiện trạng |
 |---|---|
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
-| Database | PostgreSQL 17, Flyway V1–V5 gồm identity, audit và classroom/membership; Hibernate validate schema |
+| Database | PostgreSQL 17, Flyway V1–V7 gồm identity, audit, classroom/membership, Question Bank và import preview; Hibernate validate schema |
 | Authentication | Local/Google login, onboarding, link account, JWT, refresh rotation/reuse, logout-all và multi-role; Actuator vẫn đóng |
-| Frontend | Workspace shell, Local/Google auth, onboarding/link, profile/security và Classroom hai workspace tích hợp API thật |
+| Frontend | Workspace shell, auth/profile, Classroom, Question Bank và Excel Import preview/confirm tích hợp API thật |
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; WebSocket chưa triển khai |
-| OpenAPI | Health, auth/profile/password và Classroom; 28 paths, schema lỗi và convention pagination dùng chung |
-| Testing | 86 backend, 52 unit frontend, 6 Classroom, 5 Google, 11 auth/profile, 8 workspace và 1 production browser test pass local; thời điểm kiểm chứng ghi tại từng feature |
+| OpenAPI | Health, auth/profile/password, Classroom, Questions và Question Imports; 36 paths, lỗi và pagination dùng chung |
+| Testing | F08: 106 backend, 55 unit frontend, 4 Import, 4 Question Bank, 11 auth/profile và 1 production browser test pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
 | CI | Java 21/Node 22/Chromium/Linux; F06 từng fail reload hai tab và bootstrap trước tạo lớp, các bản sửa bước chờ chưa kiểm chứng remote |
-| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F06 |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F08 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
 **F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
@@ -32,7 +32,8 @@ thật/HTTPS hoặc CI remote. Người dùng tự push nhánh và mở PR.
 **F05 đã triển khai và kiểm chứng local ngày 29/09/2026**; bàn giao bằng commit local.
 **F06 đã triển khai và kiểm chứng local ngày 30/09/2026**; bàn giao bằng commit local.
 **F07 đã triển khai và kiểm chứng local ngày 01/10/2026**; bàn giao bằng commit local.
-F08–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
+**F08 đã triển khai và kiểm chứng local ngày 02/10/2026**; bàn giao bằng commit local.
+F09–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -366,16 +367,43 @@ Chi tiết và sơ đồ: [Kiến trúc F06](../architecture/f06-classroom-membe
 **Nguồn:** UC-QB-08..10.  
 **Phụ thuộc:** F07.
 
-- [ ] Cung cấp template `.xlsx` tương ứng bốn loại câu hỏi.
-- [ ] Upload, kiểm tra file thật và giới hạn tài nguyên; parse/validate từng dòng.
-- [ ] Lưu preview phía server gắn owner và import ID; trả lỗi theo row.
-- [ ] Mặc định chỉ confirm khi tất cả dòng hợp lệ. Khi có lỗi, cho phép Creator chọn rõ “chỉ import dòng hợp lệ”.
-- [ ] Confirm sử dụng dữ liệu server đã validate; transaction và trạng thái import ngăn duplicate confirm.
-- [ ] Dọn dữ liệu preview hết hạn; trả summary số dòng đã import/bỏ qua.
+- [x] Cung cấp template `.xlsx` tương ứng bốn loại câu hỏi.
+- [x] Upload, kiểm tra file thật và giới hạn tài nguyên; parse/validate từng dòng.
+- [x] Lưu preview phía server gắn owner và import ID; trả lỗi theo row.
+- [x] Mặc định chỉ confirm khi tất cả dòng hợp lệ. Khi có lỗi, cho phép Creator chọn rõ “chỉ import dòng hợp lệ”.
+- [x] Confirm sử dụng dữ liệu server đã validate; transaction và trạng thái import ngăn duplicate confirm.
+- [x] Dọn dữ liệu preview hết hạn; trả summary số dòng đã import/bỏ qua.
 
 **API/UI:** Upload, preview, confirm; màn hình import dùng cùng route với `importId`.
 
 **Nghiệm thu:** Upload không tạo Question; giả mạo preview, truy cập import người khác và confirm trùng đều được xử lý; file sai định dạng báo lỗi rõ.
+
+**Hoàn tất và kiểm chứng local ngày 02/10/2026:**
+
+- Template chung `Questions` + hướng dẫn bốn loại trong `Instructions`; 5 MiB/file, 1.000 câu hỏi,
+  preview 24 giờ. Theo lựa chọn đã chốt: validate đủ nội dung/đáp án nhưng tạo **DRAFT** để rà soát.
+- API `/api/v1/question-imports`, Flyway V7 và UI cùng route có `importId`; reload lấy preview server.
+  Confirm theo owner có khóa row, transaction chung Question/audit và retry không nhân đôi dữ liệu.
+- Parser có giới hạn ZIP entry/giải nén/dòng/ô; từ chối macro/external links, không đánh giá formula.
+  Cleanup dọn payload hết hạn theo lô và SKIP LOCKED; giữ metadata, summary đã confirm, audit và Question.
+- Backend `mvnw.cmd -B verify`: **106 test pass**, không fail/error/skip, gồm 13 test F08.
+  PostgreSQL 17/Redis thật; kiểm tra bốn loại, precision, invalid rows/opt-in, confirm `{}` mặc định,
+  tampering, quyền, concurrent confirm, rollback/audit, expiry/cleanup, file/ZIP limits và migration từ V6.
+- Frontend `npm run lint`, `npm run typecheck`, `npm test` (**55 test**) và `npm run build` pass.
+- Browser `npm run test:import`: **4/4 pass**; regression `test:question` **4/4**, `test:auth`
+  **11/11**, `test:production` **1/1**. Kiểm tra download, preview/reload, DRAFT list, opt-in,
+  file lỗi, offline/retry và mất response confirm sau khi server đã commit. Không có mock fallback.
+- Dùng UI/UX Pro Max theo Master; đã review ảnh desktop/mobile, reflow 375/768/1024/1440px và
+  640×450, keyboard focus, checkbox qua bàn phím và reduced motion. Sửa heading thành công để
+  giữ đúng semantics, liên kết lỗi với input; selector lỗi không trùng Next route announcer.
+- OpenAPI YAML parse thành công: **36 paths, 306 internal references** resolve;
+  liên kết tài liệu local và `git diff --check` pass. README/requirements/screen flow đã đồng bộ.
+- Local Windows/Edge, Java 21, Node 24; CI Node 22/Linux/Chromium đã thêm suite import nhưng chưa
+  chạy remote. Chưa kiểm chứng tải đồng thời lớn, screen reader thực tế hoặc deployment HTTPS.
+  Không chạy lại browser Google/Classroom/workspace trong F08; kết quả trước đó nằm ở F07.
+- Bàn giao trên `feat/f08-excel-import-preview` bằng Conventional Commit local; không push/mở PR/merge.
+
+Kiến trúc và sơ đồ: [F08 Excel Import](../architecture/f08-excel-import.md).
 
 ### F09 — Exam Builder và versioning
 

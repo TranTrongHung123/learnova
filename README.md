@@ -192,6 +192,7 @@ npm run test:auth
 npm run test:google
 npm run test:classroom
 npm run test:question
+npm run test:import
 npm run build
 npm run test:production
 # Khi backend local đã chạy:
@@ -206,7 +207,7 @@ environment, mặc định localhost:8080; không tự nạp `.env.local`.
 Build frontend hiện tải font qua `next/font/google`, cần truy cập mạng.
 Auth browser test tự chạy backend ở 8081 và frontend ở 3104 cùng Testcontainers riêng;
 không cần đọc `.env` hoặc dùng database của bạn. Tắt server ở cổng này để tạo môi trường mới.
-Classroom và Question Bank browser test dùng cùng cấu hình cổng với auth; chạy các suite tuần tự.
+Classroom, Question Bank và Excel Import browser test dùng cùng cấu hình cổng với auth; chạy các suite tuần tự.
 Google browser test dùng backend 8082, frontend 3105 và OIDC provider test 8092;
 provider chỉ tồn tại trong test classpath, không dùng OAuth credentials thật.
 Không ghi trace auth chứa password/token; ảnh form rỗng nằm trong test-results.
@@ -215,6 +216,29 @@ Nếu cổng đã dùng, đổi port trong `.env` trước khi chạy Compose/ba
 
 `docker compose stop` dừng dependency và giữ dữ liệu. `docker compose down` gỡ container
 nhưng giữ named volume; không dùng `down -v` nếu cần giữ dữ liệu.
+
+## Import câu hỏi Excel (F08)
+
+Creator mở **Ngân hàng câu hỏi → Import Excel**, tải template `.xlsx`, điền sheet `Questions`
+và upload để xem trước. Sheet `Instructions` có hướng dẫn và ví dụ cho cả bốn loại câu hỏi;
+dữ liệu ví dụ không được import. Giữ nguyên tên/thứ tự header và không thêm sheet khác.
+
+- Tối đa **5 MiB/file, 1.000 câu hỏi**, preview có hiệu lực **24 giờ** theo thời gian server.
+- `tags` phân cách bằng `;`; `correctOptions` dùng chỉ số lựa chọn như `1;3`.
+  Các lựa chọn điền liên tục từ `option1`; `correctBoolean` dùng `TRUE` hoặc `FALSE`.
+- Giữ cột đáp án số ở định dạng **Text**, dùng dấu chấm thập phân để Excel không làm tròn.
+  Chấp nhận tối đa 20 chữ số nguyên và 10 chữ số thập phân; tolerance mặc định 0.
+- Không dùng công thức, macro hoặc liên kết ngoài. Nội dung/đáp án phải đầy đủ và hợp lệ,
+  nhưng sau confirm câu hỏi được tạo ở trạng thái **DRAFT** để Creator rà soát và kích hoạt.
+- Upload chưa tạo Question. Xem tổng số dòng, dòng hợp lệ/lỗi, lý do và đáp án trước khi confirm.
+  Nếu có lỗi, sửa file rồi upload lại hoặc chủ động chọn **chỉ import dòng hợp lệ**.
+- Reload URL có `importId` để tiếp tục preview. Hết hạn thì upload lại; mỗi upload là một lô độc lập,
+  không tự khử trùng nội dung hoặc cập nhật câu hỏi cũ. Confirm lại cùng lô không tạo câu hỏi trùng.
+- Hủy/quay lại không tạo Question. Job mỗi phút dọn tối đa 100 payload hết hạn, giữ metadata,
+  summary đã confirm và audit; không xóa Question. Không lưu file Excel gốc lâu dài.
+
+API dưới `/api/v1/question-imports`; chi tiết tại [OpenAPI](docs/api/openapi.yaml).
+Kiến trúc, giới hạn parser và kiểm thử: [F08 Excel Import](docs/architecture/f08-excel-import.md).
 
 ## Quy trình Git cho feature
 
