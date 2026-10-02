@@ -58,7 +58,9 @@ public class SecurityConfiguration {
                                         && !(request.getRequestURI().substring(request.getContextPath().length()).equals("/api/v1/classrooms")
                                         || request.getRequestURI().substring(request.getContextPath().length()).startsWith("/api/v1/classrooms/")
                                         || request.getRequestURI().substring(request.getContextPath().length()).equals("/api/v1/questions")
-                                        || request.getRequestURI().substring(request.getContextPath().length()).startsWith("/api/v1/questions/")));
+                                        || request.getRequestURI().substring(request.getContextPath().length()).startsWith("/api/v1/questions/")
+                                        || request.getRequestURI().substring(request.getContextPath().length()).equals("/api/v1/question-imports")
+                                        || request.getRequestURI().substring(request.getContextPath().length()).startsWith("/api/v1/question-imports/")));
                                 return filter;
                             }
                         }))
@@ -79,6 +81,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout-all").authenticated()
                         .requestMatchers("/api/v1/classrooms", "/api/v1/classrooms/**").authenticated()
                         .requestMatchers("/api/v1/questions", "/api/v1/questions/**").authenticated()
+                        .requestMatchers("/api/v1/question-imports", "/api/v1/question-imports/**").authenticated()
                         .requestMatchers("/actuator", "/actuator/**").denyAll()
                         .anyRequest().denyAll())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -24,6 +24,8 @@ servers:
     description: Local development
 
 tags:
+  - name: Question Imports
+    description: F08 owner-scoped Excel preview and idempotent confirmation.
   - name: Questions
     description: F07 private Creator Question Bank, draft validation and archive/restore lifecycle.
   - name: Classrooms
@@ -34,6 +36,156 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/question-imports/template:
+    get:
+      tags: [Question Imports]
+      operationId: downloadQuestionImportTemplate
+      summary: Download an empty Questions sheet and Instructions with four question-type examples
+      security: [{bearerAuth: []}]
+      description: ACTIVE account with current CREATOR role required, including completed onboarding. Bearer-only authentication.
+      responses:
+        '200':
+          description: XLSX template, Cache-Control no-store; numeric columns use Text format to preserve precision in Excel.
+          headers:
+            Content-Disposition:
+              schema: {type: string}
+              example: attachment; filename=learnova-questions.xlsx
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/ImportForbidden'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+  /api/v1/question-imports:
+    post:
+      tags: [Question Imports]
+      operationId: previewQuestionImport
+      summary: Upload and validate Excel without creating questions
+      security: [{bearerAuth: []}]
+      description: |
+        Requires an ACTIVE, onboarded CREATOR. Upload does not create any Question.
+        Accepts real, unencrypted .xlsx files up to 5 MiB; multipart request limit is 6 MiB.
+        Questions sheet must have the exact template headers in order. Instructions is the only optional second sheet.
+        Columns: type, content, explanation, difficulty, category, tags, option1 through option20,
+        correctOptions, correctBoolean, correctValue, tolerance. No owner, score or status column.
+        Tags and correct option indices use semicolons; indices are 1-based. Options must be contiguous.
+        Question types and difficulty use the existing exact enum names; boolean accepts TRUE/FALSE case-insensitively.
+        Numeric text uses decimal point, at most 20 integer and 10 fractional digits; no exponent or rounding.
+        Numeric Excel cells are read from their stored XML decimal; precision already lost by Excel cannot be recovered.
+        Leading/trailing whitespace is stripped; fully blank rows are ignored. Report original Excel row numbers.
+        At most 1,000 nonblank question rows and 10,001 physical rows including the header.
+        ZIP limits: 100 entries, 20 MiB per expanded entry, 50 MiB total; POI compression-ratio protection remains enabled.
+        Macro/external-link workbooks, invalid headers and malformed files fail the upload.
+        Formula/error cells and question validation failures become row errors; formulas are never evaluated.
+        Cells exceeding 10,000 characters are invalid; only their first 10,000 characters appear in preview.
+        All import rows require complete content/answers even though confirmation creates DRAFT questions.
+        The server stores the immutable validated preview with owner and a 24-hour deadline; the original file is discarded.
+        Each upload is a separate batch; no content-based deduplication or update of existing questions.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '201':
+          description: Preview persisted; first 20 rows, filter ALL. No Question or question-created audit yet.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/QuestionImportPreview'}
+        '400':
+          description: IMPORT_INVALID_FILE, IMPORT_INVALID_TEMPLATE, IMPORT_EMPTY_FILE, IMPORT_TOO_MANY_ROWS, IMPORT_RESOURCE_LIMIT or INVALID_REQUEST. Row validation errors return 201 inside preview.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/ImportForbidden'}
+        '413':
+          description: IMPORT_FILE_TOO_LARGE for an oversized file; PAYLOAD_TOO_LARGE when the multipart request is rejected before controller selection.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '415':
+          description: Request must use multipart/form-data.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+  /api/v1/question-imports/{importId}:
+    get:
+      tags: [Question Imports]
+      operationId: getQuestionImportPreview
+      summary: Resume an owned preview after reload
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/QuestionImportId'}
+        - in: query
+          name: filter
+          schema: {type: string, enum: [ALL, VALID, INVALID], default: ALL}
+        - in: query
+          name: page
+          schema: {type: integer, minimum: 0, maximum: 2147483647, default: 0}
+        - in: query
+          name: size
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      description: |
+        Requires current CREATOR role and owner. Rows ordered by original rowNumber ascending.
+        totalRows/validRows/invalidRows describe the whole batch; totalElements describes the filtered preview rows.
+        READY expires after 24 hours based on server time, regardless of cleanup timing.
+        CONFIRMED summary remains readable after expiry; content becomes empty once expired payload is cleaned.
+      responses:
+        '200': {$ref: '#/components/responses/QuestionImportPreview'}
+        '400':
+          description: INVALID_PAGINATION or INVALID_REQUEST for malformed UUID, page, size or filter.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/ImportForbidden'}
+        '404': {$ref: '#/components/responses/ImportNotFound'}
+        '410': {$ref: '#/components/responses/ImportExpired'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+  /api/v1/question-imports/{importId}/confirm:
+    post:
+      tags: [Question Imports]
+      operationId: confirmQuestionImport
+      summary: Atomically create DRAFT questions from the server preview
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/QuestionImportId'}
+      description: |
+        Requires ACTIVE, onboarded CREATOR and batch ownership. No CSRF header needed for this bearer-only API.
+        Body is required; {} defaults to validRowsOnly=false. Unknown fields, including rows or ownerId, are rejected.
+        If any row is invalid, validRowsOnly must explicitly be true; no valid rows always prevents confirmation.
+        Uses only server-stored validated rows. Creates DRAFT questions and audits in the same transaction as CONFIRMED.
+        Concurrent/repeated confirmation of the same importId returns its stored summary without creating duplicates.
+        A CONFIRMED retry ignores the new validRowsOnly choice, including after payload expiry/cleanup.
+        Failure rolls back all questions, audits and confirmation state. Response uses page 0, size 20, filter ALL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                validRowsOnly: {type: [boolean, 'null'], default: false, description: 'Omitted or null means false.'}
+      responses:
+        '200': {$ref: '#/components/responses/QuestionImportPreview'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/ImportForbidden'}
+        '404': {$ref: '#/components/responses/ImportNotFound'}
+        '409':
+          description: IMPORT_HAS_INVALID_ROWS without explicit opt-in; IMPORT_NO_VALID_ROWS when no rows can be imported.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '410': {$ref: '#/components/responses/ImportExpired'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
   /api/v1/questions:
     get:
       tags: [Questions]
@@ -1704,6 +1856,11 @@ components:
       name: learnova_refresh
 
   parameters:
+    QuestionImportId:
+      in: path
+      name: importId
+      required: true
+      schema: {type: string, format: uuid}
     CsrfHeader:
       name: X-XSRF-TOKEN
       in: header
@@ -1731,6 +1888,26 @@ components:
         default: 20
 
   responses:
+    QuestionImportPreview:
+      description: Authoritative batch state and paginated preview, including imported/skipped counts after confirmation.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/QuestionImportPreview'}
+    ImportForbidden:
+      description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED; ADMIN alone has no CREATOR access.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    ImportNotFound:
+      description: IMPORT_NOT_FOUND for a missing batch or a batch owned by someone else.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    ImportExpired:
+      description: IMPORT_EXPIRED; upload the file again. No Question is created.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
     GoogleCompleted:
       description: Clear flow cookie, set learnova_refresh HttpOnly cookie như Local Login; gọi POST /auth/refresh để lấy access token.
       headers:
@@ -1822,6 +1999,47 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    QuestionImportRow:
+      type: object
+      required: [rowNumber, cells, question, errors]
+      properties:
+        rowNumber: {type: integer, minimum: 2, description: Original 1-based Excel row number.}
+        cells:
+          type: object
+          description: Template header keys mapped to normalized text or null. Invalid oversized cells have an explicit error and preview truncation only.
+          additionalProperties: {type: [string, 'null'], maxLength: 10000}
+        question:
+          description: Server-normalized complete DRAFT input for valid rows; null for invalid rows. Never accepted back in confirm requests.
+          anyOf:
+            - {$ref: '#/components/schemas/QuestionWrite'}
+            - {type: 'null'}
+        errors:
+          type: array
+          description: Empty means valid. Field names identify template columns or normalized question fields.
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: {type: string}
+              message: {type: string}
+    QuestionImportPreview:
+      type: object
+      required: [importId, status, expiresAt, confirmedAt, totalRows, validRows, invalidRows, importedRows, skippedRows, content, page, size, totalElements, totalPages]
+      properties:
+        importId: {type: string, format: uuid}
+        status: {type: string, enum: [READY, CONFIRMED]}
+        expiresAt: {type: string, format: date-time}
+        confirmedAt: {type: [string, 'null'], format: date-time}
+        totalRows: {type: integer, minimum: 1, maximum: 1000}
+        validRows: {type: integer, minimum: 0, maximum: 1000}
+        invalidRows: {type: integer, minimum: 0, maximum: 1000}
+        importedRows: {type: integer, minimum: 0, maximum: 1000, description: 'Zero before confirmation; validRows after confirmation.'}
+        skippedRows: {type: integer, minimum: 0, maximum: 1000, description: 'Zero before confirmation; invalidRows after confirmation.'}
+        content: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/QuestionImportRow'}}
+        page: {type: integer, minimum: 0}
+        size: {type: integer, minimum: 1, maximum: 100}
+        totalElements: {type: integer, minimum: 0}
+        totalPages: {type: integer, minimum: 0}
     QuestionType:
       type: string
       enum: [SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, NUMERIC_ANSWER]

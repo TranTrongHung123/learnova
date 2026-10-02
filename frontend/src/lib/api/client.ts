@@ -46,6 +46,8 @@ function isProblem(value: unknown): value is ApiProblem {
 }
 type RequestOptions = Omit<RequestInit, "body" | "cache" | "redirect"> & {
   json?: unknown;
+  formData?: FormData;
+  responseType?: "json" | "blob";
   authenticated?: boolean;
 };
 type ClientOptions = {
@@ -76,7 +78,7 @@ export function createApiClient({
   return {
     async request<T>(
       path: string,
-      { json, authenticated = true, ...options }: RequestOptions = {},
+      { json, formData, responseType = "json", authenticated = true, ...options }: RequestOptions = {},
     ): Promise<T> {
       const url = new URL(path, origin);
       // Chỉ gửi credential đến API origin và namespace đã cấu hình.
@@ -90,7 +92,7 @@ export function createApiClient({
       )
         throw new Error("Invalid API path.");
       const headers = new Headers(options.headers);
-      headers.set("Accept", "application/json, application/problem+json");
+      headers.set("Accept", responseType === "blob" ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/problem+json" : "application/json, application/problem+json");
       const token = authenticated ? getAccessToken() : null;
       const generation = getAuthGeneration();
       const assertCurrentSession = () => {
@@ -100,7 +102,9 @@ export function createApiClient({
       headers.delete("Authorization");
       if (token) headers.set("Authorization", `Bearer ${token}`);
       if (json !== undefined) headers.set("Content-Type", "application/json");
-      const body = json === undefined ? undefined : JSON.stringify(json);
+      if (json !== undefined && formData) throw new Error("Choose JSON or multipart body.");
+      if (formData) headers.delete("Content-Type");
+      const body = formData ?? (json === undefined ? undefined : JSON.stringify(json));
       const send = async () => {
         try {
           const response = await fetcher(url, {
@@ -111,7 +115,7 @@ export function createApiClient({
             cache: "no-store",
             redirect: "error",
           });
-          return { response, raw: await response.text() };
+          return { response, raw: response.ok && responseType === "blob" ? await response.blob() : await response.text() };
         } catch (error) {
           if (
             options.signal?.aborted ||
@@ -135,6 +139,11 @@ export function createApiClient({
         assertCurrentSession();
       }
       if (response.status === 204 && response.ok) return undefined as T;
+      if (typeof raw !== "string") {
+        if (!response.headers.get("content-type")?.toLowerCase().includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+          throw new ApiError("invalid-response", response.status);
+        return raw as T;
+      }
       let data: unknown;
       try {
         data = JSON.parse(raw);

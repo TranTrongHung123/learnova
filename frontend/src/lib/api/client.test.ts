@@ -28,6 +28,37 @@ function setup(res: Response = response({ status: "UP" })) {
   };
 }
 describe("API transport", () => {
+  it("multipart retry dùng lại file, boundary do browser tạo", async () => {
+    let token = "old";
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(response({}, 401)).mockResolvedValueOnce(response({ importId: "id" }, 201));
+    const client = createApiClient({ baseUrl: "https://api.example.test", fetcher, getAccessToken: () => token, refreshAccessToken: async () => { token = "new"; } });
+    const formData = new FormData(); formData.append("file", new Blob(["file"]), "questions.xlsx");
+    expect(await client.request("/api/v1/question-imports", { method: "POST", formData, headers: { "Content-Type": "multipart/form-data" } })).toEqual({ importId: "id" });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    for (const [, options] of fetcher.mock.calls) {
+      expect(options?.body).toBe(formData);
+      expect(new Headers(options?.headers).has("Content-Type")).toBe(false);
+    }
+    expect(new Headers(fetcher.mock.calls[1][1]?.headers).get("Authorization")).toBe("Bearer new");
+  });
+  it("download binary vẫn refresh và đọc ProblemDetail khi thất bại", async () => {
+    const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(response({}, 401)).mockResolvedValueOnce(new Response("xlsx", { headers: { "Content-Type": mime } }));
+    const refresh = vi.fn(async () => {});
+    const client = createApiClient({ baseUrl: "https://api.example.test", fetcher, getAccessToken: () => "token", refreshAccessToken: refresh });
+    const blob = await client.request<Blob>("/api/v1/question-imports/template", { responseType: "blob" });
+    expect(await blob.text()).toBe("xlsx"); expect(refresh).toHaveBeenCalledOnce();
+    const failed = setup(response(problem, 400));
+    await expect(failed.client.request("/api/v1/question-imports/template", { responseType: "blob" })).rejects.toMatchObject({ status: 400, problem });
+  });
+  it("không giao file của session cũ khi account đã đổi", async () => {
+    let generation = 0;
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => {
+      generation++; return new Response("xlsx", { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
+    });
+    const client = createApiClient({ baseUrl: "https://api.example.test", fetcher, getAuthGeneration: () => generation });
+    await expect(client.request("/api/v1/question-imports/template", { responseType: "blob" })).rejects.toMatchObject({ name: "AbortError" });
+  });
   it("cho phép query chứa URL đã encode mà không nới origin", async () => {
     const { client, fetcher } = setup();
     await client.request("/api/v1/questions?search=https%3A%2F%2Fexample.test");
