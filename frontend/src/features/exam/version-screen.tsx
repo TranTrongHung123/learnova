@@ -12,6 +12,7 @@ import { typeLabels, type QuestionSummary } from "@/features/question/types";
 import { control, Field, message, Modal, panel, QueryState } from "./shared";
 import { distributePoints, totalPoints, units } from "./points";
 import { QuestionPicker } from "./question-picker";
+import { MatrixGenerator } from "./matrix-generator";
 import { versionLabel, versionPath, type ExamQuestion, type VersionDetail } from "./types";
 
 export function VersionScreen({ examId, id, edit = false }: { examId: string; id: string; edit?: boolean }) {
@@ -26,7 +27,7 @@ function VersionEditor({ initial, editable }: { initial: VersionDetail; editable
   const [saved, setSaved] = useState(initial), [rows, setRows] = useState(initial.questions);
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [dialog, setDialog] = useState<"picker" | "publish" | "reload" | null>(null), [remote, setRemote] = useState<VersionDetail | null>(null);
+  const [dialog, setDialog] = useState<"picker" | "matrix" | "publish" | "reload" | null>(null), [remote, setRemote] = useState<VersionDetail | null>(null);
   const [distribution, setDistribution] = useState("10");
   const inFlight = useRef(false);
   const dirty = JSON.stringify(rows.map(q => [q.id, q.points])) !== JSON.stringify(saved.questions.map(q => [q.id, q.points]));
@@ -97,6 +98,8 @@ function VersionEditor({ initial, editable }: { initial: VersionDetail; editable
     {error && <div role="alert" className="space-y-3 text-danger"><p>{error}</p><Button variant="secondary" disabled={busy} onClick={() => void run(async () => { const current = await session.api.request<VersionDetail>(endpoint); setRemote(current); setDialog("reload"); })}>Tải bản máy chủ để đối chiếu</Button></div>}
     {canEdit && <div className={`${panel} space-y-4`}>
       <Button variant="secondary" disabled={busy} onClick={() => { setError(""); setDialog("picker"); }}>Thêm từ ngân hàng câu hỏi</Button>
+      <Button variant="secondary" disabled={busy || dirty} aria-describedby="matrix-save-hint" onClick={() => { setError(""); setDialog("matrix"); }}>Sinh đề theo ma trận</Button>
+      <p id="matrix-save-hint" className="text-sm text-muted-foreground">Lưu thay đổi bản nháp trước khi cấu hình ma trận. Câu được sinh sẽ được thêm vào cuối đề.</p>
       <form className="flex flex-wrap items-end gap-3" onSubmit={e => { e.preventDefault(); try { const points = distributePoints(distribution, rows.length); setRows(rows.map((q, i) => ({ ...q, points: points[i] }))); setFieldErrors({}); setError(""); } catch (cause) { failure(cause); } }}>
         <Field name="distribute" label="Tổng điểm muốn chia đều"><input className={control} id="distribute" inputMode="decimal" value={distribution} onChange={e => setDistribution(e.target.value)} disabled={busy} /></Field><Button variant="secondary" type="submit" disabled={busy || !rows.length}>Chia đều điểm</Button>
       </form><p className="text-sm text-muted-foreground">Phần dư được phân bổ theo thứ tự câu, chính xác tới 10 chữ số thập phân.</p>
@@ -114,6 +117,7 @@ function VersionEditor({ initial, editable }: { initial: VersionDetail; editable
     {canEdit && <div className="flex flex-wrap gap-3 pb-6"><Button variant="secondary" disabled={busy || !dirty} onClick={() => void run(async () => { await save(); setNotice("Đã lưu bản nháp."); })}>Lưu bản nháp</Button><Button disabled={busy || !rows.length} onClick={() => { setError(""); setDialog("publish"); }}>Xuất bản</Button></div>}
     {!canEdit && saved.status === "DRAFT" && <LinkButton href={versionPath(initial.examId, initial.id, true)}>Sửa bản nháp</LinkButton>}
     {dialog === "picker" && <QuestionPicker excluded={rows.map(q => q.sourceQuestionId)} add={selected => void add(selected)} close={() => setDialog(null)} busy={busy} error={error} />}
+    {dialog === "matrix" && <MatrixGenerator version={saved} close={() => setDialog(null)} accept={result => { accept(result); setDialog(null); setNotice("Đã tải bản nháp được lưu trên máy chủ. Kiểm tra câu hỏi và điểm trước khi xuất bản."); }} />}
     {dialog === "publish" && <Modal title={`Xuất bản phiên bản ${initial.versionNumber}?`} close={() => setDialog(null)} busy={busy}>
       <p className="mb-4">Sau khi xuất bản, nội dung phiên bản không thể sửa. Muốn thay đổi, hãy tạo bản nháp mới. Các thay đổi hiện tại sẽ được lưu trước khi xuất bản.</p><p className="mb-4">{rows.length} câu hỏi · {total} điểm</p>{error && <p role="alert" className="mb-4 text-danger">{error}</p>}<Button disabled={busy} onClick={() => void publish()}>{busy ? "Đang xuất bản…" : "Xác nhận xuất bản"}</Button>
     </Modal>}

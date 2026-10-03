@@ -46,6 +46,11 @@ public class QuestionService {
         return PageResponse.from(result.map(q -> new Summary(q.getId(), q.getType(), q.getStatus(),
                 q.getContent().substring(0, Math.min(240, q.getContent().length())), q.getDifficulty(), q.getCategory(), tags(q), q.getRevision(), q.getUpdatedAt())));
     }
+    public List<ExamCandidate> examCandidates(UUID actor, String category, Difficulty difficulty, QuestionType type) {
+        authorize(actor);
+        String normalized = category == null || category.isBlank() ? null : category.strip().toLowerCase(Locale.ROOT);
+        return repository.examCandidates(actor, normalized, difficulty, type);
+    }
     public Detail detail(UUID actor, UUID id) { return view(owned(actor, id, false)); }
     // Giữ khóa nguồn tới khi transaction tạo snapshot hoàn tất, tránh nội dung/lựa chọn lệch revision.
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)

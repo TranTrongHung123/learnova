@@ -90,23 +90,56 @@ public class ExamService {
     public VersionDetail add(UUID actor, UUID id, AddQuestions input) {
         var exam = versionOwner(actor, id, true);
         var version = lockedDraft(id, input.revision());
+        append(actor, version, input.questions());
+        version.touch(clock.instant()); exam.touch(clock.instant());
+        return view(exam, version);
+    }
+    @Transactional
+    public MatrixPreview previewMatrix(UUID actor, UUID id, MatrixRequest input) {
+        versionOwner(actor, id, true);
+        var version = lockedDraft(id, input.revision());
+        var allocation = allocate(actor, version, input, false);
+        return new MatrixPreview(version.getRevision(), allocation.complete(), allocation.availability());
+    }
+    @Transactional
+    public VersionDetail generate(UUID actor, UUID id, MatrixRequest input) {
+        var exam = versionOwner(actor, id, true);
+        var version = lockedDraft(id, input.revision());
+        var allocation = allocate(actor, version, input, true);
+        if (!allocation.complete()) {
+            throw new ExamFailure(409, "EXAM_MATRIX_INSUFFICIENT_CANDIDATES", List.of(),
+                    new MatrixPreview(version.getRevision(), false, allocation.availability()));
+        }
+        var selected = allocation.selected().stream().flatMap(List::stream).map(q -> new Source(q.id(), q.revision())).toList();
+        append(actor, version, selected);
+        version.touch(clock.instant()); exam.touch(clock.instant());
+        return view(exam, version);
+    }
+    private MatrixAllocator.Allocation allocate(UUID actor, ExamVersion version, MatrixRequest input, boolean randomize) {
+        long requested = input.rules().stream().mapToLong(MatrixRule::quantity).sum();
+        if (requested > 500) throw new ExamFailure(400, "VALIDATION_FAILED", List.of(
+                new ApiProblems.FieldError("rules", "Mỗi lần sinh tối đa 500 câu hỏi.")));
+        var excluded = version.getQuestions().stream().map(ExamVersionQuestion::getSourceQuestionId).collect(Collectors.toSet());
+        var pools = input.rules().stream().map(rule -> questions.examCandidates(actor, rule.category(), rule.difficulty(), rule.questionType())
+                .stream().filter(q -> !excluded.contains(q.id())).toList()).toList();
+        return MatrixAllocator.allocate(input.rules(), pools, randomize);
+    }
+    private void append(UUID actor, ExamVersion version, List<Source> sources) {
         var existing = version.getQuestions().stream().map(ExamVersionQuestion::getSourceQuestionId).collect(Collectors.toSet());
-        for (var source : input.questions()) {
+        for (var source : sources) {
             if (!existing.add(source.questionId())) throw new ExamFailure(400, "EXAM_DUPLICATE_QUESTION");
         }
         // Khóa nguồn theo UUID để hai Exam thêm cùng lô câu không deadlock.
         var snapshots = new HashMap<UUID, QuestionDtos.Detail>();
-        input.questions().stream().sorted(Comparator.comparing(Source::questionId)).forEach(source ->
+        sources.stream().sorted(Comparator.comparing(Source::questionId)).forEach(source ->
                 snapshots.put(source.questionId(), questions.copyActiveForExam(actor, source.questionId(), source.revision())));
-        for (var source : input.questions()) {
+        for (var source : sources) {
             var q = snapshots.get(source.questionId());
             var snapshot = new Snapshot(q.type(), q.content(), q.explanation(), q.difficulty(), q.category(), List.copyOf(q.tags()),
                     q.options().stream().map(o -> new SnapshotOption(UUID.randomUUID(), o.content(), o.correct())).toList(),
                     q.correctBoolean(), q.correctValue(), q.tolerance());
             version.add(new ExamVersionQuestion(version, q.id(), q.revision(), version.getQuestions().size(), BigDecimal.ONE, snapshot));
         }
-        version.touch(clock.instant()); exam.touch(clock.instant());
-        return view(exam, version);
     }
     @Transactional
     public VersionDetail save(UUID actor, UUID id, SaveQuestions input) {

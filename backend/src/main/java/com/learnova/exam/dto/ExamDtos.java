@@ -17,6 +17,19 @@ public final class ExamDtos {
     public record CreateExam(@NotBlank @Size(max = 200) String name, @Size(max = 5000) String description) implements StrictInput {}
     public record NewVersion(UUID baseVersionId) implements StrictInput {}
     public record Revision(@NotNull @PositiveOrZero Long revision) implements StrictInput {}
+    public record MatrixRule(@Size(max = 100) String category, Difficulty difficulty, QuestionType questionType,
+            @NotNull @Positive @Max(500) @tools.jackson.databind.annotation.JsonDeserialize(using = MatrixQuantityReader.class) Integer quantity) implements StrictInput {}
+    public static final class MatrixQuantityReader extends tools.jackson.databind.ValueDeserializer<Integer> {
+        @Override public Integer deserialize(tools.jackson.core.JsonParser parser, tools.jackson.databind.DeserializationContext context) {
+            // Không để Jackson cắt phần thập phân và âm thầm sinh ít câu hơn yêu cầu.
+            if (!parser.hasToken(tools.jackson.core.JsonToken.VALUE_NUMBER_INT)) return context.reportInputMismatch(Integer.class, "Quantity must be a JSON integer");
+            return parser.getIntValue();
+        }
+    }
+    public record MatrixRequest(@NotNull @PositiveOrZero Long revision,
+            @NotEmpty @Size(max = 50) List<@NotNull @Valid MatrixRule> rules) implements StrictInput {}
+    public record RuleAvailability(int ruleIndex, int requested, int candidateCount, int allocatedCount, int missingCount) {}
+    public record MatrixPreview(long revision, boolean canGenerate, List<RuleAvailability> rules) {}
     public record Source(@NotNull UUID questionId, @NotNull @PositiveOrZero Long revision) implements StrictInput {}
     public record AddQuestions(@NotNull @PositiveOrZero Long revision,
             @NotEmpty List<@NotNull @Valid Source> questions) implements StrictInput {}
