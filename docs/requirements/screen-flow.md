@@ -1838,6 +1838,13 @@ Danh sách xếp dọc để giữ action, nội dung và lỗi dễ đọc trê
 
 # 18. Exam Screens
 
+F09 đã triển khai toàn bộ luồng biên soạn thủ công và versioning bên dưới. Generate by Rule
+thuộc F10, chưa có nút hoạt động trong F09. Related Sessions hiển thị chưa khả dụng tới F11,
+không giả lập số lượng hoặc danh sách kỳ thi.
+
+Danh sách mặc định ACTIVE, tìm theo tên, phân trang 20 dòng, sắp xếp cập nhật mới nhất.
+Latest Version là version number cao nhất, không nhất thiết là Published mới nhất.
+
 # 18.1. Exam List
 
 **Route**
@@ -1981,6 +1988,23 @@ Edit Published Version
 ---
 
 # 18.4. Exam Builder
+
+F09 có route xem `/creator/exams/[examId]/versions/[versionId]`. Route edit chỉ sửa Draft;
+vào edit của Published chuyển sang route xem. Kiểm tra version thuộc Exam của route.
+
+Builder hiển thị đầy đủ snapshot, đáp án và explanation cho Creator sở hữu. Reorder dùng
+nút Lên/Xuống hỗ trợ keyboard. Points mỗi câu lớn hơn 0, mặc định 1 khi thêm; nút chia đều
+giữ tổng chính xác bằng cách phân bổ phần dư theo thứ tự câu tới 10 chữ số thập phân.
+
+Chỉ báo đã lưu khi server xác nhận. Trạng thái gồm chưa lưu, đang xử lý, đã lưu và lỗi;
+giữ input khi lỗi mạng hoặc 409, có dialog tải bản server để đối chiếu rồi chủ động thay thế.
+Link điều hướng ra khỏi trang và đóng/reload tab có cảnh báo khi còn thay đổi chưa lưu.
+Thêm đã chọn lưu các thay đổi Draft đang chờ trước rồi gửi lô source ID/revision; snapshot
+trả từ API được dùng để preview. Chọn nhiều câu qua các trang, câu đã có không chọn lại.
+
+Publish xác nhận tính bất biến, lưu thay đổi thành công trước khi gửi lệnh. Mất response
+publish thì đọc lại version; thành công trở về Exam Detail. Published không có control sửa.
+Exam archived vẫn cho phép biên soạn và publish, kèm thông báo không dùng tạo kỳ thi mới.
 
 **Route**
 

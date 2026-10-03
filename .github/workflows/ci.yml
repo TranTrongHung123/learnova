@@ -103,7 +103,11 @@ jobs:
         working-directory: frontend
         run: npm run test:import
 
-      - name: Build
+      - name: Exam Builder browser integration with PostgreSQL and Redis
+        working-directory: frontend
+        run: npm run test:exam
+
+      - name: Build frontend
         working-directory: frontend
         run: npm run build
 

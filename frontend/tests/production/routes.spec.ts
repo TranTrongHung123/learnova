@@ -13,6 +13,8 @@ test("production không cung cấp preview hoặc fixture", async ({
   for (const route of [
     "/participant",
     "/creator",
+    "/creator/exams",
+    "/creator/exams/new",
     "/admin",
     "/profile",
     "/notifications",
