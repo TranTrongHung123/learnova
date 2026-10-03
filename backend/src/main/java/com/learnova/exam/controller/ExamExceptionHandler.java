@@ -18,6 +18,7 @@ class ExamExceptionHandler {
     ResponseEntity<?> failure(ExamFailure ex, HttpServletRequest request) {
         var problem = problems.create(HttpStatusCode.valueOf(ex.status), request.getRequestURI());
         problem.setProperty("code", ex.code); problem.setProperty("fieldErrors", ex.fields);
+        if (ex.availability != null) problem.setProperty("availability", ex.availability);
         return ResponseEntity.status(ex.status).body(problem);
     }
     @ExceptionHandler(QuestionFailure.class)

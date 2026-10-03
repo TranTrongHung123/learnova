@@ -99,3 +99,104 @@ test("foreign Creator sees not-found and Participant cannot access builder", asy
   const participant = await account(request, ["PARTICIPANT"]);
   expect((await request.get(`${api}/exam-versions/${seed.v.id}`, { headers: participant.headers })).status()).toBe(403);
 });
+
+test("matrix preview handles overlap, supports keyboard and responsive layout, then appends reviewable snapshots", async ({ page, request }) => {
+  const owner = await account(request), seed = await seeded(request, owner.headers);
+  await source(request, owner.headers, "Câu đúng sai theo ma trận");
+  expect((await request.post(`${api}/questions`, { headers: owner.headers, data: { type: "NUMERIC_ANSWER", status: "ACTIVE", content: "Câu số theo ma trận", correctValue: "2", tolerance: "0" } })).status()).toBe(201);
+  await login(page, owner.email, seed.path);
+  const open = page.getByRole("button", { name: "Sinh đề theo ma trận", exact: true });
+  await page.getByLabel("Điểm câu 1", { exact: true }).fill("2"); await expect(open).toBeDisabled();
+  await page.getByRole("button", { name: "Lưu bản nháp", exact: true }).click(); await expect(open).toBeEnabled();
+  await open.click(); await page.keyboard.press("Escape"); await expect(open).toBeFocused(); await open.click();
+  const dialog = page.getByRole("dialog", { name: "Sinh đề theo ma trận" });
+  await dialog.getByLabel("Số lượng dòng 1").fill("1.5");
+  await dialog.getByRole("button", { name: "Kiểm tra số lượng" }).click();
+  await expect(dialog.getByRole("alert")).toBeFocused();
+  await expect(dialog.getByLabel("Số lượng dòng 1")).toHaveAttribute("aria-invalid", "true");
+  await dialog.getByLabel("Số lượng dòng 1").fill("1");
+  await dialog.getByRole("button", { name: "Thêm dòng" }).click();
+  await dialog.getByLabel("Loại câu dòng 2").selectOption("TRUE_FALSE");
+  await dialog.getByRole("button", { name: "Kiểm tra số lượng" }).click();
+  await expect(dialog.getByRole("status")).toHaveText("Đủ câu hỏi cho toàn ma trận");
+  await expect(dialog).toContainText("Dòng 2: yêu cầu 1 · Phù hợp 1 · Phân bổ 1 · Thiếu 0");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [375, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await page.screenshot({ path: `test-results/exam/matrix-${width}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 812, height: 375 });
+  await dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" }).scrollIntoViewIfNeeded();
+  await expect(dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" })).toBeInViewport();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.evaluate(() => { document.body.style.zoom = "2"; });
+  expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.evaluate(() => { document.body.style.zoom = "1"; });
+  await dialog.getByLabel("Số lượng dòng 2").fill("2");
+  await expect(dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" })).toBeDisabled();
+  await dialog.getByLabel("Số lượng dòng 2").fill("1");
+  await dialog.getByRole("button", { name: "Kiểm tra số lượng" }).click();
+  await dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByLabel("Điểm câu 1", { exact: true })).toHaveValue("2");
+  await expect(page.getByLabel("Điểm câu 3", { exact: true })).toHaveValue("1");
+  const generated: VersionDetail = await (await request.get(`${api}/exam-versions/${seed.v.id}`, { headers: owner.headers })).json();
+  expect(generated.questions.map(q => q.snapshot.type)).toEqual(["TRUE_FALSE", "NUMERIC_ANSWER", "TRUE_FALSE"]);
+  expect(new Set(generated.questions.map(q => q.sourceQuestionId)).size).toBe(3);
+  await page.getByLabel("Điểm câu 2", { exact: true }).fill("3");
+  await page.getByRole("button", { name: "Lưu bản nháp", exact: true }).click();
+  await page.getByRole("button", { name: "Xuất bản", exact: true }).click();
+  await page.getByRole("button", { name: "Xác nhận xuất bản" }).click();
+  await expect(page).toHaveURL(`/creator/exams/${seed.exam.id}`);
+});
+
+test("matrix shortage and changed bank leave Draft unchanged and retain rule input", async ({ page, request }) => {
+  const owner = await account(request), seed = await seeded(request, owner.headers);
+  const candidate = await source(request, owner.headers, "Câu có thể bị lưu trữ");
+  const before = await (await request.get(`${api}/exam-versions/${seed.v.id}`, { headers: owner.headers })).json();
+  await login(page, owner.email, seed.path); await page.getByRole("button", { name: "Sinh đề theo ma trận", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Số lượng dòng 1").fill("2"); await dialog.getByRole("button", { name: "Kiểm tra số lượng" }).click();
+  await expect(dialog.getByRole("status")).toHaveText("Chưa đủ câu hỏi cho toàn ma trận");
+  await expect(dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" })).toBeDisabled();
+  await dialog.getByLabel("Số lượng dòng 1").fill("1"); await dialog.getByRole("button", { name: "Kiểm tra số lượng" }).click();
+  await expect(dialog.getByRole("status")).toHaveText("Đủ câu hỏi cho toàn ma trận");
+  expect((await request.post(`${api}/questions/${candidate.id}/archive`, { headers: owner.headers, data: { revision: candidate.revision } })).status()).toBe(200);
+  await dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("Bản nháp chưa bị thay đổi");
+  await expect(dialog.getByLabel("Số lượng dòng 1")).toHaveValue("1");
+  await expect(dialog).toContainText("Phân bổ 0 · Thiếu 1");
+  expect(await (await request.get(`${api}/exam-versions/${seed.v.id}`, { headers: owner.headers })).json()).toEqual(before);
+});
+
+test("lost generation response reconciles without generating twice", async ({ page, request }) => {
+  const owner = await account(request), seed = await seeded(request, owner.headers);
+  await source(request, owner.headers, "Câu sinh đúng một lần");
+  await login(page, owner.email, seed.path); await page.getByRole("button", { name: "Sinh đề theo ma trận", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Kiểm tra số lượng" }).click();
+  let generates = 0;
+  await page.route(`**/exam-versions/${seed.v.id}/generation`, async route => { generates++; await route.fetch(); await route.abort(); });
+  await dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("Chưa xác nhận được kết quả");
+  await expect(dialog).toContainText("2 câu · 2 điểm");
+  await expect(dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" })).toBeDisabled();
+  await dialog.getByRole("button", { name: "Dùng bản máy chủ và quay lại Builder" }).click();
+  await expect(page.getByLabel("Điểm câu 2", { exact: true })).toHaveValue("1"); expect(generates).toBe(1);
+});
+
+test("matrix stale revision preserves server changes and requires reconciliation", async ({ page, request }) => {
+  const owner = await account(request), seed = await seeded(request, owner.headers);
+  await source(request, owner.headers, "Candidate");
+  await login(page, owner.email, seed.path); await page.getByRole("button", { name: "Sinh đề theo ma trận", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Kiểm tra số lượng" }).click();
+  await expect(dialog.getByRole("status")).toHaveText("Đủ câu hỏi cho toàn ma trận");
+  expect((await request.put(`${api}/exam-versions/${seed.v.id}/questions`, { headers: owner.headers, data: { revision: seed.v.revision, questions: [{ id: seed.v.questions[0].id, points: "7" }] } })).status()).toBe(200);
+  await dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" }).click();
+  await expect(dialog).toContainText("1 câu · 7 điểm");
+  await expect(dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" })).toBeDisabled();
+  await dialog.getByRole("button", { name: "Dùng bản máy chủ và quay lại Builder" }).click();
+  await expect(page.getByLabel("Điểm câu 1", { exact: true })).toHaveValue("7");
+});

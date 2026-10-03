@@ -7,6 +7,7 @@ export type ApiProblem = {
   instance: string;
   code: string;
   fieldErrors: FieldError[];
+  availability?: unknown;
 };
 export type PageResponse<T> = {
   content: T[];

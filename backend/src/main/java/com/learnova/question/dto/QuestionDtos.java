@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public final class QuestionDtos {
     private QuestionDtos() {}
+    public record ExamCandidate(UUID id, long revision) {}
     public record Option(String content, boolean correct) {
         @JsonAnySetter public void unknown(String name, Object value) { throw new IllegalArgumentException("Unknown option field"); }
     }
