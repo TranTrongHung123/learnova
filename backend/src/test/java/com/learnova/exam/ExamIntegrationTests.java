@@ -169,10 +169,124 @@ class ExamIntegrationTests {
         org.flywaydb.core.Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load().migrate();
         assertThat(jdbc.queryForObject("select content from " + schema + ".questions where id=?", String.class, question)).isEqualTo("Old");
     }
+    @Test void matrixFiltersExcludeForeignInactiveAndExistingSourcesAndPreserveSnapshots() {
+        var owner = user("CREATOR"); var v = populated(owner); var foreign = user("CREATOR");
+        questions.create(foreign.id(), input(QuestionType.TRUE_FALSE, null, "Foreign"));
+        var archived = questions.create(owner.id(), input(QuestionType.TRUE_FALSE, null, "Archived"));
+        questions.archive(owner.id(), archived.id(), archived.revision());
+        questions.create(owner.id(), new QuestionDtos.WriteQuestion(QuestionType.TRUE_FALSE, QuestionStatus.DRAFT, "Draft", null, Difficulty.EASY, "Math", List.of(), List.of(), true, null, "0", null));
+        var tf = questions.create(owner.id(), input(QuestionType.TRUE_FALSE, null, "Selected"));
+        var num = questions.create(owner.id(), input(QuestionType.NUMERIC_ANSWER, null, "Numeric"));
+        var matrix = new MatrixRequest(v.revision(), List.of(new MatrixRule(" mAtH ", Difficulty.EASY, null, 1), new MatrixRule(null, null, QuestionType.TRUE_FALSE, 1)));
+        var preview = service.previewMatrix(owner.id(), v.id(), matrix);
+        assertThat(preview.canGenerate()).isTrue();
+        assertThat(preview.rules()).extracting(RuleAvailability::candidateCount).containsExactly(2, 1);
+        assertThat(service.version(owner.id(), v.id())).isEqualTo(v);
+        var generated = service.generate(owner.id(), v.id(), matrix);
+        assertThat(generated.questions()).hasSize(3);
+        assertThat(generated.questions().getFirst()).isEqualTo(v.questions().getFirst());
+        assertThat(generated.questions().get(1).sourceQuestionId()).isEqualTo(num.id());
+        assertThat(generated.questions().get(2).sourceQuestionId()).isEqualTo(tf.id());
+        assertThat(generated.totalScore()).isEqualTo("3");
+        assertThat(generated.revision()).isEqualTo(v.revision() + 1);
+        questions.update(owner.id(), tf.id(), input(tf.type(), tf.revision(), "Changed"));
+        questions.archive(owner.id(), num.id(), num.revision());
+        assertThat(service.publish(owner.id(), v.id(), generated.revision()).questions()).isEqualTo(generated.questions());
+    }
+    @Test void insufficientOverlappingMatrixReturnsStructuredShortfallAndDoesNotWriteAnything() throws Exception {
+        var owner = user("CREATOR"); var v = populated(owner);
+        questions.create(owner.id(), input(QuestionType.TRUE_FALSE, null, "Only candidate"));
+        var matrix = new MatrixRequest(v.revision(), List.of(new MatrixRule(null, null, null, 1), new MatrixRule(null, null, null, 1)));
+        var beforeExam = service.detail(owner.id(), v.examId());
+        var preview = service.previewMatrix(owner.id(), v.id(), matrix);
+        assertThat(preview.canGenerate()).isFalse();
+        assertThat(preview.rules()).extracting(RuleAvailability::allocatedCount).containsExactly(1, 0);
+        mvc.perform(post("/api/v1/exam-versions/" + v.id() + "/generation").with(as(owner)).contentType("application/json").content(mapper.writeValueAsString(matrix)))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXAM_MATRIX_INSUFFICIENT_CANDIDATES"))
+                .andExpect(jsonPath("$.availability.rules[1].missingCount").value(1))
+                .andExpect(jsonPath("$.availability.rules[1].candidateCount").value(1));
+        assertThat(service.version(owner.id(), v.id())).isEqualTo(v);
+        assertThat(service.detail(owner.id(), v.examId())).isEqualTo(beforeExam);
+    }
+    @Test void matrixHttpAuthorizationValidationAndPublishedGuards() throws Exception {
+        var owner = user("CREATOR"); var v = populated(owner); var other = user("CREATOR"); var participant = user("PARTICIPANT");
+        var admin = user("PARTICIPANT");
+        jdbc.update("delete from user_roles where user_id=?", admin.id());
+        jdbc.update("insert into user_roles(user_id,role) values (?,'ADMIN')", admin.id());
+        var request = new MatrixRequest(v.revision(), List.of(new MatrixRule(null, null, null, 1)));
+        String json = mapper.writeValueAsString(request);
+        for (String suffix : List.of("/generation", "/generation/preview")) {
+            String path = "/api/v1/exam-versions/" + v.id() + suffix;
+            mvc.perform(post(path).contentType("application/json").content(json)).andExpect(status().isUnauthorized());
+            mvc.perform(post(path).with(as(other)).contentType("application/json").content(json)).andExpect(status().isNotFound());
+            for (var forbidden : List.of(participant, admin)) mvc.perform(post(path).with(as(forbidden)).contentType("application/json").content(json)).andExpect(status().isForbidden());
+            for (String invalid : List.of("{\"revision\":1,\"rules\":[]}", "{\"revision\":1,\"rules\":[null]}",
+                    "{\"revision\":1,\"rules\":[{\"quantity\":0}]}", "{\"revision\":1,\"rules\":[{\"quantity\":1,\"ownerId\":\"bad\"}]}",
+                    "{\"revision\":1,\"rules\":[{\"quantity\":1.5}]}", "{\"revision\":1,\"rules\":[{\"quantity\":\"1\"}]}",
+                    "{\"revision\":1,\"rules\":[{\"quantity\":501}]}", "{\"revision\":1,\"rules\":[{\"quantity\":300},{\"quantity\":300}]}"))
+                mvc.perform(post(path).with(as(owner)).contentType("application/json").content(invalid)).andExpect(status().isBadRequest());
+        }
+        service.publish(owner.id(), v.id(), v.revision());
+        for (String suffix : List.of("/generation", "/generation/preview")) mvc.perform(post("/api/v1/exam-versions/" + v.id() + suffix).with(as(owner)).contentType("application/json").content(json))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("EXAM_VERSION_IMMUTABLE"));
+    }
+    @Test void generateRacingGenerateSaveOrPublishHasOnlyOneWinner() throws Exception {
+        for (String competitor : List.of("generate", "save", "publish")) {
+            var owner = user("CREATOR"); var v = populated(owner);
+            questions.create(owner.id(), input(QuestionType.TRUE_FALSE, null, "Candidate"));
+            var matrix = new MatrixRequest(v.revision(), List.of(new MatrixRule(null, null, null, 1)));
+            var result = concurrently(() -> attempt(() -> service.generate(owner.id(), v.id(), matrix)), () -> attempt(() -> {
+                switch (competitor) {
+                    case "generate" -> service.generate(owner.id(), v.id(), matrix);
+                    case "save" -> service.save(owner.id(), v.id(), new SaveQuestions(v.revision(), List.of(new QuestionEdit(v.questions().getFirst().id(), "2"))));
+                    default -> service.publish(owner.id(), v.id(), v.revision());
+                }
+            }));
+            assertThat(result.stream().filter("OK"::equals).count()).isEqualTo(1);
+            var after = service.version(owner.id(), v.id());
+            assertThat(after.revision()).isEqualTo(v.revision() + 1);
+            assertThat(after.questions()).extracting(QuestionView::sourceQuestionId).doesNotHaveDuplicates();
+            assertThat(after.questions().size()).isBetween(1, 2);
+        }
+    }
+    @Test void sourceChangedWhileGenerateWaitsOnItsLockRollsBackEverySnapshot() throws Exception {
+        for (boolean archive : List.of(false, true)) {
+            var owner = user("CREATOR"); var v = populated(owner);
+            var q = questions.create(owner.id(), input(QuestionType.TRUE_FALSE, null, "Candidate"));
+            questions.create(owner.id(), input(QuestionType.NUMERIC_ANSWER, null, "Second"));
+            var matrix = new MatrixRequest(v.revision(), List.of(new MatrixRule(null, null, null, 2)));
+            var beforeExam = service.detail(owner.id(), v.examId());
+            try (var connection = dataSource.getConnection(); var pool = Executors.newVirtualThreadPerTaskExecutor()) {
+                connection.setAutoCommit(false);
+                int blocker;
+                try (var statement = connection.createStatement(); var rows = statement.executeQuery("select pg_backend_pid()")) { rows.next(); blocker = rows.getInt(1); }
+                try (var statement = connection.prepareStatement("select id from questions where id=? for update")) { statement.setObject(1, q.id()); statement.executeQuery().close(); }
+                var generating = pool.submit(() -> service.generate(owner.id(), v.id(), matrix));
+                try {
+                    long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+                    boolean waiting = false;
+                    while (System.nanoTime() < until) {
+                        waiting = Boolean.TRUE.equals(jdbc.queryForObject("select exists(select 1 from pg_stat_activity where ? = any(pg_blocking_pids(pid)))", Boolean.class, blocker));
+                        if (waiting) break;
+                        Thread.sleep(20);
+                    }
+                    assertThat(waiting).as("generate must reach the locked source before it changes").isTrue();
+                    try (var statement = connection.prepareStatement(archive
+                            ? "update questions set status='ARCHIVED',revision=revision+1 where id=?"
+                            : "update questions set category='Changed',revision=revision+1 where id=?")) { statement.setObject(1, q.id()); statement.executeUpdate(); }
+                } finally { connection.commit(); }
+                assertThatThrownBy(() -> generating.get(10, TimeUnit.SECONDS)).isInstanceOf(ExecutionException.class).hasCauseInstanceOf(QuestionFailure.class);
+            }
+            assertThat(service.version(owner.id(), v.id())).isEqualTo(v);
+            assertThat(service.detail(owner.id(), v.examId())).isEqualTo(beforeExam);
+        }
+    }
     private VersionDetail populated(AuthDtos.UserSummary owner) {
         var e = service.create(owner.id(), new CreateExam("Exam", null));
         var q = questions.create(owner.id(), input(QuestionType.SINGLE_CHOICE, null, "Original"));
-        return service.add(owner.id(), e.versions().getFirst().id(), new AddQuestions(0L, List.of(new Source(q.id(), q.revision()))));
+        var added = service.add(owner.id(), e.versions().getFirst().id(), new AddQuestions(0L, List.of(new Source(q.id(), q.revision()))));
+        // Đối chiếu trạng thái persisted với độ chính xác timestamp của PostgreSQL.
+        return service.version(owner.id(), added.id());
     }
     private QuestionDtos.WriteQuestion input(QuestionType type, Long revision, String content) {
         boolean choice = type == QuestionType.SINGLE_CHOICE || type == QuestionType.MULTIPLE_CHOICE;

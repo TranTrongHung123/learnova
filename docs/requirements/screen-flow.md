@@ -1838,8 +1838,8 @@ Danh sách xếp dọc để giữ action, nội dung và lỗi dễ đọc trê
 
 # 18. Exam Screens
 
-F09 đã triển khai toàn bộ luồng biên soạn thủ công và versioning bên dưới. Generate by Rule
-thuộc F10, chưa có nút hoạt động trong F09. Related Sessions hiển thị chưa khả dụng tới F11,
+F09 đã triển khai toàn bộ luồng biên soạn thủ công và versioning bên dưới. F10 bổ sung Generate by Rule
+với preview và sinh câu vào Draft qua API thật. Related Sessions hiển thị chưa khả dụng tới F11,
 không giả lập số lượng hoặc danh sách kỳ thi.
 
 Danh sách mặc định ACTIVE, tìm theo tên, phân trang 20 dòng, sắp xếp cập nhật mới nhất.
@@ -2086,7 +2086,8 @@ Add Selected
 
 # 18.6. Generate Questions by Rule
 
-Có thể dùng Dialog hoặc Step panel trong Exam Builder.
+F10 dùng dialog **Sinh đề theo ma trận** trong Exam Builder của Creator.
+Chỉ mở khi Draft đã lưu; nút disabled kèm hướng dẫn lưu nếu còn sửa đổi local. Published chỉ đọc.
 
 Rule rows:
 
@@ -2119,6 +2120,24 @@ Available: 6
 ```
 
 Không tạo âm thầm đề thiếu.
+
+Chi tiết giao diện F10:
+
+- Cho thêm/xóa rule, tối đa 50 dòng và tổng 500 câu. Category / Topic dùng category hiện có;
+  các filter bỏ trống nghĩa là tất cả. Quantity là số nguyên dương.
+- **Kiểm tra số lượng** gọi `POST /exam-versions/{id}/generation/preview` với revision đã lưu.
+  Mỗi dòng hiện yêu cầu, số phù hợp riêng, số phân bổ không trùng và số thiếu. Khi thiếu, ưu tiên
+  các dòng trước; số phù hợp của từng dòng không đảm bảo đủ cho toàn ma trận.
+- Sửa rule hủy preview. **Sinh và thêm vào bản nháp** chỉ bật sau preview đủ; gọi
+  `POST /exam-versions/{id}/generation`, backend vẫn kiểm tra lại trạng thái và nguồn.
+- Thành công đóng dialog, tải response vào Builder; câu mới thêm ở cuối, 1 điểm/câu.
+  Creator review, chỉnh điểm/thứ tự/bỏ câu rồi publish bằng luồng riêng.
+- Thiếu câu giữ ma trận, hiển thị thống kê mới và xác nhận Draft chưa đổi. Preview không giữ chỗ.
+- Loading chặn gửi trùng và đóng dialog; lỗi validation có summary nhận focus và lỗi gần field.
+  Dialog hỗ trợ Escape/focus return, layout một cột trên mobile và hai cột khi đủ chỗ.
+- Mất response generate hoặc conflict: chặn sinh lại, đọc server để đối chiếu revision/số câu/điểm;
+  người dùng chọn **Dùng bản máy chủ và quay lại Builder** để xem nội dung trước khi sinh thêm.
+  Nếu đọc thất bại có **Đọc lại bản máy chủ**; không tự gửi lại generate.
 
 ---
 

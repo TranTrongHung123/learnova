@@ -1221,6 +1221,21 @@ Flow:
 6. Đưa kết quả vào Draft Version.
 7. Creator được review trước khi publish.
 
+Chi tiết F10:
+
+- Lưu các sửa đổi Builder trước khi mở ma trận; preview không tự lưu Draft.
+- Category / Topic dùng category của Question Bank, trim và so khớp chính xác không phân biệt hoa thường.
+  Các tiêu chí trong rule kết hợp AND; bỏ trống filter nghĩa là tất cả. Quantity là số nguyên 1–500;
+  giới hạn 50 rule và tổng 500 câu mỗi lần. Ma trận không được lưu làm template.
+- Chỉ lấy ACTIVE của owner, loại câu đã có. Preview trả requested/candidateCount/allocatedCount/missingCount
+  theo rule; allocatedCount xét điều kiện giao nhau trên toàn ma trận và ưu tiên rule trước khi thiếu.
+- Generate kiểm tra lại DRAFT/revision và nguồn, chọn ngẫu nhiên không trùng, append theo thứ tự rule,
+  snapshot ngay và gán 1 điểm. Câu và điểm đã có không thay đổi. Không tự publish.
+- Thiếu câu trả `EXAM_MATRIX_INSUFFICIENT_CANDIDATES` cùng thống kê; mọi thay đổi rollback.
+  Nguồn đổi trong lúc sinh trả conflict; Creator kiểm tra lại. Preview không giữ chỗ candidate.
+- Hai tab hoặc gửi trùng cùng revision chỉ có một mutation thành công. Mất response phải đối chiếu
+  bản server trước khi tiếp tục; không tự gửi lại với revision mới.
+
 ---
 
 ## UC-EXAM-09 - Publish Exam Version

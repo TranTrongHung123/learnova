@@ -38,6 +38,74 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/exam-versions/{id}/generation/preview:
+    post:
+      tags: [Exams]
+      operationId: previewExamMatrix
+      summary: Check whole-matrix candidate availability without changing the Draft
+      description: |
+        ACTIVE CREATOR owner only; bearer authentication, no CSRF header. Locks Exam then Version,
+        checks DRAFT and revision, and excludes source IDs already in the Draft. Only ACTIVE owned
+        questions qualify. Maximum matching prevents false shortages from intersecting rules.
+        candidateCount counts each rule independently; allocatedCount accounts for all other rules.
+        Earlier rules take priority when insufficient. Preview does not reserve candidates, save the
+        matrix or change revision/timestamps. Generate must recheck. Archived Exams remain editable.
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ExamMatrixRequest'}
+      responses:
+        '200':
+          description: Availability at the time of reading; may report canGenerate false.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ExamMatrixPreview'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/ExamMatrixForbidden'}
+        '404': {$ref: '#/components/responses/ExamMatrixNotFound'}
+        '409': {$ref: '#/components/responses/ExamMatrixConflict'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+  /api/v1/exam-versions/{id}/generation:
+    post:
+      tags: [Exams]
+      operationId: generateExamMatrix
+      summary: Append a complete random allocation as immutable question snapshots
+      description: |
+        Same authorization and candidate rules as preview. Locks Exam, Version, then selected sources
+        in UUID order. Checks revision, source state and source revision before snapshotting. Randomizes
+        candidate traversal before maximum matching; does not promise uniform sampling over all feasible
+        allocations. Appends by rule order, preserving existing questions/points and assigning 1 point
+        per new question. Increments Draft revision once. No partial write on any failure.
+        EXAM_MATRIX_INSUFFICIENT_CANDIDATES includes availability; Draft and Exam remain unchanged.
+        Source changes after candidate lookup return QUESTION_REVISION_CONFLICT / QUESTION_STATE_CONFLICT.
+        A repeated successful command with its original revision returns EXAM_REVISION_CONFLICT.
+        After uncertain response, read and review the Draft before issuing a new command. No automatic
+        retry with a refreshed revision. Review/edit the generated Draft before publishing separately.
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ExamMatrixRequest'}
+      responses:
+        '200':
+          description: Authoritative saved Draft including appended snapshots.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ExamVersionDetail'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/ExamMatrixForbidden'}
+        '404': {$ref: '#/components/responses/ExamMatrixNotFound'}
+        '409': {$ref: '#/components/responses/ExamMatrixConflict'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
   /api/v1/exams:
     get:
       tags:
@@ -2507,6 +2575,23 @@ components:
         default: 20
 
   responses:
+    ExamMatrixForbidden:
+      description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED. ADMIN alone is not a CREATOR.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    ExamMatrixNotFound:
+      description: EXAM_NOT_FOUND / EXAM_VERSION_NOT_FOUND / QUESTION_NOT_FOUND; foreign resources return 404.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    ExamMatrixConflict:
+      description: |
+        EXAM_REVISION_CONFLICT, EXAM_VERSION_IMMUTABLE, QUESTION_REVISION_CONFLICT, QUESTION_STATE_CONFLICT,
+        or EXAM_MATRIX_INSUFFICIENT_CANDIDATES. Only insufficient candidates includes availability.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ExamMatrixProblem'}
     QuestionImportPreview:
       description: Authoritative batch state and paginated preview, including imported/skipped counts after confirmation.
       content:
@@ -2618,6 +2703,62 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    ExamMatrixRule:
+      type: object
+      additionalProperties: false
+      required: [quantity]
+      properties:
+        category:
+          type: [string, 'null']
+          maxLength: 100
+          description: Category / Topic uses existing Question category. Trimmed, case-insensitive exact match; blank/null/omitted means all.
+        difficulty:
+          type: [string, 'null']
+          enum: [EASY, MEDIUM, HARD, null]
+        questionType:
+          type: [string, 'null']
+          enum: [SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, NUMERIC_ANSWER, null]
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 500
+          description: JSON integer token only; fractional numbers and numeric strings are rejected.
+      description: Conditions are ANDed within a rule. Missing/null filters mean all. Repeated and intersecting rules are allowed.
+    ExamMatrixRequest:
+      type: object
+      additionalProperties: false
+      required: [revision, rules]
+      properties:
+        revision: {type: integer, format: int64, minimum: 0}
+        rules:
+          type: array
+          minItems: 1
+          maxItems: 50
+          description: Sum of quantities must not exceed 500 per command.
+          items: {$ref: '#/components/schemas/ExamMatrixRule'}
+    ExamMatrixPreview:
+      type: object
+      required: [revision, canGenerate, rules]
+      properties:
+        revision: {type: integer, format: int64, minimum: 0}
+        canGenerate: {type: boolean}
+        rules:
+          type: array
+          items:
+            type: object
+            required: [ruleIndex, requested, candidateCount, allocatedCount, missingCount]
+            properties:
+              ruleIndex: {type: integer, minimum: 0, description: Zero-based request rule index.}
+              requested: {type: integer, minimum: 1}
+              candidateCount: {type: integer, minimum: 0}
+              allocatedCount: {type: integer, minimum: 0}
+              missingCount: {type: integer, minimum: 0}
+    ExamMatrixProblem:
+      allOf:
+        - {$ref: '#/components/schemas/ApiProblem'}
+        - type: object
+          properties:
+            availability: {$ref: '#/components/schemas/ExamMatrixPreview'}
     ExamStatus:
       type: string
       enum:

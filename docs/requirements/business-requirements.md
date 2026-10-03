@@ -782,6 +782,19 @@ Nếu Question Bank không đủ Question phù hợp:
 
 Creator được review kết quả trước publish.
 
+Quyết định F10:
+
+- Category / Topic dùng trường category hiện có, so khớp chính xác sau trim, không phân biệt hoa thường.
+  Category, difficulty và questionType kết hợp AND; bỏ trống tiêu chí nghĩa là không giới hạn.
+- Chỉ chọn câu ACTIVE thuộc Creator, không trùng câu đã có trong Draft hoặc giữa các rule.
+  Rule giao nhau phải được xét trên toàn ma trận, không báo thiếu nếu vẫn có cách phân bổ đủ.
+- Preview không ghi Draft hay giữ chỗ candidate. Hiển thị số phù hợp riêng từng rule và số phân bổ
+  không trùng toàn ma trận; khi thiếu ưu tiên rule theo thứ tự nhập và báo số thiếu từng rule.
+- Generate kiểm tra lại nguồn, thêm toàn bộ snapshot vào cuối Draft hoặc không thêm gì. Câu cũ,
+  điểm cũ được giữ nguyên; câu mới mặc định 1 điểm. Thiếu câu không đổi revision/timestamp.
+- Mỗi lần tối đa 50 rule, tổng 500 câu; quantity phải là số nguyên dương. Không lưu template ma trận.
+- Khi mất response hoặc xung đột revision, đọc lại Draft để đối chiếu trước khi sinh thêm; không tự retry.
+
 ---
 
 # 12. Điểm của đề

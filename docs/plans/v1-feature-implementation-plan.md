@@ -451,15 +451,41 @@ Kiến trúc và sơ đồ: [F09 Exam Builder và versioning](../architecture/f0
 **Nguồn:** UC-EXAM-08.  
 **Phụ thuộc:** F09.
 
-- [ ] Nhận các rule category/topic, difficulty, question type và quantity.
-- [ ] Chỉ chọn câu ACTIVE thuộc owner, không trùng câu đã có trong Draft hoặc giữa các rule.
-- [ ] Kiểm tra đủ candidate cho toàn ma trận trước khi thay đổi Draft.
-- [ ] Nếu thiếu, trả rule và số lượng thiếu; không cập nhật đề một phần.
-- [ ] Cho Creator review và sửa kết quả trước publish.
+- [x] Nhận các rule category/topic, difficulty, question type và quantity.
+- [x] Chỉ chọn câu ACTIVE thuộc owner, không trùng câu đã có trong Draft hoặc giữa các rule.
+- [x] Kiểm tra đủ candidate cho toàn ma trận trước khi thay đổi Draft.
+- [x] Nếu thiếu, trả rule và số lượng thiếu; không cập nhật đề một phần.
+- [x] Cho Creator review và sửa kết quả trước publish.
 
 **API/UI:** Candidate preview và generate trong Exam Builder.
 
 **Nghiệm thu:** Ma trận có điều kiện giao nhau không chọn trùng; lỗi thiếu câu không làm thay đổi Draft.
+
+**Bàn giao F10 — 03/10/2026:**
+
+- Hai API `POST /exam-versions/{id}/generation/preview` và `POST /exam-versions/{id}/generation`,
+  cùng dialog ma trận trong Exam Builder tích hợp API thật. Preview không ghi hoặc giữ chỗ câu hỏi.
+- Maximum matching phân bổ toàn ma trận, tránh báo thiếu sai khi rule giao nhau; generate xáo trộn
+  candidate rồi thêm snapshot theo thứ tự rule. Câu mới mặc định 1 điểm, giữ nguyên câu và điểm cũ.
+- Category / Topic dùng category hiện có; filter bỏ trống nghĩa là tất cả. Giới hạn 50 rule,
+  tổng 500 câu mỗi lần; quantity là JSON integer dương. Không lưu template hoặc thêm migration/dependency.
+- Thiếu câu trả thống kê theo rule và không đổi câu/revision/timestamp. Khóa Exam → Version → nguồn
+  theo UUID, xác nhận revision/ACTIVE/owner trước khi ghi; xung đột nguồn rollback toàn bộ.
+  UI xử lý mất response bằng đọc lại và đối chiếu, không tự sinh lần hai.
+- Backend `./mvnw -B clean verify`: **123 tests pass**, gồm 4 unit tests allocator (đối chiếu
+  exhaustive oracle trên 200 đồ thị nhỏ) và 5 integration tests F10. Đã kiểm tra generate đua
+  generate/save/publish, nguồn đổi trong lúc chờ khóa, ownership, Published và rollback nguyên tử.
+- Frontend `npm test`: **66 tests pass**; `npm run lint`, `npm run typecheck`, `npm run build` pass.
+  `npm run test:exam`: **8 pass**, gồm 4 E2E F10; hồi quy `npm run test:question`: **4 pass**.
+- E2E kiểm tra preview → generate → review/save/publish, thiếu sau preview, stale revision,
+  dirty Draft, mất response, keyboard/focus, 375/768/1024/1440px, landscape, reduced motion và zoom.
+  Đã xem ảnh kiểm tra mobile/desktop; artifact nằm trong test-results, không commit.
+- OpenAPI parse, 54 operation IDs không trùng, 417 tham chiếu nội bộ và `git diff --check` hợp lệ.
+  Business requirements, use cases, screen flow và sơ đồ kiến trúc đã đồng bộ.
+- Bàn giao trên `feat/f10-exam-matrix-generation` bằng Conventional Commit local;
+  người dùng tự push, mở PR và merge. Không triển khai F11; chưa chạy CI remote hoặc đo tải production.
+
+Kiến trúc và sơ đồ: [F10 Sinh đề theo ma trận](../architecture/f10-exam-matrix-generation.md).
 
 ### F11 — Exam Session, assignment và lifecycle
 

@@ -35,5 +35,9 @@ public class ExamController {
     VersionDetail save(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody SaveQuestions input) { return service.save(actor(jwt), id, input); }
     @PostMapping("/exam-versions/{id}/publish")
     VersionDetail publish(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody Revision input) { return service.publish(actor(jwt), id, input.revision()); }
+    @PostMapping("/exam-versions/{id}/generation/preview")
+    MatrixPreview preview(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody MatrixRequest input) { return service.previewMatrix(actor(jwt), id, input); }
+    @PostMapping("/exam-versions/{id}/generation")
+    VersionDetail generate(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody MatrixRequest input) { return service.generate(actor(jwt), id, input); }
     private UUID actor(Jwt jwt) { return UUID.fromString(jwt.getSubject()); }
 }
