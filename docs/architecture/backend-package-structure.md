@@ -78,6 +78,11 @@ com.learnova
 
 ## Quan hệ module hiện tại
 
+F09 bổ sung module `exam` với controller, dto, entity, enums, exception, repository và service.
+Module gọi IdentityService, QuestionService.copyActiveForExam, QuestionValidation và AuditService;
+không truy cập entity/repository nội bộ của Question Bank. Xem [kiến trúc F09](f09-exam-builder-versioning.md)
+cho snapshot JSONB, thứ tự khóa và transaction publish.
+
 ```mermaid
 flowchart LR
     Identity[identity] -->|AuditService + AuditAction| Audit[audit]

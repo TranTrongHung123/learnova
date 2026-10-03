@@ -1140,7 +1140,9 @@ Hiển thị:
 
 Chỉ thêm Question `ACTIVE` thuộc chính Creator.
 
-Khi thêm vào Draft, dữ liệu cần thiết được chuẩn bị để khi publish tạo snapshot.
+Khi thêm vào Draft, sao chép toàn bộ nội dung, đáp án và metadata cần thiết thành snapshot.
+Kiểm tra revision của Draft và từng Question; thêm theo lô nguyên tử, không trùng source
+Question trong một version. Bank thay đổi sau đó không đổi Draft. Mặc định mỗi câu 1 điểm.
 
 ---
 
@@ -1180,6 +1182,11 @@ totalScore = SUM(question.points)
 ```
 
 Không duy trì một totalScore độc lập dễ mất đồng bộ.
+
+Points phải lớn hơn 0; hỗ trợ tối đa 20 chữ số phần nguyên và 10 chữ số thập phân,
+lưu và tính chính xác bằng BigDecimal. Chia đều điểm phân bổ phần dư theo thứ tự câu,
+không làm mất tổng; mỗi câu vẫn phải có điểm dương. Lưu danh sách/thứ tự/points nguyên tử
+bằng revision, từ chối cập nhật cũ và giữ nội dung đang nhập trên UI để đối chiếu.
 
 UI có thể hỗ trợ:
 
@@ -1225,9 +1232,13 @@ Khi publish:
 1. Validate Draft.
 2. Validate có câu hỏi.
 3. Validate points hợp lệ.
-4. Tạo/cố định snapshot của Question.
+4. Validate/cố định snapshot đã lưu trong Draft, không đọc lại nội dung Question Bank.
 5. Version chuyển `PUBLISHED`.
 6. Không được sửa nội dung version này.
+
+Chuyển trạng thái và audit EXAM_VERSION_PUBLISHED cùng transaction. Request publish lặp lại
+trả cùng Published Version, không ghi audit thêm. Khi mất response, UI đọc lại trạng thái
+server trước khi thử lại. Sửa Draft và publish đồng thời không được ghi đè nội dung đã publish.
 
 Snapshot giữ tối thiểu dữ liệu cần cho:
 
@@ -1241,6 +1252,10 @@ Snapshot giữ tối thiểu dữ liệu cần cho:
 ## UC-EXAM-10 - Tạo Version mới
 
 **Actor:** Creator
+
+Một Exam có thể có nhiều Draft đồng thời. Version number được cấp dưới khóa Exam cùng
+unique constraint. Copy Published giữ snapshot/thứ tự/points, không phụ thuộc bank hiện tại;
+câu/lựa chọn trong version mới nhận ID riêng. Không có base thì tạo Draft trống.
 
 1. Chọn PUBLISHED Version làm base nếu muốn.
 2. Hệ thống tạo version number tiếp theo.
@@ -1264,6 +1279,9 @@ Không overwrite version cũ.
 ## UC-EXAM-11 - Archive Exam
 
 **Actor:** Creator
+
+Archive là thao tác idempotent có audit; không chặn sửa Draft, tạo version hoặc publish.
+Không có restore hoặc hard-delete trong F09.
 
 `ARCHIVED`:
 

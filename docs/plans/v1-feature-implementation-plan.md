@@ -410,17 +410,41 @@ Kiến trúc và sơ đồ: [F08 Excel Import](../architecture/f08-excel-import.
 **Nguồn:** UC-EXAM-01..07, 09..11.  
 **Phụ thuộc:** F07.
 
-- [ ] Tạo Exam cùng version 1 DRAFT.
-- [ ] Thêm câu ACTIVE thuộc owner, bỏ câu, đổi thứ tự và cấu hình points.
-- [ ] Lưu bản sao nội dung trong Draft để preview và publish cùng một nội dung; Question Bank thay đổi không âm thầm đổi Draft.
-- [ ] Publish validate toàn bộ Draft, cố định snapshot và ghi audit trong transaction.
-- [ ] PUBLISHED immutable; tạo Draft mới từ bản đã publish hoặc từ nội dung trống.
-- [ ] Bảo vệ version number khi tạo đồng thời; archive Exam giữ version/session/history.
-- [ ] `totalScore` được tính từ points, không có nguồn tổng điểm độc lập.
+- [x] Tạo Exam cùng version 1 DRAFT.
+- [x] Thêm câu ACTIVE thuộc owner, bỏ câu, đổi thứ tự và cấu hình points.
+- [x] Lưu bản sao nội dung trong Draft để preview và publish cùng một nội dung; Question Bank thay đổi không âm thầm đổi Draft.
+- [x] Publish validate toàn bộ Draft, cố định snapshot và ghi audit trong transaction.
+- [x] PUBLISHED immutable; tạo Draft mới từ bản đã publish hoặc từ nội dung trống.
+- [x] Bảo vệ version number khi tạo đồng thời; archive Exam giữ version/session/history.
+- [x] `totalScore` được tính từ points, không có nguồn tổng điểm độc lập.
 
 **API/UI:** Exams, versions, draft questions và publish; Builder, version history và chế độ xem bản published.
 
 **Nghiệm thu:** Publish đồng thời không tạo side effect trùng; sửa/xóa bank không đổi published snapshot; mọi đường sửa published content bị từ chối.
+
+**Bàn giao F09 — 03/10/2026:**
+
+- Migration V8, module `exam`, 9 API operations và UI Creator dùng API thật: list/create,
+  Builder, version history, Published view, copy/empty Draft và archive.
+- Đã chốt: nhiều Draft đồng thời; archive chỉ chặn Session mới; points >0, mặc định 1.
+  Snapshot độc lập ngay từ lúc thêm; copy không đọc bank. Chia đều điểm bằng phép tính chính xác.
+- Backend `./mvnw -B clean verify`: **114 tests pass**, gồm 8 integration tests F09,
+  migration V7→V8, race publish/save/create version, authorization và audit rollback.
+- Frontend `npm test`: **66 tests pass**, gồm 11 tests precision/chia điểm.
+  `npm run lint`, `npm run typecheck` và `npm run build` pass.
+- Browser API thật `npm run test:exam`: **4 pass**; regression `npm run test:question`:
+  **4 pass**; `npm run test:e2e`: **8 pass**; `npm run test:production`: **1 pass**.
+- Đã kiểm tra snapshot không đổi khi bank sửa/archive; mất response publish được GET đối soát;
+  lỗi mạng/409 giữ input. Keyboard reorder, Escape/focus dialog, 375/768/1024/1440px,
+  reduced motion và layout zoom 200% đã được kiểm tra; ảnh mobile/desktop được review.
+- OpenAPI parse/schema/internal references/operation IDs và `git diff --check` hợp lệ.
+  Requirements, use cases, screen flow, README, CI và sơ đồ kiến trúc đã đồng bộ.
+- Session/history sau F11 chưa tồn tại để kiểm thử; F09 không có hard-delete/cascade phá lịch sử.
+  F10/F11 giữ nguyên phạm vi feature kế tiếp. Chưa chạy CI remote hoặc đo tải production.
+- Bàn giao trên `feat/f09-exam-builder-versioning` bằng Conventional Commit local;
+  người dùng tự push, mở PR và merge.
+
+Kiến trúc và sơ đồ: [F09 Exam Builder và versioning](../architecture/f09-exam-builder-versioning.md).
 
 ### F10 — Sinh đề theo ma trận
 

@@ -24,6 +24,8 @@ servers:
     description: Local development
 
 tags:
+  - name: Exams
+    description: F09 Creator-owned Exam Builder, immutable snapshots and version history.
   - name: Question Imports
     description: F08 owner-scoped Excel preview and idempotent confirmation.
   - name: Questions
@@ -36,6 +38,623 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/exams:
+    get:
+      tags:
+      - Exams
+      operationId: listExams
+      summary: List owned exams
+      description: Defaults to ACTIVE; filters by status and case-insensitive literal name substring. Ordered by updatedAt
+        DESC then id DESC. latestVersion is highest version number, not necessarily the latest published version. Requires
+        bearer authentication and ACTIVE CREATOR ownership. Refresh cookies never authenticate these endpoints; no CSRF
+        header is required. Unknown request fields are rejected.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      - name: keyword
+        in: query
+        schema:
+          type: string
+          maxLength: 200
+          default: ''
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+          default: ACTIVE
+      responses:
+        '200':
+          description: Authoritative persisted state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamPage'
+        '400':
+          description: INVALID_REQUEST / VALIDATION_FAILED for malformed input, unknown fields, invalid points, enums,
+            pagination or revisions; fieldErrors identifies invalid fields. Also EXAM_DUPLICATE_QUESTION, EXAM_INVALID_QUESTION_LIST,
+            EXAM_EMPTY_VERSION or EXAM_INVALID_SNAPSHOT where applicable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED. Requires ACTIVE user with CREATOR
+            role; ADMIN alone is not a Creator.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: EXAM_NOT_FOUND / EXAM_VERSION_NOT_FOUND / QUESTION_NOT_FOUND. Foreign resources are indistinguishable
+            from missing resources.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: EXAM_REVISION_CONFLICT, EXAM_VERSION_IMMUTABLE, EXAM_BASE_NOT_PUBLISHED, QUESTION_REVISION_CONFLICT
+            or QUESTION_STATE_CONFLICT.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: SERVICE_UNAVAILABLE; no successful write confirmation. Refetch authoritative state after an uncertain
+            response.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+    post:
+      tags:
+      - Exams
+      operationId: createExam
+      summary: Create Exam and Draft version 1
+      description: Creates both records and EXAM_CREATED / EXAM_VERSION_CREATED audit records atomically. Creation is not
+        idempotent; do not blindly retry an uncertain response. Requires bearer authentication and ACTIVE CREATOR ownership.
+        Refresh cookies never authenticate these endpoints; no CSRF header is required. Unknown request fields are rejected.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExam'
+      responses:
+        '201':
+          description: Authoritative persisted state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamDetail'
+        '400':
+          description: INVALID_REQUEST / VALIDATION_FAILED for malformed input, unknown fields, invalid points, enums,
+            pagination or revisions; fieldErrors identifies invalid fields. Also EXAM_DUPLICATE_QUESTION, EXAM_INVALID_QUESTION_LIST,
+            EXAM_EMPTY_VERSION or EXAM_INVALID_SNAPSHOT where applicable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED. Requires ACTIVE user with CREATOR
+            role; ADMIN alone is not a Creator.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: EXAM_NOT_FOUND / EXAM_VERSION_NOT_FOUND / QUESTION_NOT_FOUND. Foreign resources are indistinguishable
+            from missing resources.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: EXAM_REVISION_CONFLICT, EXAM_VERSION_IMMUTABLE, EXAM_BASE_NOT_PUBLISHED, QUESTION_REVISION_CONFLICT
+            or QUESTION_STATE_CONFLICT.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: SERVICE_UNAVAILABLE; no successful write confirmation. Refetch authoritative state after an uncertain
+            response.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+  /api/v1/exams/{id}:
+    get:
+      tags:
+      - Exams
+      operationId: getExam
+      summary: Read Exam and version history
+      description: History is ordered by version number descending. No Session data is synthesized before the Session feature
+        is available. Requires bearer authentication and ACTIVE CREATOR ownership. Refresh cookies never authenticate these
+        endpoints; no CSRF header is required. Unknown request fields are rejected.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Authoritative persisted state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamDetail'
+        '400':
+          description: INVALID_REQUEST / VALIDATION_FAILED for malformed input, unknown fields, invalid points, enums,
+            pagination or revisions; fieldErrors identifies invalid fields. Also EXAM_DUPLICATE_QUESTION, EXAM_INVALID_QUESTION_LIST,
+            EXAM_EMPTY_VERSION or EXAM_INVALID_SNAPSHOT where applicable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED. Requires ACTIVE user with CREATOR
+            role; ADMIN alone is not a Creator.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: EXAM_NOT_FOUND / EXAM_VERSION_NOT_FOUND / QUESTION_NOT_FOUND. Foreign resources are indistinguishable
+            from missing resources.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: EXAM_REVISION_CONFLICT, EXAM_VERSION_IMMUTABLE, EXAM_BASE_NOT_PUBLISHED, QUESTION_REVISION_CONFLICT
+            or QUESTION_STATE_CONFLICT.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: SERVICE_UNAVAILABLE; no successful write confirmation. Refetch authoritative state after an uncertain
+            response.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+  /api/v1/exams/{id}/archive:
+    post:
+      tags:
+      - Exams
+      operationId: archiveExam
+      summary: Archive an Exam without deleting history
+      description: Checks Exam revision on the initial transition; repeat calls on ARCHIVED return the same state without
+        another audit. Archive prevents new Session use but does not prevent editing Drafts, creating versions or publishing.
+        No restore or hard-delete operation. Requires bearer authentication and ACTIVE CREATOR ownership. Refresh cookies
+        never authenticate these endpoints; no CSRF header is required. Unknown request fields are rejected.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExamRevision'
+      responses:
+        '200':
+          description: Authoritative persisted state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamDetail'
+        '400':
+          description: INVALID_REQUEST / VALIDATION_FAILED for malformed input, unknown fields, invalid points, enums,
+            pagination or revisions; fieldErrors identifies invalid fields. Also EXAM_DUPLICATE_QUESTION, EXAM_INVALID_QUESTION_LIST,
+            EXAM_EMPTY_VERSION or EXAM_INVALID_SNAPSHOT where applicable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED. Requires ACTIVE user with CREATOR
+            role; ADMIN alone is not a Creator.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: EXAM_NOT_FOUND / EXAM_VERSION_NOT_FOUND / QUESTION_NOT_FOUND. Foreign resources are indistinguishable
+            from missing resources.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: EXAM_REVISION_CONFLICT, EXAM_VERSION_IMMUTABLE, EXAM_BASE_NOT_PUBLISHED, QUESTION_REVISION_CONFLICT
+            or QUESTION_STATE_CONFLICT.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: SERVICE_UNAVAILABLE; no successful write confirmation. Refetch authoritative state after an uncertain
+            response.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+  /api/v1/exams/{id}/versions:
+    post:
+      tags:
+      - Exams
+      operationId: createExamVersion
+      summary: Create an empty or copied Draft
+      description: Allows multiple Drafts. Locks the Exam to allocate the next version number, backed by a unique constraint.
+        Optional base must be PUBLISHED and belong to this Exam. Copies snapshots, points and order without reading Question
+        Bank; assigns fresh version-question and option IDs. Writes EXAM_VERSION_CREATED in the transaction. Not idempotent.
+        Requires bearer authentication and ACTIVE CREATOR ownership. Refresh cookies never authenticate these endpoints;
+        no CSRF header is required. Unknown request fields are rejected.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExamVersion'
+      responses:
+        '201':
+          description: Authoritative persisted state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamVersionDetail'
+        '400':
+          description: INVALID_REQUEST / VALIDATION_FAILED for malformed input, unknown fields, invalid points, enums,
+            pagination or revisions; fieldErrors identifies invalid fields. Also EXAM_DUPLICATE_QUESTION, EXAM_INVALID_QUESTION_LIST,
+            EXAM_EMPTY_VERSION or EXAM_INVALID_SNAPSHOT where applicable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED. Requires ACTIVE user with CREATOR
+            role; ADMIN alone is not a Creator.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: EXAM_NOT_FOUND / EXAM_VERSION_NOT_FOUND / QUESTION_NOT_FOUND. Foreign resources are indistinguishable
+            from missing resources.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: EXAM_REVISION_CONFLICT, EXAM_VERSION_IMMUTABLE, EXAM_BASE_NOT_PUBLISHED, QUESTION_REVISION_CONFLICT
+            or QUESTION_STATE_CONFLICT.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: SERVICE_UNAVAILABLE; no successful write confirmation. Refetch authoritative state after an uncertain
+            response.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+  /api/v1/exam-versions/{id}:
+    get:
+      tags:
+      - Exams
+      operationId: getExamVersion
+      summary: Read a Creator version snapshot
+      description: Returns the stored Draft or immutable Published content including answers and explanations, strictly
+        for the owning Creator. Requires bearer authentication and ACTIVE CREATOR ownership. Refresh cookies never authenticate
+        these endpoints; no CSRF header is required. Unknown request fields are rejected.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Authoritative persisted state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamVersionDetail'
+        '400':
+          description: INVALID_REQUEST / VALIDATION_FAILED for malformed input, unknown fields, invalid points, enums,
+            pagination or revisions; fieldErrors identifies invalid fields. Also EXAM_DUPLICATE_QUESTION, EXAM_INVALID_QUESTION_LIST,
+            EXAM_EMPTY_VERSION or EXAM_INVALID_SNAPSHOT where applicable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED. Requires ACTIVE user with CREATOR
+            role; ADMIN alone is not a Creator.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: EXAM_NOT_FOUND / EXAM_VERSION_NOT_FOUND / QUESTION_NOT_FOUND. Foreign resources are indistinguishable
+            from missing resources.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: EXAM_REVISION_CONFLICT, EXAM_VERSION_IMMUTABLE, EXAM_BASE_NOT_PUBLISHED, QUESTION_REVISION_CONFLICT
+            or QUESTION_STATE_CONFLICT.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: SERVICE_UNAVAILABLE; no successful write confirmation. Refetch authoritative state after an uncertain
+            response.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+  /api/v1/exam-versions/{id}/questions:
+    post:
+      tags:
+      - Exams
+      operationId: addExamQuestions
+      summary: Append selected Question Bank snapshots
+      description: DRAFT only; requires current version revision and each source question revision. All sources must be
+        ACTIVE and owned; rejects duplicates within the batch or version. Locks source questions in UUID order, then captures
+        full snapshots atomically in request order. New questions default to 1 point. If any source fails, nothing is added.
+        Later bank changes or archival do not update these snapshots. Requires bearer authentication and ACTIVE CREATOR
+        ownership. Refresh cookies never authenticate these endpoints; no CSRF header is required. Unknown request fields
+        are rejected.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddExamQuestions'
+      responses:
+        '200':
+          description: Authoritative persisted state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamVersionDetail'
+        '400':
+          description: INVALID_REQUEST / VALIDATION_FAILED for malformed input, unknown fields, invalid points, enums,
+            pagination or revisions; fieldErrors identifies invalid fields. Also EXAM_DUPLICATE_QUESTION, EXAM_INVALID_QUESTION_LIST,
+            EXAM_EMPTY_VERSION or EXAM_INVALID_SNAPSHOT where applicable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED. Requires ACTIVE user with CREATOR
+            role; ADMIN alone is not a Creator.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: EXAM_NOT_FOUND / EXAM_VERSION_NOT_FOUND / QUESTION_NOT_FOUND. Foreign resources are indistinguishable
+            from missing resources.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: EXAM_REVISION_CONFLICT, EXAM_VERSION_IMMUTABLE, EXAM_BASE_NOT_PUBLISHED, QUESTION_REVISION_CONFLICT
+            or QUESTION_STATE_CONFLICT.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: SERVICE_UNAVAILABLE; no successful write confirmation. Refetch authoritative state after an uncertain
+            response.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+    put:
+      tags:
+      - Exams
+      operationId: saveExamQuestions
+      summary: Save retained questions, order and points
+      description: DRAFT only with matching revision. The array is the complete retained list of existing version-question
+        IDs, in desired order; omitted questions are removed and positions normalized from 0. Unknown IDs or duplicates
+        fail atomically. Empty list is allowed for Draft. Cannot add questions or replace snapshot content through this
+        endpoint. Increments revision even for identical input. Requires bearer authentication and ACTIVE CREATOR ownership.
+        Refresh cookies never authenticate these endpoints; no CSRF header is required. Unknown request fields are rejected.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveExamQuestions'
+      responses:
+        '200':
+          description: Authoritative persisted state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamVersionDetail'
+        '400':
+          description: INVALID_REQUEST / VALIDATION_FAILED for malformed input, unknown fields, invalid points, enums,
+            pagination or revisions; fieldErrors identifies invalid fields. Also EXAM_DUPLICATE_QUESTION, EXAM_INVALID_QUESTION_LIST,
+            EXAM_EMPTY_VERSION or EXAM_INVALID_SNAPSHOT where applicable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED. Requires ACTIVE user with CREATOR
+            role; ADMIN alone is not a Creator.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: EXAM_NOT_FOUND / EXAM_VERSION_NOT_FOUND / QUESTION_NOT_FOUND. Foreign resources are indistinguishable
+            from missing resources.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: EXAM_REVISION_CONFLICT, EXAM_VERSION_IMMUTABLE, EXAM_BASE_NOT_PUBLISHED, QUESTION_REVISION_CONFLICT
+            or QUESTION_STATE_CONFLICT.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: SERVICE_UNAVAILABLE; no successful write confirmation. Refetch authoritative state after an uncertain
+            response.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+  /api/v1/exam-versions/{id}/publish:
+    post:
+      tags:
+      - Exams
+      operationId: publishExamVersion
+      summary: Publish the saved snapshot once
+      description: Locks Exam then Version. Validates matching revision, at least one question, positive points and complete
+        snapshots for all four question types. Does not re-read bank or require source questions to remain ACTIVE. Status,
+        publishedAt and EXAM_VERSION_PUBLISHED audit commit atomically. If already PUBLISHED, returns the same version
+        regardless of the supplied non-negative revision, without another audit. Every content mutation remains forbidden.
+        Save unsaved edits first; after a lost response refetch version state. Requires bearer authentication and ACTIVE
+        CREATOR ownership. Refresh cookies never authenticate these endpoints; no CSRF header is required. Unknown request
+        fields are rejected.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExamRevision'
+      responses:
+        '200':
+          description: Authoritative persisted state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamVersionDetail'
+        '400':
+          description: INVALID_REQUEST / VALIDATION_FAILED for malformed input, unknown fields, invalid points, enums,
+            pagination or revisions; fieldErrors identifies invalid fields. Also EXAM_DUPLICATE_QUESTION, EXAM_INVALID_QUESTION_LIST,
+            EXAM_EMPTY_VERSION or EXAM_INVALID_SNAPSHOT where applicable.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED. Requires ACTIVE user with CREATOR
+            role; ADMIN alone is not a Creator.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: EXAM_NOT_FOUND / EXAM_VERSION_NOT_FOUND / QUESTION_NOT_FOUND. Foreign resources are indistinguishable
+            from missing resources.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: EXAM_REVISION_CONFLICT, EXAM_VERSION_IMMUTABLE, EXAM_BASE_NOT_PUBLISHED, QUESTION_REVISION_CONFLICT
+            or QUESTION_STATE_CONFLICT.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: SERVICE_UNAVAILABLE; no successful write confirmation. Refetch authoritative state after an uncertain
+            response.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
   /api/v1/question-imports/template:
     get:
       tags: [Question Imports]
@@ -1999,6 +2618,405 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    ExamStatus:
+      type: string
+      enum:
+      - ACTIVE
+      - ARCHIVED
+    ExamVersionStatus:
+      type: string
+      enum:
+      - DRAFT
+      - PUBLISHED
+    ExamPoints:
+      type: string
+      maxLength: 42
+      pattern: ^\d+(\.\d{1,10})?$
+      description: 'Exact positive decimal, greater than zero; at most 20 integer digits excluding leading zeros and 10 fractional
+        digits. No exponent, signs, rounding or negative marking. Default on add: 1.'
+    ExamTotalScore:
+      type: string
+      pattern: ^\d+(\.\d+)?$
+      description: Exact sum of question points, computed by the server, never independently stored or accepted as input.
+        Empty Draft total is 0.
+    CreateExam:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Trimmed, cannot be blank.
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 5000
+      additionalProperties: false
+    CreateExamVersion:
+      type: object
+      properties:
+        baseVersionId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Optional PUBLISHED version from the same Exam. Omit or null for an empty Draft.
+      additionalProperties: false
+    ExamRevision:
+      type: object
+      required:
+      - revision
+      properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+      additionalProperties: false
+    ExamQuestionSource:
+      type: object
+      required:
+      - questionId
+      - revision
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+      additionalProperties: false
+    AddExamQuestions:
+      type: object
+      required:
+      - revision
+      - questions
+      properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+        questions:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ExamQuestionSource'
+      additionalProperties: false
+    ExamQuestionEdit:
+      type: object
+      required:
+      - id
+      - points
+      properties:
+        id:
+          type: string
+          format: uuid
+        points:
+          $ref: '#/components/schemas/ExamPoints'
+      additionalProperties: false
+    SaveExamQuestions:
+      type: object
+      required:
+      - revision
+      - questions
+      properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamQuestionEdit'
+      additionalProperties: false
+    ExamSnapshotOption:
+      type: object
+      required:
+      - id
+      - content
+      - correct
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+          maxLength: 2000
+        correct:
+          type: boolean
+    ExamQuestionSnapshot:
+      type: object
+      required:
+      - type
+      - content
+      - explanation
+      - difficulty
+      - category
+      - tags
+      - options
+      - correctBoolean
+      - correctValue
+      - tolerance
+      properties:
+        type:
+          $ref: '#/components/schemas/QuestionType'
+        content:
+          type: string
+          maxLength: 10000
+        explanation:
+          type:
+          - string
+          - 'null'
+          maxLength: 10000
+        difficulty:
+          type:
+          - string
+          - 'null'
+          enum:
+          - EASY
+          - MEDIUM
+          - HARD
+          - null
+        category:
+          type:
+          - string
+          - 'null'
+          maxLength: 100
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamSnapshotOption'
+        correctBoolean:
+          type:
+          - boolean
+          - 'null'
+        correctValue:
+          type:
+          - string
+          - 'null'
+          description: 'Exact numeric answer: up to 20 integer and 10 fractional digits.'
+        tolerance:
+          type: string
+          description: Non-negative absolute tolerance with the same precision as the source Question.
+      description: Creator-only snapshot captured on add, not refreshed from Question Bank. Contains answers and explanations;
+        MUST NOT be reused as an active Participant Attempt DTO. Choice option IDs are stable within this version.
+    ExamVersionQuestion:
+      type: object
+      required:
+      - id
+      - sourceQuestionId
+      - sourceRevision
+      - position
+      - points
+      - snapshot
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceQuestionId:
+          type: string
+          format: uuid
+        sourceRevision:
+          type: integer
+          format: int64
+          minimum: 0
+        position:
+          type: integer
+          minimum: 0
+        points:
+          $ref: '#/components/schemas/ExamPoints'
+        snapshot:
+          $ref: '#/components/schemas/ExamQuestionSnapshot'
+    ExamVersionSummary:
+      type: object
+      required:
+      - id
+      - versionNumber
+      - status
+      - revision
+      - questionCount
+      - totalScore
+      - createdAt
+      - updatedAt
+      - publishedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        versionNumber:
+          type: integer
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/ExamVersionStatus'
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+        questionCount:
+          type: integer
+          minimum: 0
+        totalScore:
+          $ref: '#/components/schemas/ExamTotalScore'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        publishedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    ExamVersionDetail:
+      type: object
+      required:
+      - id
+      - versionNumber
+      - status
+      - revision
+      - totalScore
+      - createdAt
+      - updatedAt
+      - publishedAt
+      - examId
+      - examName
+      - examStatus
+      - questions
+      properties:
+        id:
+          type: string
+          format: uuid
+        versionNumber:
+          type: integer
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/ExamVersionStatus'
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+        totalScore:
+          $ref: '#/components/schemas/ExamTotalScore'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        publishedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        examId:
+          type: string
+          format: uuid
+        examName:
+          type: string
+        examStatus:
+          $ref: '#/components/schemas/ExamStatus'
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamVersionQuestion'
+    ExamSummary:
+      type: object
+      required:
+      - id
+      - name
+      - status
+      - revision
+      - latestVersion
+      - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ExamStatus'
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+        latestVersion:
+          $ref: '#/components/schemas/ExamVersionSummary'
+        updatedAt:
+          type: string
+          format: date-time
+    ExamDetail:
+      type: object
+      required:
+      - id
+      - name
+      - status
+      - revision
+      - updatedAt
+      - description
+      - versions
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/ExamStatus'
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+        updatedAt:
+          type: string
+          format: date-time
+        description:
+          type:
+          - string
+          - 'null'
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamVersionSummary'
+        createdAt:
+          type: string
+          format: date-time
+    ExamPage:
+      type: object
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamSummary'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
     QuestionImportRow:
       type: object
       required: [rowNumber, cells, question, errors]

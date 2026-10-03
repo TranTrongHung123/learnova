@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { useAuth } from "@/features/auth/auth-provider";
+import { type ReactNode } from "react";
+export { useApiQuery as useQuestion } from "@/lib/api/use-query";
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { PageState, Skeleton } from "@/components/ui/page-state";
@@ -16,21 +16,6 @@ export function message(error: unknown) {
     return error.message;
   }
   return "Không thể kết nối. Nội dung chưa được lưu, hãy thử lại.";
-}
-export function useQuestion<T>(path: string) {
-  const { session } = useAuth();
-  const [revision, setRevision] = useState(0);
-  const key = `${path}:${revision}`;
-  const [result, setResult] = useState<{ key: string; data?: T; error?: unknown }>({ key: "" });
-  useEffect(() => {
-    const controller = new AbortController();
-    session.api.request<T>(path, { signal: controller.signal }).then(
-      data => { if (!controller.signal.aborted) setResult({ key, data }); },
-      error => { if (!controller.signal.aborted) setResult({ key, error }); },
-    );
-    return () => controller.abort();
-  }, [session, path, key]);
-  return { data: result.key === key ? result.data : undefined, error: result.key === key ? result.error : undefined, reload: () => setRevision(n => n + 1) };
 }
 export function QueryState({ error, retry }: { error?: unknown; retry: () => void }) {
   if (!error) return <Skeleton />;

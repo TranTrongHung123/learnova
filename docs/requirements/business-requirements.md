@@ -649,6 +649,13 @@ Exam `ARCHIVED`:
 
 ## 9.2. Exam Version Status
 
+Một Exam có thể có nhiều Draft đồng thời. Version number tăng tuần tự trong cùng Exam;
+hai request tạo đồng thời không được nhận cùng số. Tạo Draft mới có thể để trống hoặc
+sao chép một Published Version cùng Exam, bao gồm snapshot, thứ tự và points.
+
+Archive chỉ ngăn dùng Exam để tạo Session mới, không khóa biên soạn Draft hay publish.
+Không có thao tác xóa Exam/version hoặc khôi phục Exam trong F09.
+
 ```text
 DRAFT
 PUBLISHED
@@ -677,6 +684,19 @@ Không overwrite version cũ.
 # 10. Exam Snapshot / Versioning
 
 Đây là business rule bắt buộc.
+
+Ngay khi thêm Question ACTIVE của owner vào Draft, backend sao chép nội dung, lựa chọn,
+đáp án, explanation, metadata phân loại và numeric tolerance vào snapshot riêng.
+Revision của Question được kiểm tra để nội dung thêm vào không âm thầm khác câu vừa chọn.
+Không thêm trùng Question trong cùng version; lỗi một câu làm rollback cả lô thêm.
+
+Question Bank sửa hoặc archive sau đó không đổi cả Draft lẫn Published Version.
+Publish validate và cố định chính snapshot đã lưu, không đọc lại đáp án từ bank và không
+yêu cầu source Question vẫn ACTIVE. Copy Published cũng chỉ đọc snapshot, cấp ID mới
+cho câu/lựa chọn trong version mới.
+
+Mọi chỉnh sửa Draft kiểm tra revision. Publish và audit cùng transaction; publish lặp lại
+trả cùng Published Version, không tạo audit trùng. Mọi đường sửa nội dung Published bị chặn.
 
 Khi publish:
 
@@ -767,6 +787,12 @@ Creator được review kết quả trước publish.
 # 12. Điểm của đề
 
 Điểm được cấu hình trên từng Question trong Exam Version.
+
+Mỗi câu có points lớn hơn 0, mặc định 1 khi thêm. Dùng số thập phân chính xác,
+tối đa 20 chữ số phần nguyên và 10 chữ số phần thập phân; API truyền chuỗi dùng dấu chấm,
+không ký hiệu mũ và không tự làm tròn input. Không có field totalScore để Creator ghi đè.
+Chia đều tổng điểm dùng tối đa 10 chữ số thập phân, phân bổ phần dư theo thứ tự câu để
+tổng points đúng bằng số đã nhập; từ chối tổng quá nhỏ khiến một câu nhận 0 điểm.
 
 Ví dụ:
 
