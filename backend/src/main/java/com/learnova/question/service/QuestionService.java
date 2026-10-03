@@ -47,6 +47,14 @@ public class QuestionService {
                 q.getContent().substring(0, Math.min(240, q.getContent().length())), q.getDifficulty(), q.getCategory(), tags(q), q.getRevision(), q.getUpdatedAt())));
     }
     public Detail detail(UUID actor, UUID id) { return view(owned(actor, id, false)); }
+    // Giữ khóa nguồn tới khi transaction tạo snapshot hoàn tất, tránh nội dung/lựa chọn lệch revision.
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public Detail copyActiveForExam(UUID actor, UUID id, long expectedRevision) {
+        var question = owned(actor, id, true);
+        revision(question, expectedRevision);
+        if (question.getStatus() != QuestionStatus.ACTIVE) throw new QuestionFailure(409, "QUESTION_STATE_CONFLICT");
+        return view(question);
+    }
     @Transactional
     public Detail create(UUID actor, WriteQuestion input) {
         authorize(actor);

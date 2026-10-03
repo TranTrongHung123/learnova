@@ -31,11 +31,12 @@ các loại class vào package gốc của module hoặc tạo technical layer c
 - Docker
 - Docker Compose
 
-## Chạy local (F01–F07)
+## Chạy local (F01–F09)
 
 Yêu cầu Java 21, Node.js 22 + npm và Docker Desktop đang chạy Linux containers.
 Backend dùng Maven Wrapper; PostgreSQL 17 và Redis 7.4 chạy qua Compose.
-Frontend có design system, workspace shell, Local/Google authentication, profile và Classroom.
+Frontend có design system, workspace shell, Local/Google authentication, profile, Classroom,
+Question Bank, Excel Import và Exam Builder/versioning.
 Đăng ký tại `/register`, đăng nhập tại `/login`; multi-role có thể đổi workspace.
 Creator quản lý lớp tại `/creator/classes`; Participant xem lớp và tham gia bằng mã
 tại `/participant/classes`. Mã tham gia mặc định có hiệu lực 7 ngày.
@@ -193,6 +194,7 @@ npm run test:google
 npm run test:classroom
 npm run test:question
 npm run test:import
+npm run test:exam
 npm run build
 npm run test:production
 # Khi backend local đã chạy:
@@ -207,7 +209,7 @@ environment, mặc định localhost:8080; không tự nạp `.env.local`.
 Build frontend hiện tải font qua `next/font/google`, cần truy cập mạng.
 Auth browser test tự chạy backend ở 8081 và frontend ở 3104 cùng Testcontainers riêng;
 không cần đọc `.env` hoặc dùng database của bạn. Tắt server ở cổng này để tạo môi trường mới.
-Classroom, Question Bank và Excel Import browser test dùng cùng cấu hình cổng với auth; chạy các suite tuần tự.
+Classroom, Question Bank, Excel Import và Exam Builder browser test dùng cùng cấu hình cổng với auth; chạy các suite tuần tự.
 Google browser test dùng backend 8082, frontend 3105 và OIDC provider test 8092;
 provider chỉ tồn tại trong test classpath, không dùng OAuth credentials thật.
 Không ghi trace auth chứa password/token; ảnh form rỗng nằm trong test-results.
@@ -239,6 +241,20 @@ dữ liệu ví dụ không được import. Giữ nguyên tên/thứ tự heade
 
 API dưới `/api/v1/question-imports`; chi tiết tại [OpenAPI](docs/api/openapi.yaml).
 Kiến trúc, giới hạn parser và kiểm thử: [F08 Excel Import](docs/architecture/f08-excel-import.md).
+
+## Exam Builder và versioning (F09)
+
+Creator mở **Đề thi** tại `/creator/exams`, tạo Exam và Draft v1, chọn các câu ACTIVE
+của mình rồi cấu hình thứ tự/điểm. Thêm câu sao chép snapshot riêng; thay đổi Question Bank
+không cập nhật nội dung Draft hoặc Published. Mỗi câu mặc định 1 điểm và phải có điểm >0.
+Có thể chia đều tổng điểm; backend luôn tính tổng từ points của từng câu.
+
+**Lưu bản nháp → Xuất bản** cố định nội dung và ghi audit cùng transaction. Published chỉ
+có thể xem hoặc sao chép thành Draft mới. Một Exam có nhiều Draft, version number không trùng.
+Archive giữ lịch sử và chỉ ngăn tạo Session mới, vẫn cho phép biên soạn/publish.
+Sinh đề theo ma trận và tổ chức kỳ thi thuộc F10/F11, chưa khả dụng trong F09.
+
+Chi tiết API, transaction và kiểm chứng: [F09 Exam Builder](docs/architecture/f09-exam-builder-versioning.md).
 
 ## Quy trình Git cho feature
 

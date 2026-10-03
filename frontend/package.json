@@ -14,6 +14,7 @@
     "test:classroom": "playwright test --config playwright.classroom.config.ts",
     "test:question": "playwright test --config playwright.question.config.ts",
     "test:import": "playwright test --config playwright.import.config.ts",
+    "test:exam": "playwright test --config playwright.exam.config.ts",
     "test:google": "playwright test --config playwright.google.config.ts",
     "test:production": "playwright test --config playwright.production.config.ts",
     "test:health": "vitest run --config vitest.health.config.mts"
