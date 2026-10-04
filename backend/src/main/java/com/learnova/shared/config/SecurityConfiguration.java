@@ -88,6 +88,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/questions", "/api/v1/questions/**").authenticated()
                         .requestMatchers("/api/v1/exams", "/api/v1/exams/**", "/api/v1/exam-versions/**").authenticated()
                         .requestMatchers("/api/v1/exam-sessions", "/api/v1/exam-sessions/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/participant/exam-sessions", "/api/v1/participant/exam-sessions/**").authenticated()
                         .requestMatchers("/api/v1/question-imports", "/api/v1/question-imports/**").authenticated()
                         .requestMatchers("/actuator", "/actuator/**").denyAll()
                         .anyRequest().denyAll())

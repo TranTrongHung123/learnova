@@ -1493,6 +1493,21 @@ Mục tiêu:
 
 # 28. My Exams / Exam Discovery
 
+F12 chốt quy tắc discovery:
+
+- User phải ACTIVE và có role PARTICIPANT, kể cả PUBLIC. ADMIN không tự có quyền này.
+- Quyền xem gồm assignment hiện tại hoặc Attempt của chính mình; không trả DRAFT/CANCELLED.
+- Available chỉ gồm Session còn lượt và được Start, hoặc có Attempt còn hạn để Continue.
+  Start cần OPEN, assignment hiện tại, chưa hết lượt và không có IN_PROGRESS.
+- Upcoming là Session SCHEDULED chưa đến giờ với assignment hiện tại.
+- Completed có ít nhất một Attempt SUBMITTED/EXPIRED/GRADED; Expired là Session CLOSED.
+  Các tab được giao nhau; mọi Attempt đều chiếm lượt.
+- Membership không ACTIVE không cấp Start mới; lịch sử và Continue trước deadline đã lưu vẫn được giữ.
+- IN_PROGRESS quá deadline chưa finalize vẫn chiếm lượt và chặn Start mới; discovery không tự finalize.
+- Trạng thái và khả năng thao tác tính từ server time, không phụ thuộc scheduler đã chạy.
+- F12 chỉ trả metadata lịch sử, không điểm kết quả/đáp án. Production write Attempt ở F13,
+  grading ở F14, result visibility ở F15.
+
 Participant có thể xem:
 
 ```text

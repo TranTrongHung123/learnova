@@ -116,3 +116,7 @@ F11 bổ sung module `session` (controller/dto/service/entity/enums/repository/e
 Module gọi contract ExamService, ClassroomService, IdentityService, ParticipantDirectory và AuditService;
 JDBC read projections không expose entity nội bộ. `SessionAdmission` là contract transaction cho F13,
 không tạo dependency ngược từ Session sang Attempt. Xem [F11](f11-exam-session.md).
+
+F12 bổ sung DiscoveryController/Service/Queries và DTO Participant trong module session.
+Read projection join Attempt metadata không tạo service dependency ngược; F13 tiếp tục sở hữu
+write flow Attempt. Xem [F12](f12-participant-exam-discovery.md).

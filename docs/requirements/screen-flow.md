@@ -832,6 +832,15 @@ Dashboard
 
 # 12.2. My Exams
 
+F12 triển khai `/participant/exams?tab=AVAILABLE&page=0`; tab/page giữ trong URL để reload,
+Back và quay lại từ detail giữ bộ lọc. Các nhãn: Có thể làm, Sắp diễn ra, Đã hoàn thành, Đã đóng.
+Available chỉ gồm canStart hoặc canContinue từ backend; Completed/Available/Expired có thể giao nhau.
+List lọc quyền và phân trang ở server, mặc định 20 mục. Có loading, empty, retry, forbidden/not-found;
+refetch khi trở lại cửa sổ. Không có mock fallback.
+
+Trong F12, Xem chi tiết và lịch sử metadata hoạt động; Start/Continue/Xem kết quả disabled
+kèm “Sắp có”, không điều hướng tới route thiếu. F13–F15 lần lượt kích hoạt các action bên dưới.
+
 **Route**
 
 ```text
@@ -889,6 +898,12 @@ Primary action phụ thuộc trạng thái:
 ---
 
 # 12.3. Exam Session Detail - Participant
+
+F12 hiển thị lịch sử metadata phân trang ngay trong detail: số lượt, status, startedAt, deadline,
+submittedAt; không trả điểm bài làm/pass-fail/đáp án. Mất membership vẫn xem lịch sử; backend
+quyết định Continue theo deadline persisted. Session không được phép xem trả not-found.
+Hiển thị lý do chưa mở, đã đóng, hết lượt, mất assignment hoặc bài quá hạn đang chờ xử lý.
+Thông tin thời gian có timezone; browser không tự bật/tắt capability theo đồng hồ máy.
 
 **Route**
 

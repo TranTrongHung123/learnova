@@ -24,6 +24,8 @@ servers:
     description: Local development
 
 tags:
+  - name: Participant Discovery
+    description: F12 permission-filtered session metadata and own attempt history.
   - name: Exam Sessions
     description: F11 Creator session configuration, assignment and lifecycle.
   - name: Exams
@@ -40,6 +42,122 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/participant/exam-sessions:
+    get:
+      tags:
+      - Participant Discovery
+      operationId: listParticipantSessions
+      summary: List accessible sessions by discovery tab
+      description: 'ACTIVE PARTICIPANT required, including PUBLIC. Database filters
+        current assignment or own attempt history. DRAFT/CANCELLED excluded. AVAILABLE:
+        canStart or canContinue; UPCOMING: assigned and SCHEDULED; COMPLETED: own SUBMITTED/EXPIRED/GRADED;
+        EXPIRED: CLOSED. Tabs may overlap. Effective state uses server time. Sort: AVAILABLE
+        endTime ascending, UPCOMING startTime ascending, COMPLETED latest completion
+        descending (submittedAt or deadline), EXPIRED endTime descending; id ascending
+        breaks ties.'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: tab
+        in: query
+        schema:
+          type: string
+          enum:
+          - AVAILABLE
+          - UPCOMING
+          - COMPLETED
+          - EXPIRED
+          default: AVAILABLE
+      - &id003
+        name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - &id004
+        name: size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Participant-safe metadata only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryPage'
+        '400': &id001
+          $ref: '#/components/responses/SessionError'
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '503': *id001
+  /api/v1/participant/exam-sessions/{id}:
+    get:
+      tags:
+      - Participant Discovery
+      operationId: getParticipantSession
+      summary: Read participant session metadata and eligibility
+      description: ACTIVE PARTICIPANT with current PUBLIC/CLASS ACTIVE membership/INDIVIDUAL
+        assignment or own attempt. Missing/inaccessible/DRAFT/CANCELLED returns 404.
+        canStart requires assignment, OPEN, remaining attempts and no IN_PROGRESS attempt.
+        canContinue requires own IN_PROGRESS before its persisted deadline, independently
+        of current membership. No question content, correct answer, explanation, earned
+        score or pass/fail. Capability flags describe business eligibility; F12 does
+        not implement Start/resume/result commands.
+      security:
+      - bearerAuth: []
+      parameters:
+      - &id002
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Participant-safe metadata only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveredSession'
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '503': *id001
+  /api/v1/participant/exam-sessions/{id}/attempts:
+    get:
+      tags:
+      - Participant Discovery
+      operationId: listParticipantSessionAttempts
+      summary: Read own attempt history metadata
+      description: Same visibility checks as session detail. Only caller attempts, including
+        after membership removal; sorted startedAt descending then id ascending. No
+        answers, scores, pass/fail or result link. F13-F15 add write/resume/result flows.
+      security:
+      - bearerAuth: []
+      parameters:
+      - *id002
+      - *id003
+      - *id004
+      responses:
+        '200':
+          description: Participant-safe metadata only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoveryAttemptPage'
+        '400': *id001
+        '401': *id001
+        '403': *id001
+        '404': *id001
+        '503': *id001
   /api/v1/exam-sessions:
     get:
       tags:
@@ -3069,6 +3187,196 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    DiscoveredSession:
+      type: object
+      required:
+      - id
+      - title
+      - creatorName
+      - totalScore
+      - passingScore
+      - description
+      - startTime
+      - endTime
+      - serverTime
+      - durationMinutes
+      - questionCount
+      - maxAttempts
+      - attemptsUsed
+      - accessType
+      - status
+      - resultDisplayMode
+      - resultReleasePolicy
+      - canStart
+      - canContinue
+      - activeAttemptId
+      - unavailableReason
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        creatorName:
+          type: string
+        totalScore:
+          type: string
+        passingScore:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        serverTime:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          minimum: 0
+        questionCount:
+          type: integer
+          minimum: 0
+        maxAttempts:
+          type: integer
+          minimum: 0
+        attemptsUsed:
+          type: integer
+          minimum: 0
+        accessType:
+          type: string
+          enum:
+          - PUBLIC
+          - CLASS
+          - INDIVIDUAL
+        status:
+          type: string
+          enum:
+          - SCHEDULED
+          - OPEN
+          - CLOSED
+        resultDisplayMode:
+          type: string
+          enum:
+          - HIDDEN
+          - SCORE_ONLY
+          - SUMMARY
+          - DETAILED
+        resultReleasePolicy:
+          type: string
+          enum:
+          - IMMEDIATE
+          - AFTER_SESSION_END
+          - MANUAL
+        canStart:
+          type: boolean
+        canContinue:
+          type: boolean
+        activeAttemptId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        unavailableReason:
+          type:
+          - string
+          - 'null'
+          enum:
+          - ATTEMPT_DEADLINE_PASSED
+          - NOT_ASSIGNED
+          - NOT_STARTED
+          - SESSION_CLOSED
+          - ATTEMPTS_EXHAUSTED
+          - null
+    DiscoveryAttempt:
+      type: object
+      required:
+      - id
+      - attemptNumber
+      - status
+      - startedAt
+      - deadline
+      - submittedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        attemptNumber:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - SUBMITTED
+          - EXPIRED
+          - GRADED
+        startedAt:
+          type: string
+          format: date-time
+        deadline:
+          type: string
+          format: date-time
+        submittedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    DiscoveryPage:
+      type: object
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveredSession'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 0
+        totalElements:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+    DiscoveryAttemptPage:
+      type: object
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveryAttempt'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 0
+        totalElements:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
     SessionWrite:
       type: object
       required:

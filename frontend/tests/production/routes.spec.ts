@@ -12,6 +12,8 @@ test("production không cung cấp preview hoặc fixture", async ({
   ).toHaveCount(0);
   for (const route of [
     "/participant",
+    "/participant/exams",
+    "/participant/exams/00000000-0000-0000-0000-000000000001",
     "/creator",
     "/creator/exams",
     "/creator/exams/new",
