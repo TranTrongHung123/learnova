@@ -1,5 +1,6 @@
 "use client";
 
+import { SessionList } from "@/features/session/session-list";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -26,9 +27,9 @@ export function ExamScreen({ id }: { id: string }) {
     <div className="flex flex-wrap gap-3"><Button disabled={busy} onClick={() => void create(null)}>Tạo bản nháp trống</Button>{e.status === "ACTIVE" && <Button variant="secondary" disabled={busy} onClick={() => setArchive(true)}>Lưu trữ đề</Button>}</div>
     <section className="space-y-4"><h2 className="text-xl font-bold">Lịch sử phiên bản</h2>{e.versions.map(v => <article key={v.id} className={`${panel} flex flex-wrap items-center justify-between gap-4`}>
       <div><h3 className="font-bold">Phiên bản {v.versionNumber} — {versionLabel[v.status]}</h3><p>{v.questionCount} câu hỏi · {v.totalScore} điểm</p>{v.publishedAt && <p className="text-sm text-muted-foreground">Xuất bản: {new Date(v.publishedAt).toLocaleString("vi-VN")}</p>}</div>
-      <div className="flex flex-wrap gap-3"><LinkButton variant="secondary" href={versionPath(id, v.id, v.status === "DRAFT")}>{v.status === "DRAFT" ? "Sửa bản nháp" : "Xem phiên bản"}</LinkButton>{v.status === "PUBLISHED" && <Button variant="secondary" disabled={busy} onClick={() => void create(v.id)}>Tạo bản nháp từ phiên bản {v.versionNumber}</Button>}</div>
+      <div className="flex flex-wrap gap-3">{v.status === "PUBLISHED" && e.status === "ACTIVE" && <LinkButton href={`/creator/sessions/new?examId=${id}&versionId=${v.id}`}>Tạo kỳ thi</LinkButton>}<LinkButton variant="secondary" href={versionPath(id, v.id, v.status === "DRAFT")}>{v.status === "DRAFT" ? "Sửa bản nháp" : "Xem phiên bản"}</LinkButton>{v.status === "PUBLISHED" && <Button variant="secondary" disabled={busy} onClick={() => void create(v.id)}>Tạo bản nháp từ phiên bản {v.versionNumber}</Button>}</div>
     </article>)}</section>
-    <section className={`${panel} space-y-2`}><h2 className="text-xl font-bold">Kỳ thi liên quan</h2><p className="text-muted-foreground">Tính năng kỳ thi chưa khả dụng.</p></section>
+    <SessionList examId={id} compact />
     {archive && <Modal title="Lưu trữ đề thi?" close={() => setArchive(false)} busy={busy}><p className="mb-4">Đề sẽ không dùng để tạo kỳ thi mới. Các phiên bản và lịch sử được giữ nguyên.</p>{error && <p role="alert" className="mb-4 text-danger">{error}</p>}<Button disabled={busy} onClick={async () => {
       setBusy(true); setError(""); try { await session.api.request(`/api/v1/exams/${id}/archive`, { method: "POST", json: { revision: e.revision } }); setArchive(false); query.reload(); } catch (cause) { setError(message(cause)); } finally { setBusy(false); }
     }}>{busy ? "Đang lưu trữ…" : "Xác nhận lưu trữ"}</Button></Modal>}

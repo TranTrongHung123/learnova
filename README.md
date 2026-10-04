@@ -276,3 +276,17 @@ Learnova dùng **UI/UX Pro Max** để thiết kế, triển khai và review gia
 - [Kiến trúc F02](docs/architecture/f02-frontend-foundation.md): shell, API client, điểm tích hợp F03 và kết quả kiểm chứng.
 
 Skill nằm tại [.agents/skills/ui-ux-pro-max/SKILL.md](.agents/skills/ui-ux-pro-max/SKILL.md). Python 3 chỉ cần cho công cụ tra cứu local, không phải dependency chạy ứng dụng.
+
+
+## F11 — Exam Session
+
+Creator quản lý kỳ thi tại `/creator/sessions`, gồm wizard tạo nháp, giao PUBLIC/CLASS/INDIVIDUAL,
+Schedule, Cancel và gia hạn. Schedule trong cửa sổ thi mở ngay; OPEN chỉ sửa tên và gia hạn,
+khóa result policy. Related Sessions tích hợp ở Exam và Classroom.
+
+Migration V9 bổ sung Session/assignment. Scheduler mặc định 10 giây, cấu hình bằng
+`learnova.session.lifecycle-delay-ms`; request vẫn kiểm tra server time nếu job trễ.
+Xem [kiến trúc F11](docs/architecture/f11-exam-session.md) và [OpenAPI](docs/api/openapi.yaml).
+Browser suite: `cd frontend` rồi `npm run test:session` (PostgreSQL/Redis Testcontainers).
+F11 chưa có Attempt HTTP; contract khóa/transaction dành cho F13 đã có, kiểm thử Start
+thật và bảo toàn deadline persisted sẽ thực hiện ở F13.

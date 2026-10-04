@@ -49,6 +49,15 @@ public class ExamService {
                 versions.findFirstByExamIdOrderByVersionNumberDesc(e.getId()).map(this::summary).orElse(null), e.getUpdatedAt())));
     }
     public ExamDetail detail(UUID actor, UUID id) { return view(owned(actor, id, false)); }
+    public record SessionVersion(UUID examId, UUID versionId, String examName, int versionNumber, int questionCount, String totalScore) {}
+    @Transactional
+    public SessionVersion requireSessionVersion(UUID actor, UUID id) {
+        var exam = versionOwner(actor, id, true);
+        if (exam.getStatus() == ExamStatus.ARCHIVED) throw new ExamFailure(409, "EXAM_ARCHIVED");
+        var version = versions.findById(id).orElseThrow(ExamService::missingVersion);
+        if (version.getStatus() != VersionStatus.PUBLISHED) throw new ExamFailure(409, "EXAM_VERSION_NOT_PUBLISHED");
+        return new SessionVersion(exam.getId(), id, exam.getName(), version.getVersionNumber(), version.getQuestions().size(), total(version));
+    }
     public VersionDetail version(UUID actor, UUID id) {
         var exam = versionOwner(actor, id, false);
         return view(exam, versions.findById(id).orElseThrow(ExamService::missingVersion));

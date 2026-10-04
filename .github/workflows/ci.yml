@@ -107,6 +107,10 @@ jobs:
         working-directory: frontend
         run: npm run test:exam
 
+      - name: Session browser integration with PostgreSQL and Redis
+        working-directory: frontend
+        run: npm run test:session
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build
