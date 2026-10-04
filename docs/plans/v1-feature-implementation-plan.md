@@ -14,14 +14,14 @@ Nguồn đối chiếu:
 | Thành phần | Hiện trạng |
 |---|---|
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
-| Database | PostgreSQL 17, Flyway V1–V10 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version, Session/assignment và nền metadata Attempt; Hibernate validate schema |
+| Database | PostgreSQL 17, Flyway V1–V11 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version, Session/assignment, Attempt, order và answer/review/revision; Hibernate validate schema |
 | Authentication | Local/Google login, onboarding, link account, JWT, refresh rotation/reuse, logout-all và multi-role; Actuator vẫn đóng |
-| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix, Exam Session và Participant discovery/history metadata tích hợp API thật |
+| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix, Exam Session, Participant discovery và Exam Taking với Start/Resume/Autosave tích hợp API thật |
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; WebSocket chưa triển khai |
-| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams, Exam Sessions và Participant discovery; 54 paths, lỗi và pagination dùng chung |
-| Testing | F12: 144 backend, 66 unit frontend; browser 3 Discovery, 4 Session, 6 Classroom và 1 production pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
+| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams, Exam Sessions, Participant discovery và Attempts; 57 paths, lỗi và pagination dùng chung |
+| Testing | F13: 155 backend, 82 unit frontend; browser 5 Attempt, 3 Discovery, 4 Session, 6 Classroom và 1 production pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
 | CI | Java 21/Node 22/Chromium/Linux; F06 từng fail reload hai tab và bootstrap trước tạo lớp, các bản sửa bước chờ chưa kiểm chứng remote |
-| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F12 |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F13 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
 **F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
@@ -36,7 +36,9 @@ thật/HTTPS hoặc CI remote. Người dùng tự push nhánh và mở PR.
 F09–F10 đã triển khai; kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
 F11 đã triển khai theo phạm vi được chốt, nghiệm thu local ngày 04/10/2026;
 Start Attempt HTTP và deadline persisted tiếp tục ở F13. F12 đã triển khai discovery và
-lịch sử metadata theo phạm vi được chốt, nghiệm thu local ngày 04/10/2026. F13–F21 chưa hoàn thành.
+lịch sử metadata theo phạm vi được chốt, nghiệm thu local ngày 04/10/2026.
+F13 đã triển khai và kiểm chứng local ngày 05/10/2026; Submit/auto-finalize/grading
+tiếp tục ở F14 theo phạm vi được chốt. F14–F21 chưa hoàn thành.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -586,19 +588,45 @@ Kiến trúc và sơ đồ: [F12 Participant exam discovery](../architecture/f12
 **Nguồn:** UC-PARTEXAM-07, UC-ATTEMPT-01..06, UC-SYSTEM-01.  
 **Phụ thuộc:** F12.
 
-- [ ] Start kiểm tra account, role, assignment, Session và giới hạn lượt bằng transaction.
-- [ ] Ngăn duplicate active Attempt và vượt maxAttempts bằng khóa phù hợp cùng DB constraint.
-- [ ] Lưu deadline, version và thứ tự question/option cụ thể khi Start.
-- [ ] Resume khôi phục answers, review marks, order và deadline.
-- [ ] Autosave validate owner, trạng thái, deadline, question/option thuộc snapshot.
-- [ ] Dùng revision phía server để phát hiện cập nhật cũ; frontend tuần tự hóa/coalesce save theo câu.
-- [ ] UI có navigation, review marks, timer theo server time và trạng thái dirty/saving/saved/failed.
-- [ ] DTO làm bài không chứa correct answer, explanation hoặc grading metadata.
-- [ ] Thu thập thời gian tương tác từng câu phục vụ analytics; đây là telemetry ước lượng, không dùng chấm điểm.
+- [x] Start kiểm tra account, role, assignment, Session và giới hạn lượt bằng transaction.
+- [x] Ngăn duplicate active Attempt và vượt maxAttempts bằng khóa phù hợp cùng DB constraint.
+- [x] Lưu deadline, version và thứ tự question/option cụ thể khi Start.
+- [x] Resume khôi phục answers, review marks, order và deadline.
+- [x] Autosave validate owner, trạng thái, deadline, question/option thuộc snapshot.
+- [x] Dùng revision phía server để phát hiện cập nhật cũ; frontend tuần tự hóa/coalesce save theo câu.
+- [x] UI có navigation, review marks, timer theo server time và trạng thái dirty/saving/saved/failed.
+- [x] DTO làm bài không chứa correct answer, explanation hoặc grading metadata.
+- [x] Thu thập thời gian tương tác từng câu phục vụ analytics; đây là telemetry ước lượng, không dùng chấm điểm.
 
 **API/UI:** Start/resume/read Attempt, save answer/review state; Exam Taking.
 
 **Nghiệm thu:** Double-start trả cùng active Attempt; reload giữ shuffle; phản hồi save cũ không đánh dấu input mới là Saved; mất mạng hiển thị chưa lưu; remove khỏi lớp vẫn resume được Attempt đã bắt đầu.
+
+**Bàn giao F13 — 05/10/2026:**
+
+- Ba API Start/read/save answer với DTO Participant riêng; khóa Session bảo vệ double-start,
+  giới hạn lượt và config/cancel, khóa Attempt bảo vệ save với deadline do server quyết định.
+- Migration V11 thêm câu/order/answer/review/revision/telemetry, FK kép bảo toàn ExamVersion.
+  Metadata F12 được backfill theo thứ tự snapshot gốc, không tạo answer hoặc telemetry giả.
+- UI Start confirmation, layout làm bài tập trung, bốn loại câu, navigator/review, timer,
+  queue từng câu, retry hữu hạn và đối chiếu hai tab. Giữ input mới khi response cũ đến;
+  mất response và telemetry bị cap không tạo conflict giả. Lỗi 403/404/network phân biệt rõ.
+- Hết hạn khóa sửa, giữ IN_PROGRESS chờ F14; Submit, auto-finalize, grading và result chưa
+  triển khai trong F13. Không có offline persistence; chỉ dữ liệu đã xác nhận được resume.
+- Backend `mvnw.cmd -B verify`: **155 tests pass**, không fail/error/skip, BUILD SUCCESS;
+  gồm 11 integration tests F13 trên PostgreSQL 17/Redis 7.4 và migration V10→V11.
+- Frontend lint/typecheck/build pass; **82 unit tests pass**, gồm 16 test autosave/retry/error.
+  Browser **5 Attempt, 3 Discovery, 4 Session, 6 Classroom và 1 production test pass**.
+- Đã review ảnh desktop/mobile, keyboard/focus, 375/768/1024/1440px, landscape,
+  zoom 200% và reduced motion. Browser chạy API/backend thật, không mock fallback.
+- OpenAPI: 57 paths, 68 operation IDs duy nhất, 531 tham chiếu hợp lệ. JAR production
+  chứa API/migration F13 và không chứa fixture controller. UTF-8, liên kết tài liệu và diff đã kiểm tra.
+- Local Windows/Edge, Java 21/Node 24. CI có suite Attempt nhưng chưa chạy remote;
+  chưa kiểm chứng screen reader, tải production hoặc deployment HTTPS.
+- Bàn giao trên `feat/f13-attempt-autosave` bằng Conventional Commit local;
+  người dùng tự push, mở PR và merge.
+
+Kiến trúc và sơ đồ: [F13 Attempt/autosave](../architecture/f13-attempt-autosave.md).
 
 ### F14 — Submit, auto-finalize và automatic grading
 

@@ -18,11 +18,13 @@ export function ProtectedWorkspace({
   workspace,
   title,
   selection = false,
+  focused = false,
   children,
 }: {
   workspace?: Workspace;
   title: string;
   selection?: boolean;
+  focused?: boolean;
   children?: React.ReactNode | ((actions: { logoutAll: () => void }) => React.ReactNode);
 }) {
   const { status, user, error, session } = useAuth();
@@ -115,6 +117,9 @@ export function ProtectedWorkspace({
         />
       </main>
     );
+  if (focused) return <main id="main-content" className="mx-auto min-h-dvh max-w-7xl p-4 sm:p-6" key={user.id}>
+    {typeof children === "function" ? children({ logoutAll: () => setConfirmingLogout(true) }) : children}
+  </main>;
   return (
     <WorkspaceShell
       workspace={selected}

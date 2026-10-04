@@ -1204,6 +1204,26 @@ Save failed
 
 Backend mới là source of truth về answer.
 
+F13 lưu answer và review mark theo revision riêng của từng câu. Save kiểm tra owner,
+IN_PROGRESS, deadline persisted và question/option thuộc đúng snapshot; revision cũ
+trả conflict, không ghi đè. Mỗi câu chỉ có một request đang gửi; các thay đổi kế tiếp
+được gộp và chỉ báo Saved khi nội dung hiện tại được backend xác nhận.
+
+Sau mất response, frontend đọc lại để đối chiếu. Answer/review giống bản đã gửi được
+xác nhận theo state server, kể cả khi telemetry bị giới hạn; nếu khác, giữ bản local và
+cho Participant chọn dùng bản máy chủ hoặc lưu lại bản đang nhập với revision mới.
+Lỗi mạng retry hữu hạn và hiển thị chưa lưu. Không có offline persistence trong V1;
+reload/crash khôi phục phần backend đã xác nhận, không bảo đảm giữ input chưa lưu.
+
+Thời gian tương tác mỗi câu là telemetry tích lũy ước lượng khi câu đang hiển thị và
+trang có focus. Server giới hạn theo elapsed Attempt; không giảm khi retry, không dùng
+chấm điểm hoặc anti-cheat. Thiếu telemetry giữ null; nhiều tab có thể làm số liệu sai lệch.
+
+Phạm vi bàn giao F13 chỉ gồm Start/Resume/Autosave. Start trả cùng IN_PROGRESS trước khi
+kiểm tra assignment mới; remove membership vẫn cho resume/save bài còn hạn. Khi hết hạn,
+API trả metadata với canEdit=false và chặn save; IN_PROGRESS quá hạn vẫn chiếm lượt.
+Submit, auto-finalize và grading ở F14; không giả lập hoàn tất bài trước khi F14 triển khai.
+
 ---
 
 # 23. Idempotent Submit

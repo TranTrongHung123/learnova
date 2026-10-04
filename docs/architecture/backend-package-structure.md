@@ -120,3 +120,10 @@ không tạo dependency ngược từ Session sang Attempt. Xem [F11](f11-exam-s
 F12 bổ sung DiscoveryController/Service/Queries và DTO Participant trong module session.
 Read projection join Attempt metadata không tạo service dependency ngược; F13 tiếp tục sở hữu
 write flow Attempt. Xem [F12](f12-participant-exam-discovery.md).
+
+F13 bổ sung module `attempt` (controller/dto/service/repository/exception), ghi Attempt
+và answer bằng JdbcClient trong transaction. Module dùng contract SessionAdmission,
+ExamService.takingQuestions và IdentityService; không truy cập entity/repository module khác.
+DTO lấy nội dung PUBLISHED an toàn, không chứa grading metadata. Khóa Session bảo vệ Start;
+khóa Attempt bảo vệ save và dành điểm đồng bộ cho finalize F14.
+Xem [F13](f13-attempt-autosave.md).

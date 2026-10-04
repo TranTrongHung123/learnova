@@ -50,6 +50,16 @@ public class ExamService {
     }
     public ExamDetail detail(UUID actor, UUID id) { return view(owned(actor, id, false)); }
     public record SessionVersion(UUID examId, UUID versionId, String examName, int versionNumber, int questionCount, String totalScore) {}
+    public record TakingOption(UUID id, String content) {}
+    public record TakingQuestion(UUID id, String type, String content, List<TakingOption> options) {}
+    // Contract nội bộ: caller đã kiểm tra quyền Attempt; không truyền dữ liệu chấm điểm.
+    public List<TakingQuestion> takingQuestions(UUID versionId) {
+        var version=versions.findById(versionId).orElseThrow(ExamService::missingVersion);
+        if (version.getStatus()!=VersionStatus.PUBLISHED) throw new ExamFailure(409,"EXAM_VERSION_NOT_PUBLISHED");
+        return version.getQuestions().stream().sorted(Comparator.comparingInt(ExamVersionQuestion::getPosition))
+                .map(q->new TakingQuestion(q.getId(),q.getSnapshot().type().name(),q.getSnapshot().content(),
+                        q.getSnapshot().options().stream().map(o->new TakingOption(o.id(),o.content())).toList())).toList();
+    }
     @Transactional
     public SessionVersion requireSessionVersion(UUID actor, UUID id) {
         var exam = versionOwner(actor, id, true);

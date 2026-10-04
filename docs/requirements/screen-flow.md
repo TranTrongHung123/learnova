@@ -838,8 +838,8 @@ Available chỉ gồm canStart hoặc canContinue từ backend; Completed/Availa
 List lọc quyền và phân trang ở server, mặc định 20 mục. Có loading, empty, retry, forbidden/not-found;
 refetch khi trở lại cửa sổ. Không có mock fallback.
 
-Trong F12, Xem chi tiết và lịch sử metadata hoạt động; Start/Continue/Xem kết quả disabled
-kèm “Sắp có”, không điều hướng tới route thiếu. F13–F15 lần lượt kích hoạt các action bên dưới.
+F13 mở Start/Continue qua API thật và route làm bài. Start có xác nhận, chống double-click;
+retry trả cùng active Attempt. Xem kết quả vẫn disabled kèm “Sắp có” đến F15.
 
 **Route**
 
@@ -987,6 +987,11 @@ Backend vẫn re-check toàn bộ rule khi Start.
 
 Đây là màn hình quan trọng nhất của Participant.
 
+F13 dùng layout tập trung không sidebar/workspace switcher nhưng giữ auth guard PARTICIPANT.
+Desktop có vùng câu hỏi và navigator; mobile một cột với nút mở/đóng navigator. Timer,
+autosave và nút về kỳ thi ở header không sticky, không che focus khi viewport thấp.
+Nút Nộp bài disabled kèm “Sắp có”; Start confirmation giải thích giới hạn trước khi bắt đầu.
+
 **Use Cases**
 
 ```text
@@ -1046,6 +1051,17 @@ Saved
 Save failed - retrying
 ```
 
+F13 tách dirty/saving/saved/failed/conflict theo câu, dùng một live region cho tổng số câu
+còn thay đổi chưa lưu; không đọc countdown mỗi giây. Response cũ không xác nhận input mới.
+Numeric debounce 500 ms, chuyển câu flush; lỗi transient retry tối đa ba lần (1/2/4 giây).
+Request timeout sau 10 giây, mất response phải đọc server để đối chiếu.
+
+Conflict hiển thị bản đang nhập và bản máy chủ với hai action “Dùng bản máy chủ”/
+“Lưu bản đang nhập”; khác telemetry đơn thuần không tạo conflict. Không tự ghi đè answer.
+Lỗi 403/404 hiển thị forbidden/not-found; lỗi mạng có retry và giữ input chưa lưu.
+Về kỳ thi khi có thay đổi chưa lưu mở dialog xác nhận; beforeunload chỉ là cảnh báo,
+không dùng làm cơ chế lưu. Không có offline persistence.
+
 ## Reload Flow
 
 ```text
@@ -1086,6 +1102,10 @@ Redirect Finalization State
 ```
 
 Không phụ thuộc timer frontend để xác định thực tế hết giờ.
+
+Trong phạm vi F13, dừng ở khóa sửa và fetch metadata authoritative, hiển thị “Đã hết
+thời gian làm bài, chờ xử lý”. System finalize/redirect và Submit Confirmation bên dưới
+thuộc F14. F13 không tự đổi IN_PROGRESS thành EXPIRED hoặc GRADED.
 
 ---
 

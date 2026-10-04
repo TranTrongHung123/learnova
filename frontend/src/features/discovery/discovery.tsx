@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { StartAttempt } from "@/features/attempt/start";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useApiQuery } from "@/lib/api/use-query";
@@ -20,8 +21,8 @@ function QueryState({ error, retry }: { error?: unknown; retry: () => void }) {
 
 function Availability({ value: s }: { value: DiscoveredSession }) {
   return <div className="space-y-2">
-    {s.canContinue ? <><p className="text-success">Bạn có bài đang làm và còn thời gian để tiếp tục.</p><Button disabled>Tiếp tục làm bài · Sắp có</Button></> :
-      s.canStart ? <><p className="text-success">Bạn đủ điều kiện bắt đầu theo lần kiểm tra mới nhất.</p><Button disabled>Bắt đầu làm bài · Sắp có</Button></> :
+    {s.canContinue ? <><p className="text-success">Bạn có bài đang làm và còn thời gian để tiếp tục.</p><StartAttempt value={s} /></> :
+      s.canStart ? <><p className="text-success">Bạn đủ điều kiện bắt đầu theo lần kiểm tra mới nhất.</p><StartAttempt value={s} /></> :
         <p className="text-muted-foreground">{reasons[s.unavailableReason ?? ""] ?? "Hiện chưa thể bắt đầu bài thi."}</p>}
   </div>;
 }
@@ -59,7 +60,7 @@ function History({ id }: { id: string }) {
   const [page, setPage] = useState(0);
   const query = useApiQuery<PageResult<AttemptMetadata>>(`${apiRoot}/${id}/attempts?page=${page}`, true);
   return <section aria-labelledby="history-title" className="space-y-4"><h2 id="history-title" className="text-xl font-bold">Lịch sử bài làm</h2>
-    <p className="text-sm text-muted-foreground">Lịch sử được giữ lại kể cả khi bạn không còn là thành viên lớp. Trang làm bài và kết quả sẽ được bổ sung sau.</p>
+    <p className="text-sm text-muted-foreground">Lịch sử được giữ lại kể cả khi bạn không còn là thành viên lớp. Kết quả sẽ được bổ sung sau.</p>
     {!query.data ? <QueryState error={query.error} retry={query.reload} /> : <>
       {query.data.content.length === 0 ? <p className={panel}>Bạn chưa có bài làm trong kỳ thi này.</p> : query.data.content.map(a => <article key={a.id} className={`${panel} space-y-3`}>
         <h3 className="font-bold">Lượt {a.attemptNumber} · {attemptLabels[a.status]}</h3>
