@@ -15,6 +15,7 @@
     "test:question": "playwright test --config playwright.question.config.ts",
     "test:import": "playwright test --config playwright.import.config.ts",
     "test:session": "playwright test --config playwright.session.config.ts",
+    "test:discovery": "playwright test --config playwright.discovery.config.ts",
     "test:exam": "playwright test --config playwright.exam.config.ts",
     "test:google": "playwright test --config playwright.google.config.ts",
     "test:production": "playwright test --config playwright.production.config.ts",

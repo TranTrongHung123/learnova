@@ -1690,13 +1690,16 @@ Session Participant có quyền nhưng chưa tới `startTime`.
 
 ## UC-PARTEXAM-03 - Available
 
-Session Participant có quyền và đang trong thời gian cho phép bắt đầu.
+Session có thể Start mới (assignment hiện tại, OPEN, còn lượt, không có IN_PROGRESS)
+hoặc Continue Attempt của chính mình trước deadline đã lưu. Continue không yêu cầu membership
+hiện tại. IN_PROGRESS quá hạn chờ finalize vẫn chặn Start mới và không được Continue.
 
 ---
 
 ## UC-PARTEXAM-04 - Completed
 
-Participant đã hoàn tất ít nhất một Attempt.
+Participant đã có ít nhất một Attempt SUBMITTED, EXPIRED hoặc GRADED. Có thể đồng thời
+ở Available nếu còn lượt, hoặc Expired khi Session đóng. Mọi Attempt đều chiếm một lượt.
 
 ---
 
@@ -1707,6 +1710,12 @@ Session đã đóng và Participant không còn khả năng tạo Attempt mới.
 ---
 
 ## UC-PARTEXAM-06 - Xem chi tiết kỳ thi
+
+User ACTIVE + PARTICIPANT có assignment hiện tại hoặc có lịch sử Attempt của chính mình.
+DRAFT/CANCELLED, Session không tồn tại và không có quyền xem đều trả 404. Mất membership
+không mất đường truy cập metadata/history. List và history phân trang ở backend.
+F12 trả canStart/canContinue/activeAttemptId/lý do không khả dụng từ server time;
+không có production Start/resume/result command trước F13–F15.
 
 Có thể xem:
 

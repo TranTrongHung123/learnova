@@ -14,14 +14,14 @@ Nguồn đối chiếu:
 | Thành phần | Hiện trạng |
 |---|---|
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
-| Database | PostgreSQL 17, Flyway V1–V9 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version và Session/assignment; Hibernate validate schema |
+| Database | PostgreSQL 17, Flyway V1–V10 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version, Session/assignment và nền metadata Attempt; Hibernate validate schema |
 | Authentication | Local/Google login, onboarding, link account, JWT, refresh rotation/reuse, logout-all và multi-role; Actuator vẫn đóng |
-| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix và Exam Session tích hợp API thật |
+| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix, Exam Session và Participant discovery/history metadata tích hợp API thật |
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; WebSocket chưa triển khai |
-| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams và Exam Sessions; 51 paths, lỗi và pagination dùng chung |
-| Testing | F11: 136 backend, 66 unit frontend; browser 4 Session, 8 Exam, 6 Classroom và 1 production pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
+| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams, Exam Sessions và Participant discovery; 54 paths, lỗi và pagination dùng chung |
+| Testing | F12: 144 backend, 66 unit frontend; browser 3 Discovery, 4 Session, 6 Classroom và 1 production pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
 | CI | Java 21/Node 22/Chromium/Linux; F06 từng fail reload hai tab và bootstrap trước tạo lớp, các bản sửa bước chờ chưa kiểm chứng remote |
-| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F11 |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F12 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
 **F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
@@ -35,7 +35,8 @@ thật/HTTPS hoặc CI remote. Người dùng tự push nhánh và mở PR.
 **F08 đã triển khai và kiểm chứng local ngày 02/10/2026**; bàn giao bằng commit local.
 F09–F10 đã triển khai; kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
 F11 đã triển khai theo phạm vi được chốt, nghiệm thu local ngày 04/10/2026;
-Start Attempt HTTP và deadline persisted tiếp tục ở F13. F12–F21 chưa hoàn thành.
+Start Attempt HTTP và deadline persisted tiếp tục ở F13. F12 đã triển khai discovery và
+lịch sử metadata theo phạm vi được chốt, nghiệm thu local ngày 04/10/2026. F13–F21 chưa hoàn thành.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -542,15 +543,43 @@ Kiến trúc và sơ đồ: [F11 Exam Session](../architecture/f11-exam-session.
 **Nguồn:** UC-PARTEXAM-01..06.  
 **Phụ thuộc:** F11.
 
-- [ ] My Exams có Upcoming, Available, Completed, Expired.
-- [ ] Query theo quyền PUBLIC/CLASS/INDIVIDUAL, không fetch toàn bộ rồi lọc ở browser.
-- [ ] Chi tiết trả thời gian, số câu, tổng điểm, lượt đã dùng và khả năng Start/Continue.
-- [ ] Không gửi nội dung đề đầy đủ hoặc đáp án trước Start.
-- [ ] Giữ đường truy cập lịch sử Attempt/Result dù membership sau này bị remove.
+- [x] My Exams có Upcoming, Available, Completed, Expired.
+- [x] Query theo quyền PUBLIC/CLASS/INDIVIDUAL, không fetch toàn bộ rồi lọc ở browser.
+- [x] Chi tiết trả thời gian, số câu, tổng điểm, lượt đã dùng và khả năng Start/Continue.
+- [x] Không gửi nội dung đề đầy đủ hoặc đáp án trước Start.
+- [x] Giữ đường truy cập lịch sử metadata Attempt dù membership sau này bị remove; Result detail tiếp tục ở F15 theo phạm vi đã chốt.
 
 **API/UI:** Participant session list/detail; `/participant/exams`.
 
 **Nghiệm thu:** PUBLIC yêu cầu login và role PARTICIPANT; membership không ACTIVE không cấp quyền start mới; tabs có thể giao nhau khi một Session đã hoàn thành nhưng còn lượt.
+
+**Bàn giao F12 — 04/10/2026:**
+
+- Ba API GET Participant session list/detail/history, DTO riêng không chứa nội dung câu hỏi,
+  đáp án, explanation, điểm bài làm hoặc pass/fail. Lọc quyền, tab và phân trang ở database;
+  effective status dùng server time kể cả khi scheduler trễ.
+- Available chỉ gồm canStart hoặc canContinue; Completed/Available/Expired có thể giao nhau.
+  Mất membership không mất metadata/history hoặc khả năng Continue bài còn hạn; IN_PROGRESS
+  quá deadline chờ finalize vẫn chiếm lượt và không cho Start mới.
+- Migration V10 thêm nền metadata Attempt, FK bảo toàn lịch sử và cặp Session/ExamVersion,
+  unique số lượt và partial unique một IN_PROGRESS. Chưa có production API ghi Attempt.
+- `/participant/exams` và detail tích hợp API thật, tab/page giữ trong URL, loading/empty/error/retry,
+  refetch khi trở lại cửa sổ, loại phản hồi cũ. Start/Continue/kết quả disabled kèm “Sắp có”;
+  F13–F15 triển khai command làm bài, grading và kết quả. Không có mock fallback.
+- Backend `mvnw.cmd -B verify`: **144 tests pass**, không fail/error/skip, BUILD SUCCESS;
+  gồm 8 integration tests F12 về quyền, biên thời gian, tabs, membership, history isolation,
+  pagination, constraints và nâng cấp V9→V10.
+- Frontend lint/typecheck/build pass, **66 unit tests pass**. Browser: **3 Discovery,
+  4 Session, 6 Classroom và 1 production test pass**. Discovery dùng fixture database thật
+  chỉ trên test classpath; đã kiểm tra fixture không nằm trong JAR production.
+- Đã xem ảnh mobile/desktop và kiểm tra 375/768/1024/1440px, landscape, zoom 200%,
+  keyboard và reduced motion. Chưa kiểm chứng screen reader, CI remote hoặc tải production.
+- OpenAPI: 54 paths, 65 operation IDs không trùng, 503 tham chiếu hợp lệ; requirements,
+  use cases, screen flow, README và sơ đồ kiến trúc đã đồng bộ.
+- Bàn giao trên `feat/f12-participant-exam-discovery` bằng Conventional Commit local;
+  người dùng tự push, mở PR và merge.
+
+Kiến trúc và sơ đồ: [F12 Participant exam discovery](../architecture/f12-participant-exam-discovery.md).
 
 ### F13 — Start, resume, stable shuffle và autosave
 

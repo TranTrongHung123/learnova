@@ -53,6 +53,7 @@ describe("Workspace navigation", () => {
         navigationFor(workspace).filter((item) => item.available),
       ).toEqual([
         expect.objectContaining({ icon: "dashboard" }),
+        ...(workspace === "PARTICIPANT" ? [expect.objectContaining({ href: "/participant/exams", icon: "exam", available: true })] : []),
         ...(workspace === "CREATOR" ? [expect.objectContaining({ icon: "questions", available: true })] : []),
         ...(workspace === "CREATOR" ? [expect.objectContaining({ href: "/creator/exams", icon: "exam", available: true })] : []),
         ...(workspace === "CREATOR" ? [expect.objectContaining({ href: "/creator/sessions", icon: "sessions", available: true })] : []),

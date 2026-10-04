@@ -111,6 +111,10 @@ jobs:
         working-directory: frontend
         run: npm run test:session
 
+      - name: Participant discovery browser integration with PostgreSQL and Redis
+        working-directory: frontend
+        run: npm run test:discovery
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build
