@@ -24,6 +24,8 @@ servers:
     description: Local development
 
 tags:
+  - name: Attempts
+    description: F13 start, stable shuffle, resume and revision-checked autosave.
   - name: Participant Discovery
     description: F12 permission-filtered session metadata and own attempt history.
   - name: Exam Sessions
@@ -42,6 +44,111 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/exam-sessions/{id}/attempts:
+    post:
+      tags: [Attempts]
+      operationId: startAttempt
+      summary: Start or return the existing IN_PROGRESS Attempt
+      description: |
+        ACTIVE PARTICIPANT required. Session lock serializes start, configuration and cancellation.
+        Existing IN_PROGRESS is returned before checking assignment, including expired attempts awaiting F14.
+        New attempts require current assignment, effective OPEN state and remaining attempts.
+        Deadline and concrete question/option order are fixed at creation. All responses use Cache-Control no-store.
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '201':
+          description: Created atomically with persisted question and option order.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TakingAttempt'}
+        '200':
+          description: Existing Attempt; retries do not consume another attempt.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TakingAttempt'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403':
+          description: FORBIDDEN, ACCOUNT_LOCKED/ACCOUNT_DISABLED or SESSION_NOT_ASSIGNED.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/AttemptConflict'}
+        '503': {$ref: '#/components/responses/AttemptUnavailable'}
+  /api/v1/attempts/{id}:
+    get:
+      tags: [Attempts]
+      operationId: readAttempt
+      summary: Resume own Attempt with saved state and fixed order
+      description: |
+        ACTIVE PARTICIPANT owner required; membership is not rechecked. Other owners return 404.
+        Only editable attempts include questions. Expired or completed attempts return metadata,
+        canEdit=false and questions=[]; no result disclosure or finalization occurs in F13.
+        Cache-Control no-store. serverTime and deadline are authoritative, even when scheduler is late.
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Own Attempt; no correct answers, explanations or grading rules.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TakingAttempt'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/AttemptUnavailable'}
+  /api/v1/attempts/{id}/answers/{questionId}:
+    put:
+      tags: [Attempts]
+      operationId: saveAttemptAnswer
+      summary: Replace one answer and review state using its server revision
+      description: |
+        Owner, IN_PROGRESS and now < persisted deadline are checked while holding the Attempt lock.
+        Question and option IDs must belong to its published snapshot. Revision is per question.
+        Stale revision always returns ANSWER_REVISION_CONFLICT without writing; after a lost response,
+        read the Attempt to reconcile before choosing whether to save again. No automatic overwrite.
+        activeTimeMs is cumulative estimated focused time, nullable if absent; accepted values are
+        capped to elapsed server time and never decrease. It is not grading or anti-cheat evidence.
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: questionId, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SaveAttemptAnswer'}
+      responses:
+        '200':
+          description: Persisted state and incremented revision; Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [state, serverTime]
+                properties:
+                  state: {$ref: '#/components/schemas/AttemptAnswerState'}
+                  serverTime: {type: string, format: date-time}
+        '400':
+          description: INVALID_ATTEMPT_ANSWER, VALIDATION_FAILED or INVALID_REQUEST; invalid shape, precision or foreign/duplicate option IDs.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404':
+          description: ATTEMPT_NOT_FOUND or ATTEMPT_QUESTION_NOT_FOUND, including other owners.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '409': {$ref: '#/components/responses/AttemptConflict'}
+        '503': {$ref: '#/components/responses/AttemptUnavailable'}
   /api/v1/participant/exam-sessions:
     get:
       tags:
@@ -3050,6 +3157,16 @@ components:
         default: 20
 
   responses:
+    AttemptConflict:
+      description: ANSWER_REVISION_CONFLICT, ATTEMPT_DEADLINE_PASSED, ATTEMPT_NOT_EDITABLE, ATTEMPTS_EXHAUSTED or SESSION_INVALID_STATE. No mutation committed.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    AttemptUnavailable:
+      description: SERVICE_UNAVAILABLE; retry with the same revision or read to reconcile an uncertain outcome.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
     SessionError:
       description: ProblemDetail. 400 VALIDATION_FAILED or SESSION_INVALID_PARTICIPANT; 401 UNAUTHORIZED; 403 FORBIDDEN/account
         unavailable; 404 SESSION_NOT_FOUND, EXAM_NOT_FOUND, EXAM_VERSION_NOT_FOUND, CLASSROOM_NOT_FOUND or PARTICIPANT_NOT_FOUND;
@@ -3187,6 +3304,79 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    ParticipantAnswer:
+      type: object
+      additionalProperties: false
+      required: [optionIds]
+      description: |
+        SINGLE_CHOICE accepts zero or one option; MULTIPLE_CHOICE accepts a unique set.
+        TRUE_FALSE uses booleanValue (false is an answer). NUMERIC_ANSWER uses numericValue.
+        Fields for other types must be null/empty. Clear using empty optionIds and null values.
+      properties:
+        optionIds: {type: array, maxItems: 20, uniqueItems: true, items: {type: string, format: uuid}}
+        booleanValue: {type: [boolean, 'null']}
+        numericValue:
+          type: [string, 'null']
+          maxLength: 42
+          pattern: '^-?\d+(\.\d+)?$'
+          description: Decimal string, no exponent; at most 20 integer digits and 10 fractional digits.
+    SaveAttemptAnswer:
+      type: object
+      additionalProperties: false
+      required: [revision, answer, markedForReview]
+      properties:
+        revision: {type: integer, format: int64, minimum: 0}
+        answer: {$ref: '#/components/schemas/ParticipantAnswer'}
+        markedForReview: {type: boolean}
+        activeTimeMs: {type: [integer, 'null'], format: int64, minimum: 0}
+    AttemptAnswerState:
+      type: object
+      additionalProperties: false
+      required: [questionId, answer, markedForReview, revision, activeTimeMs, savedAt]
+      properties:
+        questionId: {type: string, format: uuid}
+        answer: {$ref: '#/components/schemas/ParticipantAnswer'}
+        markedForReview: {type: boolean}
+        revision: {type: integer, format: int64, minimum: 0}
+        activeTimeMs: {type: [integer, 'null'], format: int64, minimum: 0}
+        savedAt: {type: [string, 'null'], format: date-time}
+    TakingQuestion:
+      type: object
+      additionalProperties: false
+      required: [id, type, content, options, state]
+      properties:
+        id: {type: string, format: uuid}
+        type: {type: string, enum: [SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, NUMERIC_ANSWER]}
+        content: {type: string}
+        options:
+          type: array
+          description: Persisted order; empty for TRUE_FALSE and NUMERIC_ANSWER. Labels are assigned from this display order.
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, content]
+            properties:
+              id: {type: string, format: uuid}
+              content: {type: string}
+        state: {$ref: '#/components/schemas/AttemptAnswerState'}
+    TakingAttempt:
+      type: object
+      additionalProperties: false
+      required: [id, sessionId, examVersionId, title, attemptNumber, status, startedAt, deadline, serverTime, canEdit, questions]
+      properties:
+        id: {type: string, format: uuid}
+        sessionId: {type: string, format: uuid}
+        examVersionId: {type: string, format: uuid}
+        title: {type: string}
+        attemptNumber: {type: integer, minimum: 1}
+        status: {type: string, enum: [IN_PROGRESS, SUBMITTED, EXPIRED, GRADED]}
+        startedAt: {type: string, format: date-time}
+        deadline: {type: string, format: date-time}
+        serverTime: {type: string, format: date-time}
+        canEdit: {type: boolean}
+        questions:
+          type: array
+          items: {$ref: '#/components/schemas/TakingQuestion'}
     DiscoveredSession:
       type: object
       required:

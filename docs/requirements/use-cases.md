@@ -1754,6 +1754,10 @@ Nếu có Attempt `IN_PROGRESS`:
 
 - Trả lại Attempt hiện tại.
 - Không tạo duplicate Attempt.
+- Sau kiểm tra account ACTIVE và role PARTICIPANT, khóa Session và tìm Attempt hiện tại
+  trước khi kiểm tra assignment/điều kiện tạo lượt mới. Gỡ membership không chặn resume.
+- F13 trả metadata và canEdit=false nếu bài đã quá deadline; vẫn chặn tạo lượt mới
+  trong khi chờ finalization của F14.
 
 Nếu hợp lệ và chưa có Attempt:
 
@@ -1805,6 +1809,9 @@ Nếu `shuffleAnswers = true`:
 
 - Option order cũng được chốt theo Attempt.
 - Reload không đổi thứ tự.
+
+F13 lưu order cụ thể vào database, không shuffle lại khi read/resume. Shuffle option chỉ
+áp dụng SINGLE_CHOICE/MULTIPLE_CHOICE; TRUE_FALSE dùng boolean với nhãn Đúng/Sai cố định.
 
 ---
 
@@ -1881,6 +1888,20 @@ Backend validate:
 - Deadline.
 - Question thuộc Attempt.
 
+F13 kiểm tra thêm option thuộc question snapshot, loại answer và revision riêng của câu.
+Cho phép xóa đáp án, TRUE_FALSE false là câu đã trả lời, numeric dùng chuỗi thập phân
+tối đa 20 chữ số nguyên/10 chữ số thập phân, không nhận ký hiệu mũ.
+
+Lưu answer/review và telemetry trong cùng transaction, khóa Attempt rồi kiểm tra server
+time/deadline. Mỗi save hợp lệ tăng revision câu; request cũ trả ANSWER_REVISION_CONFLICT.
+Frontend tuần tự hóa/coalesce theo câu; numeric debounce 500 ms, lựa chọn/review gửi ngay,
+chuyển câu flush. Network/5xx retry tối đa ba lần sau request đầu, dùng cùng payload/revision.
+
+Nếu response bị mất, đọc lại: answer/review khớp thì nhận state máy chủ, kể cả telemetry
+bị giới hạn; nếu khác thì giữ input local, hiển thị hai bản để Participant quyết định.
+Không tự gửi lại bằng revision mới. Input mới không được đánh dấu Saved bởi response cũ.
+Telemetry tích lũy được server cap theo elapsed, không cộng trùng khi retry.
+
 Frontend có thể hiển thị:
 
 ```text
@@ -1899,10 +1920,17 @@ Sau reload:
 2. Fetch Attempt đang `IN_PROGRESS`.
 3. Backend trả:
    - Saved answers.
+   - Review marks và revision từng câu.
    - Question order.
    - Option order.
    - Server deadline.
 4. Tiếp tục bài.
+
+Mất membership vẫn resume/save khi còn hạn. GET không trả nội dung câu hỏi cho Attempt
+không editable; chỉ metadata, deadline, serverTime và canEdit=false. Màn hình phân biệt
+403 forbidden, 404 not-found và lỗi mạng; không thay input dirty khi refetch.
+Không lưu answer trong localStorage/IndexedDB; chỉ phần đã được backend xác nhận mới
+được bảo đảm khôi phục sau reload. F13 không có submit/finalization/result command.
 
 ---
 

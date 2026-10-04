@@ -64,6 +64,7 @@ public class SecurityConfiguration {
                                         || request.getRequestURI().substring(request.getContextPath().length()).startsWith("/api/v1/exam-versions/")
                                         || request.getRequestURI().substring(request.getContextPath().length()).equals("/api/v1/exam-sessions")
                                         || request.getRequestURI().substring(request.getContextPath().length()).startsWith("/api/v1/exam-sessions/")
+                                        || request.getRequestURI().substring(request.getContextPath().length()).startsWith("/api/v1/attempts/")
                                         || request.getRequestURI().substring(request.getContextPath().length()).equals("/api/v1/question-imports")
                                         || request.getRequestURI().substring(request.getContextPath().length()).startsWith("/api/v1/question-imports/")));
                                 return filter;
@@ -88,6 +89,8 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/questions", "/api/v1/questions/**").authenticated()
                         .requestMatchers("/api/v1/exams", "/api/v1/exams/**", "/api/v1/exam-versions/**").authenticated()
                         .requestMatchers("/api/v1/exam-sessions", "/api/v1/exam-sessions/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/attempts/{id}").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/attempts/{id}/answers/{questionId}").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/participant/exam-sessions", "/api/v1/participant/exam-sessions/**").authenticated()
                         .requestMatchers("/api/v1/question-imports", "/api/v1/question-imports/**").authenticated()
                         .requestMatchers("/actuator", "/actuator/**").denyAll()
