@@ -290,3 +290,26 @@ Xem [kiến trúc F11](docs/architecture/f11-exam-session.md) và [OpenAPI](docs
 Browser suite: `cd frontend` rồi `npm run test:session` (PostgreSQL/Redis Testcontainers).
 F11 chưa có Attempt HTTP; contract khóa/transaction dành cho F13 đã có, kiểm thử Start
 thật và bảo toàn deadline persisted sẽ thực hiện ở F13.
+
+## F12 — Participant exam discovery
+
+Participant xem kỳ thi tại `/participant/exams`: Có thể làm, Sắp diễn ra, Đã hoàn thành
+và Đã đóng. Các tab có thể giao nhau; tab/page giữ trong URL. Danh sách và chi tiết dùng
+API thật, backend lọc quyền PUBLIC/CLASS/INDIVIDUAL và phân trang. PUBLIC vẫn yêu cầu
+tài khoản ACTIVE có role PARTICIPANT.
+
+Chi tiết hiển thị lịch thi, số câu, điểm cấu hình, số lượt và lịch sử metadata bài làm.
+Mất membership không mất lịch sử hoặc khả năng tiếp tục bài còn hạn; không cấp Start mới
+từ membership đã remove. Không gửi câu hỏi/đáp án, điểm bài làm hoặc pass/fail qua discovery.
+
+Migration V10 bổ sung nền metadata Attempt và constraint bảo toàn lịch sử. F12 chưa có
+production API ghi Attempt: Start/Continue/kết quả có nhãn “Sắp có”, sẽ được tích hợp
+ở F13–F15. Không có mock fallback. Xem [kiến trúc F12](docs/architecture/f12-participant-exam-discovery.md)
+và [OpenAPI](docs/api/openapi.yaml).
+
+Browser suite: `cd frontend` rồi `npm run test:discovery`; dùng PostgreSQL/Redis Testcontainers,
+fixture chỉ thuộc test classpath và không được đóng gói production.
+
+Kiểm chứng local ngày 04/10/2026: 144 backend tests, 66 frontend unit tests,
+3 Discovery/4 Session/6 Classroom/1 production browser tests pass; lint/typecheck/build pass.
+Chưa kiểm chứng CI remote, screen reader hoặc tải production.

@@ -61,7 +61,7 @@ export function navigationFor(workspace: Workspace): NavigationItem[] {
     icon: NavigationItem["icon"],
   ) => items.push({ label, href, icon, available: false });
   if (workspace === "PARTICIPANT") {
-    pending("Kỳ thi của tôi", `${base}/exams`, "exam");
+    items.push({ label: "Kỳ thi của tôi", href: `${base}/exams`, icon: "exam", available: true });
     pending("Kết quả", `${base}/results`, "results");
     items.push({ label: "Lớp học của tôi", href: `${base}/classes`, icon: "classes", available: true });
   } else if (workspace === "CREATOR") {
