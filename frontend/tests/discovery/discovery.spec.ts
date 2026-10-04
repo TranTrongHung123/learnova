@@ -47,7 +47,7 @@ test("real list/detail, filters, reload, safe metadata and responsive keyboard n
   await page.getByRole("link", { name: "Về kỳ thi của tôi" }).click(); await expect(page).toHaveURL(/tab=UPCOMING/);
   await page.getByRole("link", { name: "Có thể làm", exact: true }).click();
   await page.getByRole("link", { name: `Xem chi tiết ${s.title}` }).click();
-  await expect(page.getByRole("button", { name: "Bắt đầu làm bài · Sắp có" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Bắt đầu làm bài", exact: true })).toBeEnabled();
   await expect(page.getByText("Bạn chưa có bài làm trong kỳ thi này.")).toBeVisible();
   await page.emulateMedia({ reducedMotion: "reduce" });
   for (const width of [375, 768, 1024, 1440, 640]) {
@@ -83,7 +83,7 @@ test("removed class membership keeps continuation and history; offline retry and
   expect((await request.post(`${api}/exam-sessions/${s.id}/test-fixture?status=IN_PROGRESS`, { headers: p.headers })).status()).toBe(200);
   expect((await request.delete(`${api}/classrooms/${s.classroomId}/members/${p.id}`, { headers: s.owner.headers })).status()).toBe(204);
   await login(page, p.email); await page.getByRole("link", { name: `Xem chi tiết ${s.title}` }).click();
-  await expect(page.getByRole("button", { name: "Tiếp tục làm bài · Sắp có" })).toBeDisabled();
+  await expect(page.getByRole("link", { name: "Tiếp tục làm bài", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Lượt 1 · Đang làm" })).toBeVisible();
   await context.setOffline(true); await page.getByRole("button", { name: "Làm mới", exact: true }).click();
   await expect(page.getByRole("button", { name: "Thử lại" })).toBeVisible();

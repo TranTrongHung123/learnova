@@ -22,6 +22,10 @@ public class SessionAdmission {
     }
     public record Admission(UUID versionId, Instant startedAt, Instant deadline, int maxAttempts, boolean shuffleQuestions, boolean shuffleAnswers) {}
     @Transactional(propagation=Propagation.MANDATORY)
+    public void lock(UUID sessionId) {
+        sessions.lockById(sessionId).orElseThrow(()->new SessionFailure(404,"SESSION_NOT_FOUND"));
+    }
+    @Transactional(propagation=Propagation.MANDATORY)
     public Admission reserve(UUID participant, UUID sessionId) {
         if (!identity.activeUser(participant).roles().contains("PARTICIPANT")) throw new SessionFailure(403,"FORBIDDEN");
         var s=sessions.lockById(sessionId).orElseThrow(()->new SessionFailure(404,"SESSION_NOT_FOUND"));

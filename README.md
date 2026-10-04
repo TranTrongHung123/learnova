@@ -288,8 +288,7 @@ Migration V9 bổ sung Session/assignment. Scheduler mặc định 10 giây, c�
 `learnova.session.lifecycle-delay-ms`; request vẫn kiểm tra server time nếu job trễ.
 Xem [kiến trúc F11](docs/architecture/f11-exam-session.md) và [OpenAPI](docs/api/openapi.yaml).
 Browser suite: `cd frontend` rồi `npm run test:session` (PostgreSQL/Redis Testcontainers).
-F11 chưa có Attempt HTTP; contract khóa/transaction dành cho F13 đã có, kiểm thử Start
-thật và bảo toàn deadline persisted sẽ thực hiện ở F13.
+F13 sử dụng contract khóa/transaction F11 cho Start HTTP và bảo toàn deadline persisted.
 
 ## F12 — Participant exam discovery
 
@@ -302,9 +301,9 @@ Chi tiết hiển thị lịch thi, số câu, điểm cấu hình, số lượt
 Mất membership không mất lịch sử hoặc khả năng tiếp tục bài còn hạn; không cấp Start mới
 từ membership đã remove. Không gửi câu hỏi/đáp án, điểm bài làm hoặc pass/fail qua discovery.
 
-Migration V10 bổ sung nền metadata Attempt và constraint bảo toàn lịch sử. F12 chưa có
-production API ghi Attempt: Start/Continue/kết quả có nhãn “Sắp có”, sẽ được tích hợp
-ở F13–F15. Không có mock fallback. Xem [kiến trúc F12](docs/architecture/f12-participant-exam-discovery.md)
+Migration V10 bổ sung nền metadata Attempt và constraint bảo toàn lịch sử. F13 đã mở
+Start/Continue bằng API thật; kết quả giữ nhãn “Sắp có” đến F15.
+Không có mock fallback. Xem [kiến trúc F12](docs/architecture/f12-participant-exam-discovery.md)
 và [OpenAPI](docs/api/openapi.yaml).
 
 Browser suite: `cd frontend` rồi `npm run test:discovery`; dùng PostgreSQL/Redis Testcontainers,
@@ -313,3 +312,19 @@ fixture chỉ thuộc test classpath và không được đóng gói production.
 Kiểm chứng local ngày 04/10/2026: 144 backend tests, 66 frontend unit tests,
 3 Discovery/4 Session/6 Classroom/1 production browser tests pass; lint/typecheck/build pass.
 Chưa kiểm chứng CI remote, screen reader hoặc tải production.
+
+## F13 — Start, resume, stable shuffle và autosave
+
+Participant bắt đầu/tiếp tục từ discovery và làm bài tại `/participant/attempts/[attemptId]`.
+Backend khóa Session để chống duplicate/vượt lượt, lưu deadline và thứ tự question/option
+cụ thể. Migration V11 thêm answer/review/revision từng câu và telemetry, giữ snapshot bất biến.
+Remove membership không làm mất quyền tiếp tục bài đang làm còn hạn.
+
+Autosave tuần tự hóa/coalesce theo câu, chỉ báo Saved sau xác nhận; hỗ trợ retry hữu hạn,
+đối chiếu hai tab và giữ input chưa lưu khi mất mạng. Không lưu answer vào browser storage.
+Timer dùng serverTime/deadline; hết hạn khóa sửa và chờ xử lý. **Submit, auto-finalize,
+grading và kết quả chưa thuộc F13**; nút Nộp bài hiện “Sắp có”.
+
+Xem [kiến trúc F13](docs/architecture/f13-attempt-autosave.md),
+[OpenAPI](docs/api/openapi.yaml) và [kết quả nghiệm thu](docs/plans/v1-feature-implementation-plan.md).
+Browser suite: `cd frontend` rồi `npm run test:attempt`, dùng backend/PostgreSQL/Redis thật.
