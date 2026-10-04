@@ -1478,7 +1478,7 @@ Exam Sessions
 ```
 
 F06 triển khai Tổng quan và Thành viên; sửa tên/mô tả ngay trong Tổng quan.
-Exam Sessions và Upcoming Sessions trong danh sách lớp được tích hợp ở F11.
+F11 tích hợp danh sách Exam Sessions trong chi tiết lớp; link Kỳ thi sắp tới trong danh sách lớp mở Session List lọc SCHEDULED và classroomId.
 Danh sách lớp có tìm theo tên và phân trang. Danh sách thành viên có tìm tên/email,
 lọc ACTIVE/REMOVED/tất cả và phân trang; F06 dùng card responsive thay bảng rộng.
 Thêm Participant yêu cầu email đầy đủ, xác nhận thông tin tìm được rồi gửi userId.
@@ -1839,7 +1839,7 @@ Danh sách xếp dọc để giữ action, nội dung và lỗi dễ đọc trê
 # 18. Exam Screens
 
 F09 đã triển khai toàn bộ luồng biên soạn thủ công và versioning bên dưới. F10 bổ sung Generate by Rule
-với preview và sinh câu vào Draft qua API thật. Related Sessions hiển thị chưa khả dụng tới F11,
+với preview và sinh câu vào Draft qua API thật. Related Sessions được tích hợp API thật từ F11,
 không giả lập số lượng hoặc danh sách kỳ thi.
 
 Danh sách mặc định ACTIVE, tìm theo tên, phân trang 20 dòng, sắp xếp cập nhật mới nhất.
@@ -2307,7 +2307,7 @@ Chọn:
 
 ### INDIVIDUAL
 
-Search/select:
+Lookup email chính xác và chọn (không mở danh bạ User):
 
 ```text
 1..N Participants
@@ -2346,6 +2346,12 @@ Schedule
 ```
 
 ---
+
+F11 triển khai đủ sáu bước với nhãn tiến độ, nút Trước/Tiếp tục, lỗi theo field và
+múi giờ đang nhập. Lưu và lên lịch thực hiện Save Draft rồi Schedule; lỗi Schedule
+vẫn giữ ID Draft. Schedule trong cửa sổ thi mở ngay, khóa cấu hình theo backend.
+Lỗi revision giữ nội dung nhập, cho tải bản máy chủ để đối chiếu trước khi thay form.
+Sau lỗi mạng Create chưa biết ID, không tự gửi lại POST; kiểm tra danh sách kỳ thi.
 
 # 19.3. Session Detail
 
@@ -2390,7 +2396,7 @@ Actions phụ thuộc state.
 |---|---:|---:|---:|---:|---:|
 | DRAFT, no attempt | Yes | Yes | No | No | No |
 | SCHEDULED, no attempt | Limited/Yes | Yes | No | No | Yes |
-| OPEN | Critical config locked | No | Yes | Partial | Yes |
+| OPEN | Chỉ sửa tên | No | Yes | Partial | Yes |
 | CLOSED | No | No | No | Yes | No |
 | CANCELLED | No | No | No | Historical only | No |
 
@@ -2418,6 +2424,10 @@ Some settings are locked because participants have already started this session.
 ```
 
 ---
+
+F11: Edit SCHEDULED chỉ đổi startTime sang tương lai; endTime chỉ qua Gia hạn.
+OPEN chỉ sửa tên, result policy bị khóa. Attempts/Results/Monitoring hiển thị chưa khả dụng
+cho tới feature tương ứng, không giả lập số liệu hoặc action.
 
 # 19.6. Cancel Session Dialog
 

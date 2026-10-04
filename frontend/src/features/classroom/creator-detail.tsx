@@ -1,5 +1,6 @@
 "use client";
 
+import { SessionList } from "@/features/session/session-list";
 import { useState } from "react";
 import { useAuth } from "@/features/auth/auth-provider";
 import { Button, LinkButton } from "@/components/ui/button";
@@ -42,6 +43,7 @@ export function CreatorClassroomDetail({ classId }: { classId: string }) {
           {c.joinCode.status === "ACTIVE" && <Button variant="secondary" onClick={() => setCommand("revoke")}>Thu hồi mã</Button>}</div>
       </section>
     </div>}
+    <SessionList classroomId={classId} compact />
     {command && <Confirm title={command === "generate" ? "Tạo mã tham gia mới?" : "Thu hồi mã tham gia?"}
       description={command === "generate" ? "Mã hiện tại (nếu có) sẽ mất hiệu lực. Mã mới dùng được trong 7 ngày; thành viên hiện tại không bị ảnh hưởng." : "Mã hiện tại sẽ không thể dùng để tham gia lớp. Thành viên hiện tại không bị ảnh hưởng."}
       confirmLabel={command === "generate" ? "Xác nhận tạo mã" : "Xác nhận thu hồi"}

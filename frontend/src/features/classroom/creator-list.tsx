@@ -21,6 +21,7 @@ export function CreatorClassrooms() {
           <h2 className="text-xl font-bold [overflow-wrap:anywhere]">{c.name}</h2><p className="whitespace-pre-wrap text-muted-foreground [overflow-wrap:anywhere]">{c.description || "Chưa có mô tả."}</p>
           <div className="flex flex-wrap gap-3 text-sm"><span>{c.activeParticipants} thành viên đang tham gia</span><span className="rounded bg-muted px-2 py-1">{codeLabels[c.joinCodeStatus]}</span></div>
           <p className="text-sm text-muted-foreground">Cập nhật {date(c.updatedAt)}</p><LinkButton variant="secondary" href={`/creator/classes/${c.id}`}>Mở lớp<span className="sr-only"> {c.name}</span></LinkButton>
+        <LinkButton variant="ghost" href={`/creator/sessions?classroomId=${c.id}&status=SCHEDULED`}>Kỳ thi sắp tới</LinkButton>
         </article>)}</div>}
       <Pagination result={query.data} onPage={setPage} />
     </>}

@@ -110,3 +110,9 @@ di chuyển package.
   loại class cũ, giúp phát hiện vấn đề component/entity/repository scanning.
 - Review diff để xác nhận chỉ đổi cấu trúc, import, visibility/accessor cần thiết
   và tài liệu; không thêm dependency cho refactor package.
+
+
+F11 bổ sung module `session` (controller/dto/service/entity/enums/repository/exception/config).
+Module gọi contract ExamService, ClassroomService, IdentityService, ParticipantDirectory và AuditService;
+JDBC read projections không expose entity nội bộ. `SessionAdmission` là contract transaction cho F13,
+không tạo dependency ngược từ Session sang Attempt. Xem [F11](f11-exam-session.md).

@@ -1412,7 +1412,7 @@ Participant được quyền nếu có membership `ACTIVE` trong ít nhất mộ
 
 Creator chọn một hoặc nhiều Participant cụ thể.
 
-UI có thể search theo email/displayName.
+F11 dùng lookup email chính xác, không công khai danh bạ User; chọn và lưu bằng userId.
 
 Backend lưu quan hệ bằng:
 
@@ -1484,7 +1484,7 @@ Cho phép sửa hầu hết config.
 
 ### SCHEDULED chưa có Attempt
 
-Cho phép sửa config hợp lý trước khi mở.
+Cho phép sửa cấu hình trước khi mở; startTime mới phải ở tương lai. endTime chỉ tăng qua Extend có audit.
 
 ### OPEN hoặc đã có Attempt
 
@@ -1510,6 +1510,10 @@ Extend End Time
 và phải audit.
 
 ---
+
+Khi OPEN hoặc đã có Attempt, chỉ cho sửa tên (nếu chưa CLOSED/CANCELLED); startTime và result policy cũng bị khóa. CLOSED/CANCELLED không cho sửa.
+
+Schedule từ DRAFT chưa có Attempt: kiểm tra lại version PUBLISHED, Exam chưa archived và assignment. Nếu startTime đã tới nhưng endTime chưa tới thì mở ngay. Hết endTime thì từ chối.
 
 ## UC-SESSION-05 - Giao Session
 
