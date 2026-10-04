@@ -14,14 +14,14 @@ Nguồn đối chiếu:
 | Thành phần | Hiện trạng |
 |---|---|
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
-| Database | PostgreSQL 17, Flyway V1–V7 gồm identity, audit, classroom/membership, Question Bank và import preview; Hibernate validate schema |
+| Database | PostgreSQL 17, Flyway V1–V9 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version và Session/assignment; Hibernate validate schema |
 | Authentication | Local/Google login, onboarding, link account, JWT, refresh rotation/reuse, logout-all và multi-role; Actuator vẫn đóng |
-| Frontend | Workspace shell, auth/profile, Classroom, Question Bank và Excel Import preview/confirm tích hợp API thật |
+| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix và Exam Session tích hợp API thật |
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; WebSocket chưa triển khai |
-| OpenAPI | Health, auth/profile/password, Classroom, Questions và Question Imports; 36 paths, lỗi và pagination dùng chung |
-| Testing | F08: 106 backend, 55 unit frontend, 4 Import, 4 Question Bank, 11 auth/profile và 1 production browser test pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
+| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams và Exam Sessions; 51 paths, lỗi và pagination dùng chung |
+| Testing | F11: 136 backend, 66 unit frontend; browser 4 Session, 8 Exam, 6 Classroom và 1 production pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
 | CI | Java 21/Node 22/Chromium/Linux; F06 từng fail reload hai tab và bootstrap trước tạo lớp, các bản sửa bước chờ chưa kiểm chứng remote |
-| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F08 |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F11 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
 **F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
@@ -33,7 +33,9 @@ thật/HTTPS hoặc CI remote. Người dùng tự push nhánh và mở PR.
 **F06 đã triển khai và kiểm chứng local ngày 30/09/2026**; bàn giao bằng commit local.
 **F07 đã triển khai và kiểm chứng local ngày 01/10/2026**; bàn giao bằng commit local.
 **F08 đã triển khai và kiểm chứng local ngày 02/10/2026**; bàn giao bằng commit local.
-F09–F21 chưa hoàn thành. Kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
+F09–F10 đã triển khai; kết quả và giới hạn kiểm chứng được ghi tại từng feature bên dưới.
+F11 đã triển khai theo phạm vi được chốt, nghiệm thu local ngày 04/10/2026;
+Start Attempt HTTP và deadline persisted tiếp tục ở F13. F12–F21 chưa hoàn thành.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -492,18 +494,48 @@ Kiến trúc và sơ đồ: [F10 Sinh đề theo ma trận](../architecture/f10-
 **Nguồn:** UC-SESSION-01..07.  
 **Phụ thuộc:** F06, F09.
 
-- [ ] Tạo Session từ published version của Exam chưa archived.
-- [ ] Cấu hình lịch, duration, maxAttempts, passingScore, shuffle và result policy.
-- [ ] Mỗi Session chỉ có PUBLIC, CLASS hoặc INDIVIDUAL; CLASS chỉ chọn lớp owner quản lý.
-- [ ] Triển khai Schedule và chuyển trạng thái theo server time; request vẫn kiểm tra thời gian khi scheduler trễ.
-- [ ] Khóa fairness config khi OPEN hoặc đã có Attempt.
-- [ ] Hủy chỉ DRAFT/SCHEDULED chưa có Attempt; audit cancellation.
-- [ ] Gia hạn khi SCHEDULED/OPEN, chỉ tăng endTime; giữ deadline các Attempt đã tạo.
-- [ ] Mặc định kết quả `SUMMARY + AFTER_SESSION_END`.
+- [x] Tạo Session từ published version của Exam chưa archived.
+- [x] Cấu hình lịch, duration, maxAttempts, passingScore, shuffle và result policy.
+- [x] Mỗi Session chỉ có PUBLIC, CLASS hoặc INDIVIDUAL; CLASS chỉ chọn lớp owner quản lý.
+- [x] Triển khai Schedule và chuyển trạng thái theo server time; request vẫn kiểm tra thời gian khi scheduler trễ.
+- [x] Khóa fairness config khi OPEN hoặc đã có Attempt.
+- [x] Hủy chỉ DRAFT/SCHEDULED chưa có Attempt; audit cancellation.
+- [x] Gia hạn khi SCHEDULED/OPEN, chỉ tăng endTime; không thay deadline từ contract admission. Kiểm chứng deadline Attempt persisted ở F13.
+- [x] Mặc định kết quả `SUMMARY + AFTER_SESSION_END`.
 
 **API/UI:** Exam sessions, schedule, cancel, extend-end-time; wizard và trang chi tiết/chỉnh sửa.
 
-**Nghiệm thu:** Không dùng Draft Version; validate cửa sổ thời gian và passingScore; chống race giữa start, chỉnh config và cancellation.
+**Nghiệm thu:** Không dùng Draft Version; validate cửa sổ thời gian và passingScore;
+khóa Session chung cho mutation và contract admission. Kiểm thử Start Attempt HTTP thực tế
+và deadline của Attempt persisted chờ F13 theo phạm vi đã chốt.
+
+**Kết quả kiểm chứng ngày 04/10/2026:**
+
+- Migration V9 và module Session; API list/detail/create/update/schedule/cancel/extend;
+  assignment PUBLIC/CLASS/INDIVIDUAL và lookup Participant theo email chính xác.
+- Schedule trong cửa sổ thi mở ngay. OPEN chỉ sửa tên, result policy/fairness bị khóa;
+  SCHEDULED chỉ tăng endTime qua action riêng. Lifecycle dùng server time cả khi job trễ.
+- Wizard sáu bước, detail/edit và các dialog dùng API thật; Related Sessions tích hợp
+  Exam/Classroom, Upcoming link lọc theo lớp và SCHEDULED. Không có mock fallback.
+- Backend `mvnw.cmd -B verify`: 136 test pass, không fail/error/skip; gồm 13 Session
+  integration tests. Kiểm tra migration mới/V8→V9, role/ownership, assignment, lifecycle
+  biên thời gian, rollback audit, archive/create race và khóa admission-vs-extension.
+- Frontend lint/typecheck và production build pass; 66 unit test pass.
+  Browser: 4 Session, 8 Exam, 6 Classroom và 1 production route test pass.
+- Đã review ảnh detail desktop/mobile; kiểm tra keyboard/focus, Escape/return focus,
+  viewport 375/768/1024/1440/640x450 và reduced motion. Chưa kiểm chứng screen reader
+  hoặc mọi mức browser zoom. Màu sắc/typography kế thừa Master.
+- OpenAPI: 51 paths, 483 internal references resolve; không có duplicate YAML key;
+  operation/response maps hợp lệ. Đồng bộ requirements/use cases/screen flow/README.
+- Local Windows/Edge, Java 21, Node 24, PostgreSQL 17/Redis 7.4 Testcontainers;
+  CI đã thêm Session browser suite nhưng chưa chạy remote hoặc đo tải production.
+- `SessionAdmission.reserve` yêu cầu transaction caller, khóa cùng hàng Session và
+  rollback firstAttemptAt nếu caller rollback; F13 chịu trách nhiệm duplicate/lượt làm,
+  tạo/resume Attempt và bảo toàn deadline persisted. Không có bảng/API Attempt ở F11.
+- Bàn giao trên `feat/f11-exam-session` bằng Conventional Commit local;
+  người dùng tự push, mở PR và merge.
+
+Kiến trúc và sơ đồ: [F11 Exam Session](../architecture/f11-exam-session.md).
 
 ### F12 — Participant exam discovery
 

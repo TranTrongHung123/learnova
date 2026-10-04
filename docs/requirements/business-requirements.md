@@ -1020,6 +1020,27 @@ gia hạn dùng `endTime` mới; `AFTER_SESSION_END` cũng xét `endTime` mới.
 
 ---
 
+## 16.4. Quy tắc triển khai F11 đã chốt
+
+- Schedule chỉ từ DRAFT chưa có Attempt, sau khi kiểm tra lại published version của
+  Exam chưa archived và assignment hợp lệ. Nếu `startTime <= now < endTime`, mở ngay;
+  nếu đã hết endTime thì từ chối. DRAFT không tự mở theo lịch.
+- SCHEDULED chưa mở/chưa có Attempt được sửa cấu hình; startTime mới phải ở tương lai.
+  endTime chỉ được tăng qua action Extend có audit, không rút ngắn qua Edit.
+- OPEN hoặc đã có Attempt: chỉ sửa tên khi chưa CLOSED/CANCELLED. Khóa cả startTime
+  và result policy cùng các field fairness; gia hạn qua action riêng.
+- Duration và maxAttempts là số nguyên dương; `startTime < endTime`;
+  `0 <= passingScore <= totalScore`. Duration có thể dài hơn cửa sổ thi.
+- CLASS/INDIVIDUAL cần 1–500 target ID riêng biệt đúng loại; PUBLIC không có target.
+  INDIVIDUAL chọn tài khoản ACTIVE, hoàn tất onboarding, có role PARTICIPANT bằng
+  lookup email chính xác. CLASS chỉ lớp của Creator và dùng membership ACTIVE hiện tại.
+- Archive Exam ngăn tạo/đổi sang version của Exam đó hoặc Schedule mới, nhưng không
+  hủy Session đã Schedule. Result default giữ `SUMMARY + AFTER_SESSION_END`.
+- Request/list/filter dựa trên server time dù scheduler trễ. OPEN tại startTime,
+  CLOSED tại endTime; Session đã CLOSED không được mở lại bằng gia hạn.
+
+---
+
 # 17. Điều kiện bắt đầu bài thi
 
 Khi Participant yêu cầu Start Exam, backend phải kiểm tra:

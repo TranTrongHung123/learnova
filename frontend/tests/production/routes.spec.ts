@@ -15,6 +15,8 @@ test("production không cung cấp preview hoặc fixture", async ({
     "/creator",
     "/creator/exams",
     "/creator/exams/new",
+    "/creator/sessions",
+    "/creator/sessions/new",
     "/admin",
     "/profile",
     "/notifications",

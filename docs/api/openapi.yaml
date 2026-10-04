@@ -24,6 +24,8 @@ servers:
     description: Local development
 
 tags:
+  - name: Exam Sessions
+    description: F11 Creator session configuration, assignment and lifecycle.
   - name: Exams
     description: F09 Creator-owned Exam Builder, immutable snapshots and version history.
   - name: Question Imports
@@ -38,6 +40,361 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/exam-sessions:
+    get:
+      tags:
+      - Exam Sessions
+      operationId: listExamSessions
+      summary: List owned exam sessions
+      description: ACTIVE CREATOR only, owner scoped. Bearer authentication; no CSRF header. Timestamps require timezone
+        and at most microsecond precision. State uses server time independently of scheduler lag; mutations recheck after locking. Mutation conflicts return 409; refetch and reconcile before retry. No question snapshots or answer keys
+        are returned. Sorted updatedAt descending, then id descending. Filters use effective state, including CLOSED
+        when scheduler has not run.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current authoritative session data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionPage'
+        '400':
+          $ref: '#/components/responses/SessionError'
+        '401':
+          $ref: '#/components/responses/SessionError'
+        '403':
+          $ref: '#/components/responses/SessionError'
+        '404':
+          $ref: '#/components/responses/SessionError'
+        '409':
+          $ref: '#/components/responses/SessionError'
+        '503':
+          $ref: '#/components/responses/SessionError'
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - SCHEDULED
+          - OPEN
+          - CLOSED
+          - CANCELLED
+      - name: examId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: classroomId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - name: size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+    post:
+      tags:
+      - Exam Sessions
+      operationId: createExamSession
+      summary: Create a configured Draft
+      description: ACTIVE CREATOR only, owner scoped. Bearer authentication; no CSRF header. Timestamps require timezone
+        and at most microsecond precision. State uses server time independently of scheduler lag; mutations recheck after locking. Mutation conflicts return 409; refetch and reconcile before retry. No question snapshots or answer keys
+        are returned. Version must be published and belong to an unarchived owned Exam. startTime < endTime; duration
+        may exceed the window. PUBLIC requires empty target arrays; CLASS requires 1..500 owned classrooms only; INDIVIDUAL
+        requires 1..500 active onboarded PARTICIPANT users only. Duplicate IDs rejected. Defaults SUMMARY + AFTER_SESSION_END.
+      security:
+      - bearerAuth: []
+      responses:
+        '201':
+          description: Current authoritative session data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetail'
+        '400':
+          $ref: '#/components/responses/SessionError'
+        '401':
+          $ref: '#/components/responses/SessionError'
+        '403':
+          $ref: '#/components/responses/SessionError'
+        '404':
+          $ref: '#/components/responses/SessionError'
+        '409':
+          $ref: '#/components/responses/SessionError'
+        '503':
+          $ref: '#/components/responses/SessionError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionWrite'
+  /api/v1/exam-sessions/{id}:
+    get:
+      tags:
+      - Exam Sessions
+      operationId: getExamSession
+      summary: Read owned session
+      description: 'ACTIVE CREATOR only, owner scoped. Bearer authentication; no CSRF header. Timestamps require timezone
+        and at most microsecond precision. State uses server time independently of scheduler lag; mutations recheck after locking. Mutation conflicts return 409; refetch and reconcile before retry. No question snapshots or answer keys
+        are returned. '
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current authoritative session data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetail'
+        '400':
+          $ref: '#/components/responses/SessionError'
+        '401':
+          $ref: '#/components/responses/SessionError'
+        '403':
+          $ref: '#/components/responses/SessionError'
+        '404':
+          $ref: '#/components/responses/SessionError'
+        '409':
+          $ref: '#/components/responses/SessionError'
+        '503':
+          $ref: '#/components/responses/SessionError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags:
+      - Exam Sessions
+      operationId: updateExamSession
+      summary: Update configuration or title
+      description: ACTIVE CREATOR only, owner scoped. Bearer authentication; no CSRF header. Timestamps require timezone
+        and at most microsecond precision. State uses server time independently of scheduler lag; mutations recheck after locking. Mutation conflicts return 409; refetch and reconcile before retry. No question snapshots or answer keys
+        are returned. Required revision. DRAFT without attempts permits full configuration edits. SCHEDULED without
+        attempts permits edits before opening, with new startTime in future and unchanged endTime (use extend). OPEN
+        or any existing attempt allows only title edits. CLOSED/CANCELLED are immutable. Changing version requires
+        an unarchived owned Exam. Existing sessions survive archive.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current authoritative session data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetail'
+        '400':
+          $ref: '#/components/responses/SessionError'
+        '401':
+          $ref: '#/components/responses/SessionError'
+        '403':
+          $ref: '#/components/responses/SessionError'
+        '404':
+          $ref: '#/components/responses/SessionError'
+        '409':
+          $ref: '#/components/responses/SessionError'
+        '503':
+          $ref: '#/components/responses/SessionError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionWrite'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/exam-sessions/participants/lookup:
+    get:
+      tags:
+      - Exam Sessions
+      operationId: lookupSessionParticipant
+      summary: Find an eligible participant by exact email
+      description: ACTIVE CREATOR only, owner scoped. Bearer authentication; no CSRF header. Timestamps require timezone
+        and at most microsecond precision. State uses server time independently of scheduler lag; mutations recheck after locking. Mutation conflicts return 409; refetch and reconcile before retry. No question snapshots or answer keys
+        are returned. Case-insensitive exact email; active onboarded PARTICIPANT only. Not a general user directory.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current authoritative session data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionParticipant'
+        '400':
+          $ref: '#/components/responses/SessionError'
+        '401':
+          $ref: '#/components/responses/SessionError'
+        '403':
+          $ref: '#/components/responses/SessionError'
+        '404':
+          $ref: '#/components/responses/SessionError'
+        '409':
+          $ref: '#/components/responses/SessionError'
+        '503':
+          $ref: '#/components/responses/SessionError'
+      parameters:
+      - name: email
+        in: query
+        required: true
+        schema:
+          type: string
+          format: email
+          maxLength: 254
+  /api/v1/exam-sessions/{id}/schedule:
+    post:
+      tags:
+      - Exam Sessions
+      operationId: scheduleExamSession
+      summary: DRAFT without attempts only
+      description: ACTIVE CREATOR only, owner scoped. Bearer authentication; no CSRF header. Timestamps require timezone
+        and at most microsecond precision. State uses server time independently of scheduler lag; mutations recheck after locking. Mutation conflicts return 409; refetch and reconcile before retry. No question snapshots or answer keys
+        are returned. DRAFT without attempts only. Revalidates unarchived published version and targets. If startTime
+        <= now < endTime, opens immediately. Expired window rejected.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current authoritative session data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetail'
+        '400':
+          $ref: '#/components/responses/SessionError'
+        '401':
+          $ref: '#/components/responses/SessionError'
+        '403':
+          $ref: '#/components/responses/SessionError'
+        '404':
+          $ref: '#/components/responses/SessionError'
+        '409':
+          $ref: '#/components/responses/SessionError'
+        '503':
+          $ref: '#/components/responses/SessionError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRevision'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/exam-sessions/{id}/cancel:
+    post:
+      tags:
+      - Exam Sessions
+      operationId: cancelExamSession
+      summary: DRAFT/SCHEDULED without attempts only; rejects OPEN/CLOSED/CANCELLED
+      description: ACTIVE CREATOR only, owner scoped. Bearer authentication; no CSRF header. Timestamps require timezone
+        and at most microsecond precision. State uses server time independently of scheduler lag; mutations recheck after locking. Mutation conflicts return 409; refetch and reconcile before retry. No question snapshots or answer keys
+        are returned. DRAFT/SCHEDULED without attempts only; rejects OPEN/CLOSED/CANCELLED. Cancellation and audit
+        commit together.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current authoritative session data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetail'
+        '400':
+          $ref: '#/components/responses/SessionError'
+        '401':
+          $ref: '#/components/responses/SessionError'
+        '403':
+          $ref: '#/components/responses/SessionError'
+        '404':
+          $ref: '#/components/responses/SessionError'
+        '409':
+          $ref: '#/components/responses/SessionError'
+        '503':
+          $ref: '#/components/responses/SessionError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRevision'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+  /api/v1/exam-sessions/{id}/extend-end-time:
+    post:
+      tags:
+      - Exam Sessions
+      operationId: extendExamSession
+      summary: SCHEDULED/OPEN only; newEndTime must exceed current endTime
+      description: ACTIVE CREATOR only, owner scoped. Bearer authentication; no CSRF header. Timestamps require timezone
+        and at most microsecond precision. State uses server time independently of scheduler lag; mutations recheck after locking. Mutation conflicts return 409; refetch and reconcile before retry. No question snapshots or answer keys
+        are returned. SCHEDULED/OPEN only; newEndTime must exceed current endTime. Does not reopen CLOSED sessions
+        or alter any existing attempt deadline. Audit records old/new endTime, actor and timestamp. AFTER_SESSION_END
+        uses new endTime.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current authoritative session data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetail'
+        '400':
+          $ref: '#/components/responses/SessionError'
+        '401':
+          $ref: '#/components/responses/SessionError'
+        '403':
+          $ref: '#/components/responses/SessionError'
+        '404':
+          $ref: '#/components/responses/SessionError'
+        '409':
+          $ref: '#/components/responses/SessionError'
+        '503':
+          $ref: '#/components/responses/SessionError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionExtend'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
   /api/v1/exam-versions/{id}/generation/preview:
     post:
       tags: [Exams]
@@ -247,8 +604,8 @@ paths:
       - Exams
       operationId: getExam
       summary: Read Exam and version history
-      description: History is ordered by version number descending. No Session data is synthesized before the Session feature
-        is available. Requires bearer authentication and ACTIVE CREATOR ownership. Refresh cookies never authenticate these
+      description: History is ordered by version number descending. Related sessions use /api/v1/exam-sessions with examId.
+        Requires bearer authentication and ACTIVE CREATOR ownership. Refresh cookies never authenticate these
         endpoints; no CSRF header is required. Unknown request fields are rejected.
       security:
       - bearerAuth: []
@@ -2575,6 +2932,15 @@ components:
         default: 20
 
   responses:
+    SessionError:
+      description: ProblemDetail. 400 VALIDATION_FAILED or SESSION_INVALID_PARTICIPANT; 401 UNAUTHORIZED; 403 FORBIDDEN/account
+        unavailable; 404 SESSION_NOT_FOUND, EXAM_NOT_FOUND, EXAM_VERSION_NOT_FOUND, CLASSROOM_NOT_FOUND or PARTICIPANT_NOT_FOUND;
+        409 SESSION_REVISION_CONFLICT, SESSION_CONFIG_LOCKED, SESSION_INVALID_STATE, SESSION_USE_EXTEND_COMMAND, EXAM_ARCHIVED
+        or EXAM_VERSION_NOT_PUBLISHED; 503 SERVICE_UNAVAILABLE. fieldErrors identify invalid fields.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ApiProblem'
     ExamMatrixForbidden:
       description: FORBIDDEN, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED. ADMIN alone is not a CREATOR.
       content:
@@ -2703,6 +3069,322 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    SessionWrite:
+      type: object
+      required:
+      - title
+      - examVersionId
+      - startTime
+      - endTime
+      - durationMinutes
+      - maxAttempts
+      - passingScore
+      - accessType
+      - classroomIds
+      - participantIds
+      - shuffleQuestions
+      - shuffleAnswers
+      properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Required for PUT; omitted for POST.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        examVersionId:
+          type: string
+          format: uuid
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        maxAttempts:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        passingScore:
+          type: string
+          maxLength: 42
+          pattern: ^\d+(\.\d+)?$
+          description: Exact decimal, at most 20 integer and 10 fractional digits; 0 <= score <= published totalScore.
+        accessType:
+          type: string
+          enum:
+          - PUBLIC
+          - CLASS
+          - INDIVIDUAL
+        classroomIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 500
+          uniqueItems: true
+        participantIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 500
+          uniqueItems: true
+        shuffleQuestions:
+          type: boolean
+        shuffleAnswers:
+          type: boolean
+        resultDisplayMode:
+          type: string
+          enum:
+          - HIDDEN
+          - SCORE_ONLY
+          - SUMMARY
+          - DETAILED
+          default: SUMMARY
+        resultReleasePolicy:
+          type: string
+          enum:
+          - IMMEDIATE
+          - AFTER_SESSION_END
+          - MANUAL
+          default: AFTER_SESSION_END
+      additionalProperties: false
+    SessionRevision:
+      type: object
+      required:
+      - revision
+      properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Required for PUT; omitted for POST.
+      additionalProperties: false
+    SessionExtend:
+      type: object
+      required:
+      - revision
+      - newEndTime
+      properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Required for PUT; omitted for POST.
+        newEndTime:
+          type: string
+          format: date-time
+      additionalProperties: false
+    SessionTarget:
+      type: object
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    SessionActions:
+      type: object
+      required:
+      - editConfiguration
+      - editTitle
+      - schedule
+      - cancel
+      - extend
+      properties:
+        editConfiguration:
+          type: boolean
+        editTitle:
+          type: boolean
+        schedule:
+          type: boolean
+        cancel:
+          type: boolean
+        extend:
+          type: boolean
+    SessionDetail:
+      type: object
+      required:
+      - revision
+      - title
+      - examVersionId
+      - startTime
+      - endTime
+      - durationMinutes
+      - maxAttempts
+      - passingScore
+      - accessType
+      - shuffleQuestions
+      - shuffleAnswers
+      - resultDisplayMode
+      - resultReleasePolicy
+      - id
+      - examId
+      - examName
+      - versionNumber
+      - questionCount
+      - totalScore
+      - status
+      - classrooms
+      - participants
+      - assignedParticipantCount
+      - hasAttempts
+      - serverTime
+      - createdAt
+      - updatedAt
+      - actions
+      properties:
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Required for PUT; omitted for POST.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        examVersionId:
+          type: string
+          format: uuid
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        maxAttempts:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        passingScore:
+          type: string
+          maxLength: 42
+          pattern: ^\d+(\.\d+)?$
+          description: Exact decimal, at most 20 integer and 10 fractional digits; 0 <= score <= published totalScore.
+        accessType:
+          type: string
+          enum:
+          - PUBLIC
+          - CLASS
+          - INDIVIDUAL
+        shuffleQuestions:
+          type: boolean
+        shuffleAnswers:
+          type: boolean
+        resultDisplayMode:
+          type: string
+          enum:
+          - HIDDEN
+          - SCORE_ONLY
+          - SUMMARY
+          - DETAILED
+          default: SUMMARY
+        resultReleasePolicy:
+          type: string
+          enum:
+          - IMMEDIATE
+          - AFTER_SESSION_END
+          - MANUAL
+          default: AFTER_SESSION_END
+        id:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        examName:
+          type: string
+        versionNumber:
+          type: integer
+        questionCount:
+          type: integer
+        totalScore:
+          type: string
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - SCHEDULED
+          - OPEN
+          - CLOSED
+          - CANCELLED
+        classrooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionTarget'
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionTarget'
+        assignedParticipantCount:
+          type:
+          - integer
+          - 'null'
+          description: Distinct ACTIVE classroom members, selected individual count, or null for PUBLIC.
+        hasAttempts:
+          type: boolean
+        serverTime:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        actions:
+          $ref: '#/components/schemas/SessionActions'
+    SessionPage:
+      type: object
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionDetail'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+    SessionParticipant:
+      type: object
+      required:
+      - userId
+      - email
+      - displayName
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
     ExamMatrixRule:
       type: object
       additionalProperties: false

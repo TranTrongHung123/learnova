@@ -43,6 +43,7 @@ public class ClassroomService {
         return queries.owned(actor, search, page, now());
     }
     public OwnerDetail detail(UUID actor, UUID id) { return detail(owner(actor, id, false)); }
+    public String assignmentName(UUID actor, UUID id) { return owner(actor, id, false).getName(); }
     @Transactional
     public OwnerDetail create(UUID actor, WriteClassroom input) {
         requireRole(actor, "CREATOR");
