@@ -1930,13 +1930,22 @@ Mất membership vẫn resume/save khi còn hạn. GET không trả nội dung c
 không editable; chỉ metadata, deadline, serverTime và canEdit=false. Màn hình phân biệt
 403 forbidden, 404 not-found và lỗi mạng; không thay input dirty khi refetch.
 Không lưu answer trong localStorage/IndexedDB; chỉ phần đã được backend xác nhận mới
-được bảo đảm khôi phục sau reload. F13 không có submit/finalization/result command.
+được bảo đảm khôi phục sau reload. F14 bổ sung submit/finalization; result API/UI giữ ở F15.
 
 ---
 
 ## UC-ATTEMPT-07 - Submit
 
-Submit phải idempotent.
+Submit phải idempotent. F14 dùng POST /api/v1/attempts/{id}/submit, không gửi answers
+trong request. Frontend chốt telemetry, khóa chỉnh sửa và đợi mọi save được xác nhận.
+Còn lỗi lưu/conflict thì xử lý trước khi nộp. Nếu mất response, đọc lại Attempt; chưa
+xác nhận được thì giữ trạng thái chưa rõ, không tuyên bố thành công/thất bại.
+
+Backend kiểm tra active PARTICIPANT và ownership; không kiểm tra lại membership.
+Submit/expiration cùng khóa Attempt, chấm snapshot và lưu một Result nguyên tử.
+Đúng hoặc sau deadline ghi DEADLINE_REACHED; trước deadline ghi PARTICIPANT_SUBMIT.
+Thành công trả GRADED và metadata kết thúc, không kèm điểm/pass-fail/đáp án.
+Lỗi grading rollback; retry không tạo Result hoặc chi tiết chấm trùng.
 
 Tình huống:
 

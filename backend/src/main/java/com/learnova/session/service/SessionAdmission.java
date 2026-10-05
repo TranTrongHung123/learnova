@@ -21,6 +21,10 @@ public class SessionAdmission {
         this.sessions=sessions; this.identity=identity; this.jdbc=jdbc; this.clock=clock;
     }
     public record Admission(UUID versionId, Instant startedAt, Instant deadline, int maxAttempts, boolean shuffleQuestions, boolean shuffleAnswers) {}
+    @Transactional(readOnly=true)
+    public java.math.BigDecimal passingScore(UUID sessionId) {
+        return sessions.findById(sessionId).orElseThrow(()->new SessionFailure(404,"SESSION_NOT_FOUND")).getPassingScore();
+    }
     @Transactional(propagation=Propagation.MANDATORY)
     public void lock(UUID sessionId) {
         sessions.lockById(sessionId).orElseThrow(()->new SessionFailure(404,"SESSION_NOT_FOUND"));

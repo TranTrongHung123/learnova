@@ -52,6 +52,20 @@ public class ExamService {
     public record SessionVersion(UUID examId, UUID versionId, String examName, int versionNumber, int questionCount, String totalScore) {}
     public record TakingOption(UUID id, String content) {}
     public record TakingQuestion(UUID id, String type, String content, List<TakingOption> options) {}
+    public record GradingQuestion(UUID id, String type, BigDecimal points, Set<UUID> correctOptions,
+                                  Boolean correctBoolean, BigDecimal correctValue, BigDecimal tolerance) {}
+    // Chỉ dùng nội bộ khi finalize; tuyệt đối không serialize sang API làm bài.
+    public List<GradingQuestion> gradingQuestions(UUID versionId) {
+        var version=versions.findById(versionId).orElseThrow(ExamService::missingVersion);
+        if (version.getStatus()!=VersionStatus.PUBLISHED) throw new ExamFailure(409,"EXAM_VERSION_NOT_PUBLISHED");
+        return ordered(version).stream().map(q -> {
+            var s=q.getSnapshot();
+            return new GradingQuestion(q.getId(),s.type().name(),q.getPoints(),
+                    s.options().stream().filter(SnapshotOption::correct).map(SnapshotOption::id).collect(java.util.stream.Collectors.toUnmodifiableSet()),
+                    s.correctBoolean(),s.correctValue()==null?null:new BigDecimal(s.correctValue()),
+                    s.tolerance()==null?BigDecimal.ZERO:new BigDecimal(s.tolerance()));
+        }).toList();
+    }
     // Contract nội bộ: caller đã kiểm tra quyền Attempt; không truyền dữ liệu chấm điểm.
     public List<TakingQuestion> takingQuestions(UUID versionId) {
         var version=versions.findById(versionId).orElseThrow(ExamService::missingVersion);

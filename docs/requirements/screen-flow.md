@@ -990,7 +990,7 @@ Backend vẫn re-check toàn bộ rule khi Start.
 F13 dùng layout tập trung không sidebar/workspace switcher nhưng giữ auth guard PARTICIPANT.
 Desktop có vùng câu hỏi và navigator; mobile một cột với nút mở/đóng navigator. Timer,
 autosave và nút về kỳ thi ở header không sticky, không che focus khi viewport thấp.
-Nút Nộp bài disabled kèm “Sắp có”; Start confirmation giải thích giới hạn trước khi bắt đầu.
+Nút Nộp bài mở dialog xác nhận. Start confirmation giải thích autosave và server tự kết thúc khi hết giờ.
 
 **Use Cases**
 
@@ -1103,9 +1103,9 @@ Redirect Finalization State
 
 Không phụ thuộc timer frontend để xác định thực tế hết giờ.
 
-Trong phạm vi F13, dừng ở khóa sửa và fetch metadata authoritative, hiển thị “Đã hết
-thời gian làm bài, chờ xử lý”. System finalize/redirect và Submit Confirmation bên dưới
-thuộc F14. F13 không tự đổi IN_PROGRESS thành EXPIRED hoặc GRADED.
+F14 khóa sửa khi timer về 0 và fetch trạng thái authoritative. Chờ server thì hiển thị
+“Đã hết thời gian làm bài, chờ xử lý”; chỉ chuyển sang màn hình hoàn tất khi API xác nhận.
+Server vẫn finalize khi browser đóng. Không coi countdown frontend là trạng thái đã nộp.
 
 ---
 
@@ -1144,7 +1144,10 @@ Submitting...
 Success
 ```
 
-Button Submit phải disabled trong request.
+Sau xác nhận, chốt telemetry và đợi save được backend xác nhận trước khi gửi Submit.
+Trong lúc lưu/nộp/kiểm tra, khóa input và disable Submit. Save lỗi hoặc conflict thì cho
+quay lại xử lý. Mất response phải fetch Attempt trước khi retry; chưa có kết nối thì
+hiển thị chưa xác nhận trạng thái, không báo đã nộp. Response cũ không mở lại bài đã hoàn tất.
 
 Tuy nhiên backend vẫn phải idempotent.
 
@@ -1158,7 +1161,11 @@ Sau khi submit/auto-finalize:
 Your exam has been submitted.
 ```
 
-Điều hướng phụ thuộc Result Release Policy.
+F14 hiển thị “Đã nộp bài” hoặc “Bài làm đã kết thúc do hết giờ” theo completionReason,
+thời điểm kết thúc và nút “Về kỳ thi”. Reload giữ trạng thái do server cung cấp.
+Không hiển thị điểm, pass/fail hoặc link kết quả trong F14.
+
+Các nhánh điều hướng theo Result Release Policy dưới đây thuộc F15.
 
 ### IMMEDIATE
 

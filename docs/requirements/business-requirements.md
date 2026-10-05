@@ -1219,10 +1219,11 @@ Thời gian tương tác mỗi câu là telemetry tích lũy ước lượng khi
 trang có focus. Server giới hạn theo elapsed Attempt; không giảm khi retry, không dùng
 chấm điểm hoặc anti-cheat. Thiếu telemetry giữ null; nhiều tab có thể làm số liệu sai lệch.
 
-Phạm vi bàn giao F13 chỉ gồm Start/Resume/Autosave. Start trả cùng IN_PROGRESS trước khi
-kiểm tra assignment mới; remove membership vẫn cho resume/save bài còn hạn. Khi hết hạn,
-API trả metadata với canEdit=false và chặn save; IN_PROGRESS quá hạn vẫn chiếm lượt.
-Submit, auto-finalize và grading ở F14; không giả lập hoàn tất bài trước khi F14 triển khai.
+F13 cung cấp Start/Resume/Autosave; F14 bổ sung Submit và server finalization.
+Start kiểm tra active Attempt trước assignment: bài còn hạn được resume, bài quá hạn
+được finalize và trả lại, không tiêu thụ lượt mới trong cùng request. Remove membership
+không ngăn resume/save/submit bài đã bắt đầu. Read và save cũng lazy-finalize khi quá hạn.
+Save đến muộn không ghi input, trả lỗi sau khi transaction finalize đã commit.
 
 ---
 
@@ -1245,7 +1246,17 @@ Không được tạo:
 2 Submission side effect
 ```
 
-Một Attempt chỉ được finalize đúng một lần về mặt nghiệp vụ.
+Một Attempt chỉ được finalize đúng một lần về mặt nghiệp vụ. F14 khóa Attempt chung
+với autosave; finalize, chấm và lưu Result/chi tiết từng câu trong một transaction.
+Nếu thất bại, rollback toàn bộ để retry. Thành công chuyển sang GRADED; lưu riêng
+completionReason = PARTICIPANT_SUBMIT hoặc DEADLINE_REACHED để giữ lý do kết thúc.
+Submit tại hoặc sau deadline luôn là DEADLINE_REACHED. submittedAt là thời điểm server
+chấp nhận submit hoặc deadline nếu hết giờ; gradedAt là thời điểm xử lý thực tế.
+
+Scheduler quét bài IN_PROGRESS quá hạn mỗi 10 giây, batch 100, transaction riêng mỗi bài;
+restart tiếp tục từ dữ liệu persisted. Một bài lỗi không chặn xử lý các bài khác.
+F14 chỉ trả trạng thái hoàn tất; điểm, pass/fail và đáp án không được đưa vào response.
+API/UI xem kết quả theo policy được triển khai ở F15.
 
 ---
 

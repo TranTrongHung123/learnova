@@ -23,8 +23,12 @@ public class AttemptService {
     private final IdentityService identity;
     private final ExamService exams;
     private final Clock clock;
-    public AttemptService(AttemptRepository attempts, SessionAdmission admission, IdentityService identity, ExamService exams, Clock clock) {
+    private final AttemptFinalization finalization;
+    private final org.springframework.transaction.support.TransactionTemplate transaction;
+    public AttemptService(AttemptRepository attempts, SessionAdmission admission, IdentityService identity, ExamService exams, Clock clock,
+                          AttemptFinalization finalization, org.springframework.transaction.PlatformTransactionManager manager) {
         this.attempts=attempts; this.admission=admission; this.identity=identity; this.exams=exams; this.clock=clock;
+        this.finalization=finalization; this.transaction=new org.springframework.transaction.support.TransactionTemplate(manager);
     }
     @Transactional
     public Started start(UUID actor, UUID session) {
@@ -32,7 +36,7 @@ public class AttemptService {
         admission.lock(session);
         var active=attempts.active(actor,session);
         // Assignment chỉ áp dụng cho lượt mới; retry/Resume vẫn giữ bài đã bắt đầu.
-        if (active.isPresent()) return new Started(false,view(owned(actor,active.get(),false),now()));
+        if (active.isPresent()) return new Started(false,view(finalization.finish(owned(actor,active.get(),true),false),now()));
         var reserved=admission.reserve(actor,session);
         int used=attempts.count(actor,session);
         if (used>=reserved.maxAttempts()) throw new AttemptFailure(409,"ATTEMPTS_EXHAUSTED");
@@ -48,16 +52,24 @@ public class AttemptService {
         }
         return new Started(true,view(owned(actor,id,false),now()));
     }
-    @Transactional(readOnly=true, isolation=Isolation.REPEATABLE_READ)
-    public View read(UUID actor, UUID id) { authorize(actor); return view(owned(actor,id,false),now()); }
+    @Transactional
+    public View read(UUID actor, UUID id) { authorize(actor); return view(finalization.finish(owned(actor,id,true),false),now()); }
 
     @Transactional
+    public View submit(UUID actor, UUID id) { authorize(actor); return view(finalization.finish(owned(actor,id,true),true),now()); }
+
     public Saved save(UUID actor, UUID id, UUID questionId, Save input) {
+        Saved result=transaction.execute(status->saveLocked(actor,id,questionId,input));
+        // Finalize do deadline phải commit trước khi báo autosave đến muộn.
+        if (result==null) throw new AttemptFailure(409,"ATTEMPT_DEADLINE_PASSED");
+        return result;
+    }
+    private Saved saveLocked(UUID actor, UUID id, UUID questionId, Save input) {
         authorize(actor);
         var attempt=owned(actor,id,true);
         Instant time=now();
         if (!attempt.status().equals("IN_PROGRESS")) throw new AttemptFailure(409,"ATTEMPT_NOT_EDITABLE");
-        if (!time.isBefore(attempt.deadline())) throw new AttemptFailure(409,"ATTEMPT_DEADLINE_PASSED");
+        if (!time.isBefore(attempt.deadline())) { finalization.finish(attempt,false); return null; }
         var state=attempts.entries(id).stream().filter(e->e.questionId().equals(questionId)).findFirst()
                 .orElseThrow(()->new AttemptFailure(404,"ATTEMPT_QUESTION_NOT_FOUND")).state();
         if (input.revision()!=state.revision()) throw new AttemptFailure(409,"ANSWER_REVISION_CONFLICT");
@@ -82,7 +94,8 @@ public class AttemptService {
                 return new Question(q.id(),q.type(),q.content(),e.optionOrder().stream().map(id->new Option(id,options.get(id).content())).toList(),e.state());
             }).toList();
         }
-        return new View(a.id(),a.sessionId(),a.versionId(),a.title(),a.number(),a.status(),a.startedAt(),a.deadline(),time,editable,questions);
+        return new View(a.id(),a.sessionId(),a.versionId(),a.title(),a.number(),a.status(),a.startedAt(),a.deadline(),time,editable,questions,
+                a.completionReason(),a.submittedAt(),a.gradedAt());
     }
     private void validate(ExamService.TakingQuestion q, Answer answer) {
         var ids=answer.optionIds();

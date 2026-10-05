@@ -3,12 +3,14 @@ import { sameContent, type AnswerState, type Attempt, type Save, type Saved } fr
 
 export type Draft = { local: AnswerState; saved: AnswerState; status: "saved" | "dirty" | "saving" | "failed" | "conflict"; generation: number; conflict?: AnswerState; error?: string };
 type LoadErrorKind = "forbidden" | "not-found" | "network" | "error";
-type Snapshot = { attempt?: Attempt; drafts: Record<string, Draft>; error?: string; errorKind?: LoadErrorKind; remaining: number };
-type Transport = { read: () => Promise<Attempt>; save: (id: string, input: Save) => Promise<Saved> };
+type Submission = "idle" | "saving" | "submitting" | "checking" | "unknown" | "blocked" | "complete";
+type Snapshot = { attempt?: Attempt; drafts: Record<string, Draft>; error?: string; errorKind?: LoadErrorKind; remaining: number; submission: Submission; submissionError?: string };
+type Transport = { read: () => Promise<Attempt>; save: (id: string, input: Save) => Promise<Saved>; submit: () => Promise<Attempt> };
 
 // Queue riêng từng câu; revision của máy chủ bảo vệ cả khi có nhiều tab.
 export class Autosave {
-  private snapshot: Snapshot = { drafts: {}, remaining: 0 };
+  private snapshot: Snapshot = { drafts: {}, remaining: 0, submission: "idle" };
+  private flights = new Map<string, Promise<void>>();
   private listeners = new Set<() => void>();
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
   private sending = new Set<string>();
@@ -24,11 +26,20 @@ export class Autosave {
   getSnapshot = () => this.snapshot;
   private emit() { this.snapshot = { ...this.snapshot, drafts: { ...this.snapshot.drafts } }; this.listeners.forEach(l => l()); }
   connect() { this.active = true; void this.refresh(); return () => this.disconnect(); }
-  private disconnect() { this.active = false; this.epoch++; this.reading = false; this.timers.forEach(clearTimeout); this.timers.clear(); this.sending.clear(); }
+  private disconnect() { this.active = false; this.epoch++; this.reading = false; this.timers.forEach(clearTimeout); this.timers.clear(); this.sending.clear(); this.flights.clear(); }
   private sync(serverTime: string) {
     const local = this.now();
     const prior = this.anchor.server ? this.anchor.server + local - this.anchor.local : 0;
     this.anchor = { server: Math.max(Date.parse(serverTime), prior), local };
+  }
+  private acceptAttempt(a: Attempt) {
+    // Response cũ từ tab/save/read không được mở lại bài đã hoàn tất.
+    if (this.snapshot.attempt && this.snapshot.attempt.status !== "IN_PROGRESS" && a.status === "IN_PROGRESS") return;
+    this.snapshot.attempt = a; this.sync(a.serverTime);
+    if (a.status !== "IN_PROGRESS") {
+      this.snapshot.submission = "complete"; this.snapshot.submissionError = undefined;
+      this.timers.forEach(clearTimeout); this.timers.clear(); this.pending.clear();
+    }
   }
   tick() {
     const a = this.snapshot.attempt;
@@ -45,7 +56,8 @@ export class Autosave {
     try {
       const a = await this.transport.read();
       if (!this.active || epoch !== this.epoch) return;
-      this.snapshot.attempt = a; this.snapshot.error = undefined; this.snapshot.errorKind = undefined; this.sync(a.serverTime);
+      this.acceptAttempt(a); this.snapshot.error = undefined; this.snapshot.errorKind = undefined;
+      if (this.snapshot.submission === "complete") { this.tick(); return; }
       for (const q of a.questions) {
         const d = this.snapshot.drafts[q.id];
         if (!d || (d.status === "saved" && !this.sending.has(q.id) && q.state.revision >= d.saved.revision))
@@ -68,8 +80,50 @@ export class Autosave {
     }
     finally { if (epoch === this.epoch) this.reading = false; }
   }
-  editable() { return this.snapshot.errorKind !== "forbidden" && this.snapshot.errorKind !== "not-found" && this.snapshot.attempt?.canEdit === true && this.snapshot.remaining > 0; }
-  hasUnsaved() { return Object.values(this.snapshot.drafts).some(d => d.status !== "saved"); }
+  private canSave() { return this.snapshot.errorKind !== "forbidden" && this.snapshot.errorKind !== "not-found" && this.snapshot.attempt?.canEdit === true && this.snapshot.remaining > 0 && ["idle", "blocked", "saving"].includes(this.snapshot.submission); }
+  editable() { return this.canSave() && this.snapshot.submission !== "saving"; }
+  hasUnsaved() { return this.snapshot.submission !== "complete" && Object.values(this.snapshot.drafts).some(d => d.status !== "saved"); }
+  async submit() {
+    if (!this.active || !this.editable()) return;
+    const epoch = this.epoch;
+    this.snapshot.submission = "saving"; this.snapshot.submissionError = undefined; this.emit();
+    this.timers.forEach(clearTimeout); this.timers.clear();
+    do {
+      await Promise.all(Object.keys(this.snapshot.drafts).map(id => this.flush(id)));
+      if (!this.active || epoch !== this.epoch || this.getSnapshot().submission === "complete") return;
+      if (!this.canSave()) { await this.checkSubmission(); return; }
+      if (Object.values(this.snapshot.drafts).some(d => ["failed", "conflict"].includes(d.status))) {
+        this.snapshot.submission = "blocked"; this.snapshot.submissionError = "Còn thay đổi chưa lưu hoặc cần đối chiếu. Hãy xử lý trước khi nộp bài."; this.emit(); return;
+      }
+    } while (this.hasUnsaved());
+    this.snapshot.submission = "submitting"; this.emit();
+    try {
+      const a = await this.transport.submit();
+      if (!this.active || epoch !== this.epoch) return;
+      this.acceptAttempt(a);
+      if (a.status === "IN_PROGRESS") await this.checkSubmission();
+    } catch {
+      if (this.active && epoch === this.epoch) await this.checkSubmission();
+    } finally { if (this.active && epoch === this.epoch) this.emit(); }
+  }
+  async checkSubmission() {
+    if (!this.active || this.snapshot.submission === "complete" || this.snapshot.submission === "checking") return;
+    const epoch = this.epoch;
+    this.snapshot.submission = "checking"; this.emit();
+    try {
+      const a = await this.transport.read();
+      if (!this.active || epoch !== this.epoch) return;
+      this.acceptAttempt(a); this.tick();
+      if (this.getSnapshot().submission !== "complete") {
+        this.snapshot.submission = "blocked";
+        this.snapshot.submissionError = "Máy chủ chưa xác nhận hoàn tất bài. Bạn có thể kiểm tra và thử lại.";
+      }
+    } catch {
+      if (this.active && epoch === this.epoch && this.getSnapshot().submission !== "complete") {
+        this.snapshot.submission = "unknown"; this.snapshot.submissionError = "Chưa xác nhận được trạng thái nộp bài. Kết nối lại để kiểm tra.";
+      }
+    } finally { if (this.active && epoch === this.epoch) this.emit(); }
+  }
   edit(id: string, change: Partial<AnswerState>, debounce = false) {
     if (!this.editable()) return;
     this.automaticRetryBlocked.delete(id);
@@ -91,20 +145,26 @@ export class Autosave {
     if (automatic && this.automaticRetryBlocked.has(id)) return;
     this.failures.delete(id); void this.flush(id);
   }
-  async flush(id: string) {
+  flush(id: string): Promise<void> {
+    const current = this.flights.get(id);
+    if (current) return current;
+    const flight = this.send(id).finally(() => { if (this.flights.get(id) === flight) this.flights.delete(id); });
+    this.flights.set(id, flight); return flight;
+  }
+  private async send(id: string) {
     clearTimeout(this.timers.get(id)); this.timers.delete(id);
     const d = this.snapshot.drafts[id];
-    if (!this.active || !this.editable() || !d || this.sending.has(id) || d.status === "saved" || d.status === "conflict") return;
+    if (!this.active || !this.canSave() || !d || this.sending.has(id) || d.status === "saved" || d.status === "conflict") return;
     const input = this.pending.get(id) ?? { revision: d.saved.revision, answer: d.local.answer, markedForReview: d.local.markedForReview, activeTimeMs: d.local.activeTimeMs };
     this.pending.set(id, input);
     const epoch = this.epoch;
     this.sending.add(id); this.snapshot.drafts[id] = { ...d, status: "saving", error: undefined }; this.emit();
     try {
       const result = await this.transport.save(id, input);
-      if (!this.active || epoch !== this.epoch) return;
+      if (!this.active || epoch !== this.epoch || this.snapshot.submission === "complete") return;
       this.accept(id, result.state, input.activeTimeMs); this.sync(result.serverTime); this.failures.delete(id); this.automaticRetryBlocked.delete(id); this.pending.delete(id);
     } catch (error) {
-      if (!this.active || epoch !== this.epoch) return;
+      if (!this.active || epoch !== this.epoch || this.snapshot.submission === "complete") return;
       if (error instanceof ApiError && error.problem?.code === "ANSWER_REVISION_CONFLICT") {
         await this.reconcile(id, input, epoch);
       } else {
@@ -112,13 +172,13 @@ export class Autosave {
         this.snapshot.drafts[id] = { ...this.snapshot.drafts[id], status: "failed", error: transient ? "Chưa lưu được. Kiểm tra mạng hoặc thử lại." : "Máy chủ từ chối lưu. Kiểm tra câu trả lời và thời gian còn lại." };
         if (transient) {
           const count = this.failures.get(id) ?? 0;
-          if (count < 3) { this.failures.set(id, count + 1); this.schedule(id, 1000 * 2 ** count); }
+          if (count < 3 && this.snapshot.submission !== "saving") { this.failures.set(id, count + 1); this.schedule(id, 1000 * 2 ** count); }
         } else { this.automaticRetryBlocked.add(id); this.pending.delete(id); void this.refresh(); }
       }
     } finally {
       if (epoch === this.epoch) {
         this.sending.delete(id); this.emit();
-        if (this.snapshot.drafts[id]?.status === "dirty") this.schedule(id, 0);
+        if (this.canSave() && this.snapshot.drafts[id]?.status === "dirty") this.schedule(id, 0);
       }
     }
   }
@@ -131,7 +191,8 @@ export class Autosave {
     try {
       const a = await this.transport.read();
       if (!this.active || epoch !== this.epoch) return;
-      this.snapshot.attempt = a; this.sync(a.serverTime);
+      this.acceptAttempt(a);
+      if (this.snapshot.submission === "complete") return;
       const state = a.questions.find(q => q.id === id)?.state;
       this.pending.delete(id);
       if (!state) { this.snapshot.drafts[id] = { ...this.snapshot.drafts[id], status: "failed", error: "Bài làm không còn cho phép sửa." }; return; }
