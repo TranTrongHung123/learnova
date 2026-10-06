@@ -27,4 +27,8 @@ public class AttemptController {
     ResponseEntity<Saved> save(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @PathVariable UUID questionId, @Valid @RequestBody Save input) {
         return ResponseEntity.ok().header("Cache-Control","no-store").body(service.save(UUID.fromString(jwt.getSubject()),id,questionId,input));
     }
+    @PostMapping("/attempts/{id}/submit")
+    ResponseEntity<View> submit(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return ResponseEntity.ok().header("Cache-Control","no-store").body(service.submit(UUID.fromString(jwt.getSubject()),id));
+    }
 }

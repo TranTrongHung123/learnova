@@ -9,7 +9,7 @@ async function account(request: APIRequestContext, roles = ["PARTICIPANT"]) {
   const login = await (await request.post(`${api}/auth/login`, { headers, data: { email, password } })).json();
   return { email, id: login.user.id as string, headers: { Authorization: `Bearer ${login.accessToken}` } };
 }
-async function fixture(request: APIRequestContext, access = "INDIVIDUAL") {
+async function fixture(request: APIRequestContext, access = "INDIVIDUAL", remainingMs = 3600000) {
   const participant = await account(request), owner = await account(request, ["CREATOR"]), headers = owner.headers;
   const sources = [];
   for (const type of ["SINGLE_CHOICE", "MULTIPLE_CHOICE", "TRUE_FALSE", "NUMERIC_ANSWER"]) {
@@ -25,7 +25,7 @@ async function fixture(request: APIRequestContext, access = "INDIVIDUAL") {
     classroomId = (await (await request.post(`${api}/classrooms`, { headers, data: { name: "Lớp làm bài" } })).json()).id;
     expect((await request.post(`${api}/classrooms/${classroomId}/members`, { headers, data: { userId: participant.id } })).status()).toBe(200);
   }
-  const response = await request.post(`${api}/exam-sessions`, { headers, data: { title: `Bài kiểm tra ${randomUUID()}`, examVersionId: version.id, startTime: new Date(Date.now() - 60000).toISOString(), endTime: new Date(Date.now() + 3600000).toISOString(), durationMinutes: 30, maxAttempts: 2, passingScore: "1", accessType: access, classroomIds: classroomId ? [classroomId] : [], participantIds: access === "INDIVIDUAL" ? [participant.id] : [], shuffleQuestions: true, shuffleAnswers: true } });
+  const response = await request.post(`${api}/exam-sessions`, { headers, data: { title: `Bài kiểm tra ${randomUUID()}`, examVersionId: version.id, startTime: new Date(Date.now() - 60000).toISOString(), endTime: new Date(Date.now() + remainingMs).toISOString(), durationMinutes: 30, maxAttempts: 2, passingScore: "1", accessType: access, classroomIds: classroomId ? [classroomId] : [], participantIds: access === "INDIVIDUAL" ? [participant.id] : [], shuffleQuestions: true, shuffleAnswers: true } });
   expect(response.status()).toBe(201); const s = await response.json();
   expect((await request.post(`${api}/exam-sessions/${s.id}/schedule`, { headers, data: { revision: s.revision } })).status()).toBe(200);
   return { participant, owner, s, classroomId };
@@ -64,7 +64,55 @@ test("start, all answer types, review, reload and stable shuffle with real API",
   const after = await read(request, page, f.participant.headers);
   expect(after.questions.map((q: { id: string; options: unknown }) => [q.id, q.options])).toEqual(initial.questions.map((q: { id: string; options: unknown }) => [q.id, q.options]));
   expect(after.questions.map((q: { state: { answer: unknown; markedForReview: boolean } }) => [q.state.answer, q.state.markedForReview])).toEqual(before.questions.map((q: { state: { answer: unknown; markedForReview: boolean } }) => [q.state.answer, q.state.markedForReview]));
-  await expect(page.getByRole("button", { name: "Nộp bài · Sắp có" })).toBeDisabled();
+  await page.getByRole("button", { name: "Nộp bài", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("Chưa trả lời: 0");
+  await page.screenshot({ path: "test-results/attempt/submit-desktop.png", fullPage: true });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.screenshot({ path: "test-results/attempt/submit-mobile.png", fullPage: true });
+  await page.keyboard.press("Escape"); await expect(page.getByRole("button", { name: "Nộp bài", exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "Nộp bài", exact: true }).click();
+  await page.getByRole("button", { name: "Xác nhận nộp bài" }).click();
+  await expect(page.getByRole("heading", { name: "Đã nộp bài", exact: true })).toBeVisible();
+  await page.screenshot({ path: "test-results/attempt/completed-mobile.png", fullPage: true });
+  const finished = await read(request, page, f.participant.headers);
+  expect(finished.status).toBe("GRADED"); expect(finished.questions).toEqual([]);
+  expect(JSON.stringify(finished)).not.toMatch(/rawScore|passed|correctBoolean|SECRET EXPLANATION/);
+  await page.reload(); await expect(page.getByRole("heading", { name: "Đã nộp bài", exact: true })).toBeVisible();
+});
+
+test("submit waits for a delayed save and recovers when the committed response is lost", async ({ page, request }) => {
+  const f = await fixture(request); await login(page, f.participant.email); await start(page, f.s);
+  const a = await read(request, page, f.participant.headers);
+  const index = a.questions.findIndex((q: { type: string }) => q.type === "NUMERIC_ANSWER"); await navigate(page, index);
+  let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/attempts/*/answers/*", async route => { await gate; await route.continue(); }, { times: 1 });
+  let submissions = 0;
+  await page.route("**/attempts/*/submit", async route => { submissions++; const response = await route.fetch(); expect(response.status()).toBe(200); await route.abort("failed"); });
+  await page.getByLabel("Câu trả lời bằng số", { exact: true }).fill("2.5");
+  await page.getByRole("button", { name: "Nộp bài", exact: true }).click(); await page.getByRole("button", { name: "Xác nhận nộp bài" }).click();
+  await expect(page.getByText("Đang lưu các thay đổi…", { exact: true })).toBeVisible(); expect(submissions).toBe(0);
+  release(); await expect(page.getByRole("heading", { name: "Đã nộp bài", exact: true })).toBeVisible(); expect(submissions).toBe(1);
+});
+
+test("server finalizes after the browser closes and reload shows expiration", async ({ page, request, context }) => {
+  const f = await fixture(request, "INDIVIDUAL", 20000); await login(page, f.participant.email); await start(page, f.s);
+  const url = page.url(); await page.close();
+  // History chỉ đọc metadata: polling không kích hoạt lazy finalization.
+  await expect.poll(async () => {
+    const response = await request.get(`${api}/participant/exam-sessions/${f.s.id}/attempts`, { headers: f.participant.headers });
+    const history = await response.json(); return history.content[0]?.status;
+  }, { timeout: 45000, intervals: [1000] }).toBe("GRADED");
+  const resumed = await context.newPage(); await resumed.goto(url);
+  await expect(resumed.getByRole("heading", { name: "Bài làm đã kết thúc do hết giờ" })).toBeVisible();
+});
+
+test("deadline while editing finalizes on the server and restores focus", async ({ page, request }) => {
+  const f = await fixture(request, "INDIVIDUAL", 20000); await login(page, f.participant.email); await start(page, f.s);
+  await page.getByRole("button", { name: "Nộp bài", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Bài làm đã kết thúc do hết giờ" })).toBeVisible({ timeout: 35000 });
+  await expect(page.getByRole("heading", { name: "Bài làm đã kết thúc do hết giờ" })).toBeFocused();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  const a = await read(request, page, f.participant.headers); expect(a.completionReason).toBe("DEADLINE_REACHED");
 });
 test("offline retains unsaved input and reconnect saves before reload", async ({ page, request, context }) => {
   const f = await fixture(request); await login(page, f.participant.email); await start(page, f.s); const a = await read(request, page, f.participant.headers);

@@ -99,6 +99,15 @@ jobs:
         working-directory: frontend
         run: npm run test:question
 
+      - name: Question Bank failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: question-page-diagnostics
+          path: frontend/test-results/question/**/attachments/*.json
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Excel import browser integration with PostgreSQL and Redis
         working-directory: frontend
         run: npm run test:import

@@ -210,6 +210,9 @@ Build frontend hiện tải font qua `next/font/google`, cần truy cập mạng
 Auth browser test tự chạy backend ở 8081 và frontend ở 3104 cùng Testcontainers riêng;
 không cần đọc `.env` hoặc dùng database của bạn. Tắt server ở cổng này để tạo môi trường mới.
 Classroom, Question Bank, Excel Import và Exam Builder browser test dùng cùng cấu hình cổng với auth; chạy các suite tuần tự.
+Question Bank trên CI (`CI=true npm run test:question`) tự build và chạy production server;
+local mặc định vẫn dùng dev server. Khi suite lỗi, CI lưu JSON chẩn đoán route, số form,
+textarea và lỗi JavaScript trong artifact `question-page-diagnostics` (giữ 7 ngày).
 Google browser test dùng backend 8082, frontend 3105 và OIDC provider test 8092;
 provider chỉ tồn tại trong test classpath, không dùng OAuth credentials thật.
 Không ghi trace auth chứa password/token; ảnh form rỗng nằm trong test-results.
@@ -322,9 +325,31 @@ Remove membership không làm mất quyền tiếp tục bài đang làm còn h�
 
 Autosave tuần tự hóa/coalesce theo câu, chỉ báo Saved sau xác nhận; hỗ trợ retry hữu hạn,
 đối chiếu hai tab và giữ input chưa lưu khi mất mạng. Không lưu answer vào browser storage.
-Timer dùng serverTime/deadline; hết hạn khóa sửa và chờ xử lý. **Submit, auto-finalize,
-grading và kết quả chưa thuộc F13**; nút Nộp bài hiện “Sắp có”.
+Timer dùng serverTime/deadline; F14 đã bổ sung submit, auto-finalize và grading
+trên nền F13. Kết quả theo release/display policy được triển khai ở F15.
 
 Xem [kiến trúc F13](docs/architecture/f13-attempt-autosave.md),
 [OpenAPI](docs/api/openapi.yaml) và [kết quả nghiệm thu](docs/plans/v1-feature-implementation-plan.md).
 Browser suite: `cd frontend` rồi `npm run test:attempt`, dùng backend/PostgreSQL/Redis thật.
+
+
+## F14 — Submit, auto-finalize và automatic grading
+
+Participant xác nhận nộp bài sau khi autosave được backend xác nhận. Backend dùng một
+transaction và khóa Attempt chung cho submit/expiration/save; Result và chi tiết từng
+câu chỉ được lưu một lần. Scheduler quét mỗi 10 giây (cấu hình
+`learnova.attempt.finalization-delay-ms`), kết hợp lazy expiration khi đọc/save/submit.
+Restart tự xử lý backlog từ PostgreSQL; lỗi một bài không chặn bài khác.
+
+Bốn loại câu hỏi chấm theo published snapshot bằng BigDecimal; pass/fail dùng raw score,
+format điểm hai chữ số HALF_UP. Metadata giữ completionReason và thời điểm kết thúc/chấm.
+UI F14 chỉ xác nhận đã nộp/hết giờ và về kỳ thi; API/UI xem kết quả theo policy thuộc F15.
+
+API mới: `POST /api/v1/attempts/{id}/submit` (không gửi answers). Migration V12 bổ sung
+Result, chi tiết và completion metadata. Xem [kiến trúc F14](docs/architecture/f14-submit-finalize-grading.md)
+và [OpenAPI](docs/api/openapi.yaml). Browser suite: `npm run test:attempt` trong frontend.
+
+Kiểm chứng local ngày 05/10/2026: 167 backend tests, 88 frontend unit tests và
+16 browser tests (8 Attempt/3 Discovery/4 Session/1 production) pass; lint/typecheck/build pass.
+Chưa kiểm chứng CI remote, screen reader hoặc tải production. Bàn giao bằng commit local,
+người dùng tự push/PR/merge.

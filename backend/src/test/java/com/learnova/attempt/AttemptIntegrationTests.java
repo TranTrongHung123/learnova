@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties="learnova.session.lifecycle-delay-ms=3600000")
+@SpringBootTest(properties={"learnova.session.lifecycle-delay-ms=3600000","learnova.attempt.finalization-delay-ms=3600000"})
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, AttemptIntegrationTests.TimeConfig.class})
 class AttemptIntegrationTests {
@@ -46,6 +46,8 @@ class AttemptIntegrationTests {
     @TestConfiguration static class TimeConfig { @Bean @Primary MutableClock attemptClock() { return new MutableClock(); } }
     @Autowired MutableClock clock;
     @Autowired AttemptService attempts;
+    @Autowired com.learnova.attempt.service.AttemptFinalization finalization;
+    @Autowired com.learnova.attempt.config.AttemptScheduler scheduler;
     @Autowired SessionService sessions;
     @Autowired ExamService exams;
     @Autowired ClassroomService classes;
@@ -111,12 +113,11 @@ class AttemptIntegrationTests {
         var f=fixture(AccessType.PUBLIC,false); open(f); var a=start(f);
         clock.time=a.deadline();
         assertThatThrownBy(()->attempts.save(f.participant.id(),a.id(),a.questions().getFirst().id(),new Save(0L,Answer.empty(),true,null))).hasMessage("ATTEMPT_DEADLINE_PASSED");
-        assertThat(attempts.start(f.participant.id(),f.session.id()).attempt().id()).isEqualTo(a.id());
+        assertThat(attempts.read(f.participant.id(),a.id()).status()).isEqualTo("GRADED");
         assertThat(attempts.read(f.participant.id(),a.id()).questions()).isEmpty();
         jdbc.update("update exam_sessions set end_time=end_time+interval '1 hour' where id=?",f.session.id());
         assertThat(attempts.read(f.participant.id(),a.id()).deadline()).isEqualTo(a.deadline());
-        jdbc.update("update attempts set status='GRADED' where id=?",a.id());
-        var second=start(f); jdbc.update("update attempts set status='GRADED' where id=?",second.id());
+        var second=start(f); attempts.submit(f.participant.id(),second.id());
         jdbc.update("update exam_sessions set first_attempt_at=null where id=?",f.session.id());
         assertThatThrownBy(()->attempts.start(f.participant.id(),f.session.id())).hasMessage("ATTEMPTS_EXHAUSTED");
         assertThat(jdbc.queryForObject("select first_attempt_at from exam_sessions where id=?",Instant.class,f.session.id())).isNull();
@@ -179,12 +180,99 @@ class AttemptIntegrationTests {
         String schema="attempt_upgrade_"+UUID.randomUUID().toString().replace("-","");
         org.flywaydb.core.Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).target("10").load().migrate();
         var f=fixture(AccessType.PUBLIC,true); open(f); var a=start(f);
-        for (String table:List.of("users","exams","exam_versions","exam_version_questions","exam_sessions","attempts"))
+        for (String table:List.of("users","exams","exam_versions","exam_version_questions","exam_sessions"))
             jdbc.update("insert into "+schema+"."+table+" select * from public."+table);
+        jdbc.update("insert into "+schema+".attempts select id,participant_id,session_id,exam_version_id,attempt_number,status,started_at,deadline,submitted_at,revision from public.attempts");
         org.flywaydb.core.Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load().migrate();
         assertThat(jdbc.queryForObject("select count(*) from "+schema+".attempt_answers where attempt_id=?",Integer.class,a.id())).isEqualTo(4);
         assertThat(jdbc.queryForObject("select count(*) from "+schema+".attempt_answers where saved_at is not null or active_time_ms is not null or revision<>0",Integer.class)).isZero();
         assertThat(jdbc.queryForObject("select deadline from "+schema+".attempts where id=?",java.sql.Timestamp.class,a.id()).toInstant()).isEqualTo(a.deadline());
+    }
+    @Test void doubleSubmitGradesSnapshotOnceAndNeverDisclosesResult() throws Exception {
+        var f=fixture(AccessType.PUBLIC,true); open(f); var a=start(f);
+        for (var q:exams.gradingQuestions(a.examVersionId())) {
+            var answer=new Answer(new ArrayList<>(q.correctOptions()),q.correctBoolean(),q.correctValue()==null?null:q.correctValue().toPlainString());
+            attempts.save(f.participant.id(),a.id(),q.id(),new Save(0L,answer,false,null));
+        }
+        jdbc.update("update questions set content='Changed bank' where owner_id=?",f.owner.id());
+        var results=parallel(()->attempts.submit(f.participant.id(),a.id()),()->attempts.submit(f.participant.id(),a.id()));
+        assertThat(results.getFirst()).isEqualTo(results.getLast());
+        assertThat(results).allMatch(v->v.status().equals("GRADED") && v.completionReason().equals("PARTICIPANT_SUBMIT") && !v.canEdit() && v.questions().isEmpty());
+        assertThat(jdbc.queryForObject("select count(*) from attempt_results where attempt_id=?",Integer.class,a.id())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select raw_score from attempt_results where attempt_id=?",java.math.BigDecimal.class,a.id())).isEqualByComparingTo("4");
+        assertThat(jdbc.queryForObject("select count(*) from attempt_result_questions where attempt_id=? and correct",Integer.class,a.id())).isEqualTo(4);
+        assertThatThrownBy(()->attempts.save(f.participant.id(),a.id(),a.questions().getFirst().id(),new Save(1L,Answer.empty(),false,null))).hasMessage("ATTEMPT_NOT_EDITABLE");
+        var body=mvc.perform(post("/api/v1/attempts/"+a.id()+"/submit").with(as(f.participant))).andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control","no-store")).andReturn().getResponse().getContentAsString();
+        assertThat(body).doesNotContain("rawScore","passed","points","correct","tolerance","SECRET EXPLANATION");
+    }
+    @Test void submitVersusExpirationUsesPersistedDeadlineExactlyOnce() throws Exception {
+        var f=fixture(AccessType.PUBLIC,false); open(f); var a=start(f); clock.time=a.deadline();
+        parallel(()->{ attempts.submit(f.participant.id(),a.id()); return true; },()->{ finalization.expire(a.id()); return true; });
+        var completed=attempts.read(f.participant.id(),a.id());
+        assertThat(completed.completionReason()).isEqualTo("DEADLINE_REACHED");
+        assertThat(completed.submittedAt()).isEqualTo(a.deadline());
+        assertThat(jdbc.queryForObject("select count(*) from attempt_results where attempt_id=?",Integer.class,a.id())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select raw_score from attempt_results where attempt_id=?",java.math.BigDecimal.class,a.id())).isEqualByComparingTo("0");
+    }
+    @Test void saveVersusSubmitProducesAConsistentImmutableScore() throws Exception {
+        var f=fixture(AccessType.PUBLIC,false); open(f); var a=start(f);
+        var q=a.questions().stream().filter(v->v.type().equals("TRUE_FALSE")).findFirst().orElseThrow();
+        var outcomes=parallel(()->{
+            try { attempts.save(f.participant.id(),a.id(),q.id(),new Save(0L,new Answer(List.of(),true,null),false,null)); return "saved"; }
+            catch(com.learnova.attempt.exception.AttemptFailure ex) { return ex.code; }
+        },()->{ attempts.submit(f.participant.id(),a.id()); return "submitted"; });
+        assertThat(outcomes.getFirst()).isIn("saved","ATTEMPT_NOT_EDITABLE");
+        assertThat(jdbc.queryForObject("select raw_score from attempt_results where attempt_id=?",java.math.BigDecimal.class,a.id()))
+                .isEqualByComparingTo(outcomes.getFirst().equals("saved")?"1":"0");
+        assertThat(jdbc.queryForObject("select count(*) from attempt_results where attempt_id=?",Integer.class,a.id())).isEqualTo(1);
+    }
+    @Test void schedulerRecoversOverdueAttemptsWithoutBrowserOrMembershipAndCanRunConcurrently() throws Exception {
+        var f=fixture(AccessType.CLASS,false); open(f); var a=start(f);
+        classes.remove(f.owner.id(),f.classroom,f.participant.id());
+        jdbc.update("update users set status='LOCKED' where id=?",f.participant.id());
+        clock.time=a.deadline().plusSeconds(120);
+        parallel(()->{ scheduler.run(); return true; },()->{ scheduler.run(); return true; });
+        assertThat(jdbc.queryForObject("select status from attempts where id=?",String.class,a.id())).isEqualTo("GRADED");
+        assertThat(jdbc.queryForObject("select submitted_at from attempts where id=?",java.sql.Timestamp.class,a.id()).toInstant()).isEqualTo(a.deadline());
+        assertThat(jdbc.queryForObject("select count(*) from attempt_results where attempt_id=?",Integer.class,a.id())).isEqualTo(1);
+    }
+    @Test void failedGradingRollsBackEverythingAndSchedulerContinuesThenRetries() {
+        var f=fixture(AccessType.PUBLIC,false); open(f); var a=start(f);
+        String constraint="fail_grade_"+UUID.randomUUID().toString().replace("-","");
+        jdbc.execute("alter table attempt_result_questions add constraint "+constraint+" check (attempt_id <> '"+a.id()+"'::uuid)");
+        try {
+            assertThatThrownBy(()->attempts.submit(f.participant.id(),a.id())).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            assertThat(jdbc.queryForObject("select status from attempts where id=?",String.class,a.id())).isEqualTo("IN_PROGRESS");
+            assertThat(jdbc.queryForObject("select count(*) from attempt_results where attempt_id=?",Integer.class,a.id())).isZero();
+            var other=fixture(AccessType.PUBLIC,false); open(other); var b=start(other);
+            clock.time=b.deadline().plusSeconds(1); scheduler.run();
+            assertThat(jdbc.queryForObject("select status from attempts where id=?",String.class,b.id())).isEqualTo("GRADED");
+            assertThat(jdbc.queryForObject("select status from attempts where id=?",String.class,a.id())).isEqualTo("IN_PROGRESS");
+        } finally { jdbc.execute("alter table attempt_result_questions drop constraint "+constraint); }
+        scheduler.run();
+        assertThat(jdbc.queryForObject("select count(*) from attempt_results where attempt_id=?",Integer.class,a.id())).isEqualTo(1);
+    }
+    @Test void lazyStartFinalizesExistingAttemptWithoutConsumingAnotherAndLateSaveCommits() {
+        var f=fixture(AccessType.PUBLIC,false); open(f); var a=start(f); clock.time=a.deadline();
+        var resumed=attempts.start(f.participant.id(),f.session.id());
+        assertThat(resumed.created()).isFalse(); assertThat(resumed.attempt().id()).isEqualTo(a.id());
+        assertThat(resumed.attempt().status()).isEqualTo("GRADED");
+        var b=start(f); clock.time=b.deadline();
+        assertThatThrownBy(()->attempts.save(f.participant.id(),b.id(),b.questions().getFirst().id(),new Save(0L,Answer.empty(),false,null))).hasMessage("ATTEMPT_DEADLINE_PASSED");
+        assertThat(jdbc.queryForObject("select count(*) from attempt_results where attempt_id=?",Integer.class,b.id())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select revision from attempt_answers where attempt_id=? and question_id=?",Long.class,b.id(),b.questions().getFirst().id())).isZero();
+    }
+    @Test void submitRequiresActiveParticipantOwnerButNotCurrentMembership() throws Exception {
+        var f=fixture(AccessType.CLASS,false); open(f); var a=start(f); var url="/api/v1/attempts/"+a.id()+"/submit";
+        mvc.perform(post(url)).andExpect(status().isUnauthorized());
+        mvc.perform(post(url).with(as(f.owner))).andExpect(status().isForbidden());
+        mvc.perform(post(url).with(as(user("PARTICIPANT")))).andExpect(status().isNotFound());
+        jdbc.update("update users set status='LOCKED' where id=?",f.participant.id());
+        mvc.perform(post(url).with(as(f.participant))).andExpect(status().isForbidden());
+        jdbc.update("update users set status='ACTIVE' where id=?",f.participant.id());
+        classes.remove(f.owner.id(),f.classroom,f.participant.id());
+        mvc.perform(post(url).with(as(f.participant))).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("GRADED"));
     }
     private Fixture fixture(AccessType access,boolean shuffle) {
         var owner=user("CREATOR"); var p=user("PARTICIPANT"); UUID classroom=null;

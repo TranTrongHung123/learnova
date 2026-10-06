@@ -30,7 +30,7 @@ public final class AttemptDtos {
     public record Question(UUID id, String type, String content, List<Option> options, State state) {}
     public record View(UUID id, UUID sessionId, UUID examVersionId, String title, int attemptNumber,
                        String status, Instant startedAt, Instant deadline, Instant serverTime,
-                       boolean canEdit, List<Question> questions) {}
+                       boolean canEdit, List<Question> questions, String completionReason, Instant submittedAt, Instant gradedAt) {}
     public record Started(boolean created, View attempt) {}
     public record Saved(State state, Instant serverTime) {}
 }
