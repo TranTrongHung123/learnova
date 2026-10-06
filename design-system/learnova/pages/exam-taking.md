@@ -1,4 +1,4 @@
-# Exam Taking — F13
+# Exam Taking — F13–F14
 
 Kế thừa [Master](../MASTER.md). Chỉ override layout làm bài:
 
@@ -11,8 +11,12 @@ Kế thừa [Master](../MASTER.md). Chỉ override layout làm bài:
 - Một live region cho trạng thái lưu; từng câu có dirty/saving/saved/failed/conflict bằng chữ.
 - Conflict hiển thị hai bản, hai action rõ ràng. Dialog Start/rời trang dùng native dialog,
   hỗ trợ Escape/focus return; không thoát Start khi request chưa xác nhận.
-- Timer hết giờ khóa UI rồi đọc server; không tự tuyên bố đã nộp/chấm. Nộp bài disabled
-  kèm giải thích khả dụng trong đợt sau, theo phạm vi F13 được chốt.
+- Timer hết giờ khóa UI rồi đọc server; không tự tuyên bố đã nộp/chấm.
+- Submit dùng native dialog: tóm tắt answered/unanswered/review, chờ save rồi submit.
+  Khóa input và tránh đóng dialog khi request pending; trạng thái lưu/nộp/kiểm tra bằng chữ.
+  Lỗi lưu/conflict cho quay lại xử lý; mất response đọc server trước khi retry.
+- Hoàn tất: focus heading, phân biệt chủ động/hết giờ, nút về kỳ thi; không hiển thị điểm ở F14.
+- Giữ touch target 44 CSS px, focus rõ, dialog cuộn ở viewport thấp; không đổi auth/client boundary.
 
 Tra cứu UI/UX Pro Max: `form autosave feedback error` (ux), `client server components`
 (nextjs), `responsive layout focus` (html-tailwind). Chọn hướng dẫn feedback/recovery,
@@ -20,3 +24,7 @@ Client boundary nhỏ và visible focus; không áp dụng server actions vì au
 
 Review: 375/768/1024/1440px, landscape, zoom 200%, keyboard, reduced motion, semantic
 colors từ Master. Câu hỏi và option dài phải wrap, không ép width hoặc cắt nội dung.
+
+F14 tra cứu `keyboard focus confirmation dialog` (ux), `client interaction` (nextjs),
+`responsive buttons` (html-tailwind). Giữ native dialog, client boundary hiện có và
+semantic tokens; không áp dụng gợi ý thay đổi auth hoặc thư viện UI.

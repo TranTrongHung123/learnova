@@ -25,7 +25,7 @@ servers:
 
 tags:
   - name: Attempts
-    description: F13 start, stable shuffle, resume and revision-checked autosave.
+    description: F13–F14 start, resume, autosave, idempotent submit and server finalization.
   - name: Participant Discovery
     description: F12 permission-filtered session metadata and own attempt history.
   - name: Exam Sessions
@@ -51,7 +51,7 @@ paths:
       summary: Start or return the existing IN_PROGRESS Attempt
       description: |
         ACTIVE PARTICIPANT required. Session lock serializes start, configuration and cancellation.
-        Existing IN_PROGRESS is returned before checking assignment, including expired attempts awaiting F14.
+        Existing IN_PROGRESS is checked before assignment. If overdue, it is finalized and returned without consuming another attempt.
         New attempts require current assignment, effective OPEN state and remaining attempts.
         Deadline and concrete question/option order are fixed at creation. All responses use Cache-Control no-store.
       security: [{bearerAuth: []}]
@@ -86,7 +86,7 @@ paths:
       description: |
         ACTIVE PARTICIPANT owner required; membership is not rechecked. Other owners return 404.
         Only editable attempts include questions. Expired or completed attempts return metadata,
-        canEdit=false and questions=[]; no result disclosure or finalization occurs in F13.
+        canEdit=false and questions=[]. Overdue attempts are lazily finalized and graded before response. No result disclosure.
         Cache-Control no-store. serverTime and deadline are authoritative, even when scheduler is late.
       security: [{bearerAuth: []}]
       parameters:
@@ -94,6 +94,34 @@ paths:
       responses:
         '200':
           description: Own Attempt; no correct answers, explanations or grading rules.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TakingAttempt'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/AttemptUnavailable'}
+  /api/v1/attempts/{id}/submit:
+    post:
+      tags: [Attempts]
+      operationId: submitAttempt
+      summary: Finalize and automatically grade own Attempt exactly once
+      description: |
+        ACTIVE PARTICIPANT owner required; membership is not rechecked. No request body.
+        Client must wait for acknowledged saves before calling. Uses persisted answers and published snapshot.
+        Attempt lock serializes autosave, submit and expiration. At or after persisted deadline,
+        completionReason is DEADLINE_REACHED; otherwise PARTICIPANT_SUBMIT.
+        A successful transaction persists one result and question scores and returns GRADED.
+        Retrying returns current metadata without regrading. submittedAt is the accepted server submit time
+        or persisted deadline for expiration; gradedAt is processing time. No score, pass/fail or answer key
+        is disclosed in F14. Cache-Control no-store. On timeout, read authoritative state before retry.
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Completed Attempt or idempotent current state.
           content:
             application/json:
               schema: {$ref: '#/components/schemas/TakingAttempt'}
@@ -110,7 +138,8 @@ paths:
       description: |
         Owner, IN_PROGRESS and now < persisted deadline are checked while holding the Attempt lock.
         Question and option IDs must belong to its published snapshot. Revision is per question.
-        Stale revision always returns ANSWER_REVISION_CONFLICT without writing; after a lost response,
+        Deadline is checked before answer revision. A late save finalizes the attempt without saving its input and returns ATTEMPT_DEADLINE_PASSED after commit.
+        Already completed attempts return ATTEMPT_NOT_EDITABLE. Stale editable answers return ANSWER_REVISION_CONFLICT; after a lost response,
         read the Attempt to reconcile before choosing whether to save again. No automatic overwrite.
         activeTimeMs is cumulative estimated focused time, nullable if absent; accepted values are
         capped to elapsed server time and never decrease. It is not grading or anti-cheat evidence.
@@ -3362,7 +3391,7 @@ components:
     TakingAttempt:
       type: object
       additionalProperties: false
-      required: [id, sessionId, examVersionId, title, attemptNumber, status, startedAt, deadline, serverTime, canEdit, questions]
+      required: [id, sessionId, examVersionId, title, attemptNumber, status, startedAt, deadline, serverTime, canEdit, questions, completionReason, submittedAt, gradedAt]
       properties:
         id: {type: string, format: uuid}
         sessionId: {type: string, format: uuid}
@@ -3373,6 +3402,11 @@ components:
         startedAt: {type: string, format: date-time}
         deadline: {type: string, format: date-time}
         serverTime: {type: string, format: date-time}
+        completionReason:
+          type: [string, 'null']
+          enum: [PARTICIPANT_SUBMIT, DEADLINE_REACHED, null]
+        submittedAt: {type: [string, 'null'], format: date-time}
+        gradedAt: {type: [string, 'null'], format: date-time}
         canEdit: {type: boolean}
         questions:
           type: array

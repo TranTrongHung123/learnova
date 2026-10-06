@@ -37,8 +37,8 @@ F09–F10 đã triển khai; kết quả và giới hạn kiểm chứng đượ
 F11 đã triển khai theo phạm vi được chốt, nghiệm thu local ngày 04/10/2026;
 Start Attempt HTTP và deadline persisted tiếp tục ở F13. F12 đã triển khai discovery và
 lịch sử metadata theo phạm vi được chốt, nghiệm thu local ngày 04/10/2026.
-F13 đã triển khai và kiểm chứng local ngày 05/10/2026; Submit/auto-finalize/grading
-tiếp tục ở F14 theo phạm vi được chốt. F14–F21 chưa hoàn thành.
+F13–F14 đã triển khai và kiểm chứng local ngày 05/10/2026 theo phạm vi được chốt.
+F14 chỉ xác nhận hoàn tất, không hiển thị điểm; result policy/UI tiếp tục ở F15. F15–F21 chưa hoàn thành.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -633,17 +633,42 @@ Kiến trúc và sơ đồ: [F13 Attempt/autosave](../architecture/f13-attempt-a
 **Nguồn:** UC-ATTEMPT-07, UC-SYSTEM-02, UC-GRADE-01.  
 **Phụ thuộc:** F13.
 
-- [ ] Manual submit và expiration dùng chung một nghiệp vụ finalize.
-- [ ] Khóa Attempt khi finalize; ngăn autosave thay đổi dữ liệu đã dùng để chấm.
-- [ ] Scheduler và lazy deadline check cùng gọi operation idempotent; xử lý lại các bài quá hạn sau restart.
-- [ ] Chấm đúng snapshot: exact match, exact-set match, absolute tolerance; câu chưa trả lời 0 điểm.
-- [ ] Dùng `BigDecimal`; pass/fail theo raw score, hiển thị hai chữ số HALF_UP.
-- [ ] Lưu một Result cho mỗi Attempt, chi tiết điểm từng câu và lý do kết thúc để phân biệt submit/expired sau khi GRADED.
-- [ ] Frontend đợi save được xác nhận trước submit; nếu timeout, fetch lại trạng thái authoritative.
+- [x] Manual submit và expiration dùng chung một nghiệp vụ finalize.
+- [x] Khóa Attempt khi finalize; ngăn autosave thay đổi dữ liệu đã dùng để chấm.
+- [x] Scheduler và lazy deadline check cùng gọi operation idempotent; xử lý lại các bài quá hạn sau restart.
+- [x] Chấm đúng snapshot: exact match, exact-set match, absolute tolerance; câu chưa trả lời 0 điểm.
+- [x] Dùng `BigDecimal`; pass/fail theo raw score, hiển thị hai chữ số HALF_UP.
+- [x] Lưu một Result cho mỗi Attempt, chi tiết điểm từng câu và lý do kết thúc để phân biệt submit/expired sau khi GRADED.
+- [x] Frontend đợi save được xác nhận trước submit; nếu timeout, fetch lại trạng thái authoritative.
 
 **API/UI:** Submit command và finalization state; không trả điểm/đáp án vượt result policy trong response submit.
 
 **Nghiệm thu:** Double-submit, submit-vs-expiration và save-vs-submit không chấm hai lần; backend vẫn finalize khi browser đóng; test biên tolerance và rounding.
+
+**Bàn giao F14 — 05/10/2026:**
+
+- POST submit, lazy expiration và scheduler dùng chung finalize với khóa Attempt; Result,
+  điểm từng câu và GRADED commit nguyên tử. Migration V12 giữ completionReason và timestamp.
+- Chấm snapshot bằng BigDecimal, exact-set/absolute tolerance; raw pass/fail và formatter
+  HALF_UP. Unique/FK/check bảo vệ dữ liệu. Save đến muộn không rollback kết quả đã finalize.
+- UI có dialog xác nhận, drain autosave, xử lý conflict/lỗi lưu, refetch khi mất response,
+  trạng thái hoàn tất/hết giờ và focus heading. Không trả điểm/pass-fail/đáp án ở F14.
+- Backend `mvnw.cmd -B verify`: **167 tests pass**, không fail/error/skip, BUILD SUCCESS;
+  gồm 18 Attempt integration tests và 5 grading unit tests. Kiểm tra race, rollback/retry,
+  scheduler, ownership, migration V10→V12 và response không lộ kết quả.
+- Frontend lint/typecheck/build pass; **88 unit tests pass**, gồm 22 test autosave/submit.
+  Browser **8 Attempt, 3 Discovery, 4 Session và 1 production tests pass** với API thật.
+- Browser kiểm chứng save trước submit, mất response sau commit, hết giờ khi dialog mở,
+  scheduler khi browser đóng, reload, keyboard/focus và các viewport 375/768/1024/1440,
+  landscape, zoom 200%, reduced motion. Đã xem ảnh dialog desktop/mobile và final state.
+- OpenAPI: 58 paths, 69 operation IDs duy nhất, 537 tham chiếu hợp lệ. JAR production
+  có migration/service F14 và không có fixture controller. UTF-8, link và diff đã kiểm tra.
+- Local Windows/Edge, PostgreSQL 17/Redis 7.4 Testcontainers. Chưa kiểm chứng screen reader,
+  tải production, CI remote hoặc deployment HTTPS; không mở rộng F15/result visibility.
+- Bàn giao trên `feat/f14-submit-finalize-grading` bằng Conventional Commit local;
+  người dùng tự push, mở PR và merge.
+
+Kiến trúc và sơ đồ: [F14 Submit/finalize/grading](../architecture/f14-submit-finalize-grading.md).
 
 ### F15 — Result visibility, history và best score
 

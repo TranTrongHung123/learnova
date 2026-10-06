@@ -30,7 +30,7 @@ export function StartAttempt({ value: s }: { value: DiscoveredSession }) {
       <h2 id={title} className="text-xl font-bold">Bắt đầu {s.title}?</h2>
       <p className="my-4">Thời lượng {s.durationMinutes} phút. Bạn đã dùng {s.attemptsUsed}/{s.maxAttempts} lượt. Hạn làm bài là thời điểm sớm hơn giữa hết thời lượng và giờ kết thúc kỳ thi.</p>
       <p>Câu trả lời được tự động lưu khi máy chủ xác nhận. Phần chưa lưu có thể mất khi tải lại hoặc đóng trình duyệt.</p>
-      <p className="mt-3 text-muted-foreground">Chức năng nộp bài đang được hoàn thiện; khi hết giờ, bài sẽ khóa chỉnh sửa và chờ xử lý.</p>
+      <p className="mt-3 text-muted-foreground">Khi hết giờ, máy chủ tự kết thúc và chấm các câu trả lời đã lưu, kể cả khi bạn đóng trình duyệt.</p>
       {error && <p role="alert" className="my-3 text-danger">{error}</p>}
       <div className="mt-5 flex flex-wrap gap-3"><Button variant="secondary" disabled={busy} onClick={() => dialog.current?.close()}>Hủy</Button><Button disabled={busy} onClick={() => void start()}>{busy ? "Đang bắt đầu…" : "Bắt đầu ngay"}</Button></div>
     </dialog>

@@ -1,8 +1,28 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 
 const api = "http://localhost:8081/api/v1";
 const password = "Question test password 123";
+const pageErrors = new WeakMap<Page, string[]>();
+test.beforeEach(async ({ page }) => {
+  const errors: string[] = [];
+  pageErrors.set(page, errors);
+  page.on("pageerror", error => errors.push(`${error.name}: ${error.message}`));
+});
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status === testInfo.expectedStatus) return;
+  // Không thu request/header/body, trace hay giá trị input chứa credential.
+  const state = page.isClosed() ? { closed: true } : {
+    path: new URL(page.url()).pathname,
+    headings: await page.getByRole("heading").allTextContents(),
+    forms: await page.locator("form").count(),
+    textareas: await page.locator("textarea").count(),
+  };
+  const path = testInfo.outputPath("question-page-diagnostics.json");
+  await writeFile(path, JSON.stringify({ ...state, errors: pageErrors.get(page) ?? [] }, null, 2));
+  await testInfo.attach("question-page-diagnostics", { path, contentType: "application/json" });
+});
 async function account(request: APIRequestContext, roles = ["CREATOR"]) {
   const email = `${randomUUID()}@example.com`;
   const csrf = await (await request.get(`${api}/auth/csrf`)).json();

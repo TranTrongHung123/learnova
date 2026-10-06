@@ -11,7 +11,9 @@ import tools.jackson.databind.ObjectMapper;
 @Repository
 public class AttemptRepository {
     public record Attempt(UUID id, UUID participantId, UUID sessionId, UUID versionId, String title,
-                          int number, String status, Instant startedAt, Instant deadline) {}
+                          int number, String status, Instant startedAt, Instant deadline,
+                          String completionReason, Instant submittedAt, Instant gradedAt) {}
+    public record Due(UUID id, Instant deadline) {}
     public record Entry(UUID questionId, List<UUID> optionOrder, State state) {}
     private final JdbcClient jdbc;
     private final ObjectMapper json;
@@ -23,6 +25,30 @@ public class AttemptRepository {
     public Optional<UUID> active(UUID actor, UUID session) {
         return jdbc.sql("select id from attempts where participant_id=:actor and session_id=:session and status='IN_PROGRESS'")
                 .param("actor",actor).param("session",session).query(UUID.class).optional();
+    }
+    public Optional<Attempt> lock(UUID id) {
+        return jdbc.sql("select a.*,s.title from attempts a join exam_sessions s on s.id=a.session_id where a.id=:id for update of a")
+                .param("id",id).query((r,n)->row(r)).optional();
+    }
+    public List<Due> due(Instant cutoff, Due after) {
+        var query=jdbc.sql("select id,deadline from attempts where status='IN_PROGRESS' and deadline<=:cutoff"
+                +(after==null?"":" and (deadline,id)>(:deadline,:id)")+" order by deadline,id limit 100")
+                .param("cutoff",cutoff.atOffset(ZoneOffset.UTC));
+        if (after!=null) query.param("deadline",after.deadline().atOffset(ZoneOffset.UTC)).param("id",after.id());
+        return query.query((r,n)->new Due(r.getObject("id",UUID.class),instant(r,"deadline"))).list();
+    }
+    public void result(UUID id, java.math.BigDecimal raw, java.math.BigDecimal total, java.math.BigDecimal passing, boolean passed, Instant now) {
+        jdbc.sql("insert into attempt_results(attempt_id,raw_score,total_score,passing_score,passed,graded_at) values (:id,:raw,:total,:passing,:passed,:now)")
+                .param("id",id).param("raw",raw).param("total",total).param("passing",passing).param("passed",passed).param("now",now.atOffset(ZoneOffset.UTC)).update();
+    }
+    public void resultQuestion(UUID id, UUID question, boolean correct, java.math.BigDecimal points) {
+        jdbc.sql("insert into attempt_result_questions(attempt_id,question_id,correct,points,awarded_score) values (:id,:question,:correct,:points,:score)")
+                .param("id",id).param("question",question).param("correct",correct).param("points",points)
+                .param("score",correct?points:java.math.BigDecimal.ZERO).update();
+    }
+    public void complete(UUID id, String reason, Instant submittedAt, Instant gradedAt) {
+        jdbc.sql("update attempts set status='GRADED',completion_reason=:reason,submitted_at=:submitted,graded_at=:graded,revision=revision+1 where id=:id")
+                .param("id",id).param("reason",reason).param("submitted",submittedAt.atOffset(ZoneOffset.UTC)).param("graded",gradedAt.atOffset(ZoneOffset.UTC)).update();
     }
     public int count(UUID actor, UUID session) {
         return jdbc.sql("select count(*) from attempts where participant_id=:actor and session_id=:session")
@@ -52,7 +78,8 @@ public class AttemptRepository {
     }
     private Attempt row(ResultSet r) throws SQLException {
         return new Attempt(r.getObject("id",UUID.class),r.getObject("participant_id",UUID.class),r.getObject("session_id",UUID.class),
-                r.getObject("exam_version_id",UUID.class),r.getString("title"),r.getInt("attempt_number"),r.getString("status"),instant(r,"started_at"),instant(r,"deadline"));
+                r.getObject("exam_version_id",UUID.class),r.getString("title"),r.getInt("attempt_number"),r.getString("status"),instant(r,"started_at"),instant(r,"deadline"),
+                r.getString("completion_reason"),instant(r,"submitted_at"),instant(r,"graded_at"));
     }
     private static Instant instant(ResultSet r,String name) throws SQLException { var t=r.getTimestamp(name); return t==null?null:t.toInstant(); }
 }
