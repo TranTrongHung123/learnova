@@ -47,6 +47,7 @@ class AttemptIntegrationTests {
     @Autowired MutableClock clock;
     @Autowired AttemptService attempts;
     @Autowired com.learnova.attempt.service.ResultService results;
+    @Autowired com.learnova.reporting.service.ReportingService reporting;
     @Autowired com.learnova.attempt.service.AttemptFinalization finalization;
     @Autowired com.learnova.attempt.config.AttemptScheduler scheduler;
     @Autowired SessionService sessions;
@@ -475,6 +476,109 @@ class AttemptIntegrationTests {
         assertThat(second.content().getFirst().id()).isEqualTo(a.id()); assertThat(second.totalElements()).isEqualTo(2);
         var empty=results.session(f.owner.id(),f.session.id(),new com.learnova.shared.api.PageQuery(1,1)).participants();
         assertThat(empty.content()).isEmpty(); assertThat(empty.totalElements()).isEqualTo(1);
+    }
+    @Test void reportingUsesBestPerPersonButAllGradedQuestionSamplesAndValidTiming() {
+        var f=fixture(AccessType.PUBLIC,false); open(f);
+        var a=start(f); clock.time=clock.time.plusSeconds(10);
+        var q=a.questions().stream().filter(x->x.type().equals("TRUE_FALSE")).findFirst().orElseThrow();
+        attempts.save(f.participant.id(),a.id(),q.id(),new Save(0L,new Answer(List.of(),true,null),false,2000L));
+        attempts.submit(f.participant.id(),a.id());
+        var b=start(f); clock.time=clock.time.plusSeconds(10);
+        attempts.save(f.participant.id(),b.id(),q.id(),new Save(0L,new Answer(List.of(),false,null),false,4000L));
+        attempts.submit(f.participant.id(),b.id());
+        var p=user("PARTICIPANT"); var c=attempts.start(p.id(),f.session.id()).attempt(); attempts.submit(p.id(),c.id());
+        var report=reporting.analytics(f.owner.id(),f.session.id());
+        assertThat(report.overview().gradedParticipantCount()).isEqualTo(2);
+        assertThat(report.overview().averageScore()).isEqualByComparingTo("0.5");
+        assertThat(report.overview().highestScore()).isEqualByComparingTo("1");
+        assertThat(report.overview().lowestScore()).isEqualByComparingTo("0");
+        assertThat(report.overview().passRate()).isEqualByComparingTo("50");
+        assertThat(report.overview().completionRate()).isNull();
+        assertThat(report.distribution().stream().mapToLong(x->x.count()).sum()).isEqualTo(2);
+        assertThat(report.distribution().get(0).count()).isEqualTo(1);
+        assertThat(report.distribution().get(2).count()).isEqualTo(1);
+        var question=report.questions().stream().filter(x->x.id().equals(q.id())).findFirst().orElseThrow();
+        assertThat(question.sampleCount()).isEqualTo(3);
+        assertThat(question.correctCount()).isEqualTo(1); assertThat(question.incorrectCount()).isEqualTo(1);
+        assertThat(question.unansweredCount()).isEqualTo(1); assertThat(question.correctRate()).isEqualByComparingTo("33.33");
+        assertThat(question.timedSampleCount()).isEqualTo(2); assertThat(question.averageAnswerTimeMs()).isEqualByComparingTo("3000");
+        assertThat(report.questions().stream().filter(x->!x.id().equals(q.id())).allMatch(x->x.averageAnswerTimeMs()==null)).isTrue();
+        jdbc.update("update attempt_answers set active_time_ms=999999999 where attempt_id=? and question_id=?",b.id(),q.id());
+        var valid=reporting.analytics(f.owner.id(),f.session.id()).questions().stream().filter(x->x.id().equals(q.id())).findFirst().orElseThrow();
+        assertThat(valid.timedSampleCount()).isEqualTo(1); assertThat(valid.averageAnswerTimeMs()).isEqualByComparingTo("2000");
+        jdbc.update("update questions set content='Changed bank' where owner_id=?",f.owner.id());
+        assertThat(reporting.analytics(f.owner.id(),f.session.id()).questions()).extracting(x->x.snapshot().content()).doesNotContain("Changed bank");
+        var perfect=attempts.start(p.id(),f.session.id()).attempt();
+        for(var item:perfect.questions()) {
+            var answer=switch(item.type()) {
+                case "TRUE_FALSE" -> new Answer(List.of(),true,null);
+                case "NUMERIC_ANSWER" -> new Answer(List.of(),null,"2.5");
+                default -> new Answer(List.of(item.options().getFirst().id()),null,null);
+            };
+            attempts.save(p.id(),perfect.id(),item.id(),new Save(0L,answer,false,0L));
+        }
+        attempts.submit(p.id(),perfect.id());
+        var full=reporting.analytics(f.owner.id(),f.session.id());
+        assertThat(full.distribution().get(9).count()).isEqualTo(1);
+        assertThat(full.distribution().get(9).upperInclusive()).isTrue();
+        assertThat(full.overview().highestScore()).isEqualByComparingTo("4");
+    }
+    @Test void reportingCompletionKeepsRemovedMembersAndZeroDenominators() {
+        var f=fixture(AccessType.CLASS,false);
+        var empty=reporting.analytics(f.owner.id(),f.session.id());
+        assertThat(empty.overview().averageScore()).isNull(); assertThat(empty.overview().passRate()).isNull();
+        assertThat(empty.overview().completionRate()).isEqualByComparingTo("0");
+        assertThat(empty.questions()).allMatch(q->q.sampleCount()==0&&q.correctRate()==null&&q.averageAnswerTimeMs()==null);
+        open(f); var a=start(f); attempts.submit(f.participant.id(),a.id());
+        classes.remove(f.owner.id(),f.classroom,f.participant.id());
+        classes.add(f.owner.id(),f.classroom,user("PARTICIPANT").id());
+        var report=reporting.analytics(f.owner.id(),f.session.id());
+        assertThat(report.overview().participantCount()).isEqualTo(2);
+        assertThat(report.overview().completionRate()).isEqualByComparingTo("50");
+        var zero=fixture(AccessType.CLASS,false); classes.remove(zero.owner.id(),zero.classroom,zero.participant.id());
+        assertThat(reporting.analytics(zero.owner.id(),zero.session.id()).overview().completionRate()).isNull();
+        var individual=fixture(AccessType.INDIVIDUAL,false); open(individual); var done=start(individual);
+        attempts.submit(individual.participant.id(),done.id());
+        assertThat(reporting.analytics(individual.owner.id(),individual.session.id()).overview().completionRate()).isEqualByComparingTo("100");
+    }
+    @Test void reportingExportIncludesEveryAttemptTypedTextAndUngradedBlanks() throws Exception {
+        var f=fixture(AccessType.PUBLIC,false); open(f);
+        jdbc.update("update users set display_name='=1+1' where id=?",f.participant.id());
+        var a=start(f); attempts.submit(f.participant.id(),a.id()); start(f);
+        var bytes=reporting.export(f.owner.id(),f.session.id());
+        try(var workbook=new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(bytes))) {
+            var sheet=workbook.getSheetAt(0); assertThat(sheet.getLastRowNum()).isEqualTo(2);
+            assertThat(sheet.getRow(0).getLastCellNum()).isEqualTo((short)13);
+            assertThat(sheet.getRow(1).getCell(0).getCellType()).isEqualTo(org.apache.poi.ss.usermodel.CellType.STRING);
+            assertThat(sheet.getRow(1).getCell(0).getStringCellValue()).isEqualTo("=1+1");
+            assertThat(sheet.getRow(1).getCell(3).getNumericCellValue()).isZero();
+            assertThat(sheet.getRow(1).getCell(7).getNumericCellValue()).isEqualTo(4);
+            assertThat(sheet.getRow(1).getCell(11).getStringCellValue()).isEqualTo("FAIL");
+            assertThat(sheet.getRow(2).getCell(3).getNumericCellValue()).isZero();
+            assertThat(sheet.getRow(2).getCell(4)).isNull(); assertThat(sheet.getRow(2).getCell(7)).isNull();
+            assertThat(sheet.getRow(2).getCell(9)).isNull(); assertThat(sheet.getRow(2).getCell(11)).isNull();
+        }
+        var http=mvc.perform(get("/api/v1/exam-sessions/"+f.session.id()+"/export?page=50&size=1").with(as(f.owner)))
+            .andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"))
+            .andExpect(content().contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).andReturn();
+        try(var workbook=new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(http.getResponse().getContentAsByteArray()))) {
+            assertThat(workbook.getSheetAt(0).getLastRowNum()).isEqualTo(2);
+        }
+    }
+    @Test void reportingHttpRequiresActiveOwnerCreatorEvenWhenResultsAreHidden() throws Exception {
+        var f=fixture(AccessType.PUBLIC,false);
+        jdbc.update("update exam_sessions set result_display_mode='HIDDEN' where id=?",f.session.id());
+        var foreign=user("CREATOR");
+        for(String endpoint:List.of("analytics","export")) {
+            String path="/api/v1/exam-sessions/"+f.session.id()+"/"+endpoint;
+            mvc.perform(get(path)).andExpect(status().isUnauthorized());
+            mvc.perform(get(path).with(as(f.participant))).andExpect(status().isForbidden());
+            mvc.perform(get(path).with(as(foreign))).andExpect(status().isNotFound());
+            mvc.perform(get(path).with(as(f.owner))).andExpect(status().isOk());
+        }
+        jdbc.update("update users set status='LOCKED' where id=?",f.owner.id());
+        for(String endpoint:List.of("analytics","export"))
+            mvc.perform(get("/api/v1/exam-sessions/"+f.session.id()+"/"+endpoint).with(as(f.owner))).andExpect(status().isForbidden());
     }
     private Fixture fixture(AccessType access,boolean shuffle) {
         var owner=user("CREATOR"); var p=user("PARTICIPANT"); UUID classroom=null;
