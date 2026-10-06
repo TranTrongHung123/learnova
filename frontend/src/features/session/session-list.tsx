@@ -7,9 +7,9 @@ import { Pagination } from "@/features/classroom/shared";
 import { apiRoot, path, statusLabels, accessLabels, type Status, type SessionDetail, type PageResult } from "./types";
 import { panel, QueryState, date } from "./shared";
 
-export function SessionList({ examId, classroomId, compact = false }: { examId?: string; classroomId?: string; compact?: boolean }) {
+export function SessionList({ examId, classroomId, compact = false, monitoring = false }: { examId?: string; classroomId?: string; compact?: boolean; monitoring?: boolean }) {
   const search = useSearchParams();
-  const requestedStatus = search.get("status");
+  const requestedStatus = monitoring ? "OPEN" : search.get("status");
   const [status, setStatus] = useState<Status | "">(!compact && requestedStatus && requestedStatus in statusLabels ? requestedStatus as Status : ""), [page, setPage] = useState(0);
   const params = new URLSearchParams({ page: String(page), size: compact ? "5" : "20" });
   if (status) params.set("status", status);
@@ -27,6 +27,7 @@ export function SessionList({ examId, classroomId, compact = false }: { examId?:
         <p>{s.examName} · Phiên bản {s.versionNumber} · {accessLabels[s.accessType]}</p>
         <p className="text-sm">{date(s.startTime)} → {date(s.endTime)}</p><p>{s.assignedParticipantCount === null ? "Công khai cho người tham gia đã đăng nhập" : `${s.assignedParticipantCount} người được giao`}</p>
         <LinkButton variant="secondary" href={path(s.id)}>Xem kỳ thi<span className="sr-only"> {s.title}</span></LinkButton>
+        {s.status === "OPEN" && <LinkButton variant="secondary" href={`${path(s.id)}/monitor`}>Giám sát<span className="sr-only"> {s.title}</span></LinkButton>}
       </article>)}</div><Pagination result={query.data} onPage={setPage} />
     </>}
   </section>;

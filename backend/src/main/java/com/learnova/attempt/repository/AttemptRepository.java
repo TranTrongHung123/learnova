@@ -54,6 +54,10 @@ public class AttemptRepository {
         return jdbc.sql("select count(*) from attempts where participant_id=:actor and session_id=:session")
                 .param("actor",actor).param("session",session).query(Integer.class).single();
     }
+    public void seen(UUID id, Instant now) {
+        jdbc.sql("update attempts set last_seen_at=greatest(last_seen_at,:now) where id=:id")
+            .param("id",id).param("now",now.atOffset(ZoneOffset.UTC)).update();
+    }
     public void create(UUID id, UUID actor, UUID session, UUID version, int number, Instant start, Instant deadline) {
         jdbc.sql("insert into attempts(id,participant_id,session_id,exam_version_id,attempt_number,status,started_at,deadline) values (:id,:actor,:session,:version,:number,'IN_PROGRESS',:start,:deadline)")
                 .param("id",id).param("actor",actor).param("session",session).param("version",version).param("number",number)

@@ -18,6 +18,7 @@
     "test:discovery": "playwright test --config playwright.discovery.config.ts",
     "test:attempt": "playwright test --config playwright.attempt.config.ts",
     "test:result": "playwright test --config playwright.result.config.ts",
+    "test:monitoring": "playwright test --config playwright.monitoring.config.ts",
     "test:exam": "playwright test --config playwright.exam.config.ts",
     "test:google": "playwright test --config playwright.google.config.ts",
     "test:production": "playwright test --config playwright.production.config.ts",

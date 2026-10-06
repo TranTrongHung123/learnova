@@ -31,4 +31,9 @@ public class AttemptController {
     ResponseEntity<View> submit(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
         return ResponseEntity.ok().header("Cache-Control","no-store").body(service.submit(UUID.fromString(jwt.getSubject()),id));
     }
+    @PostMapping("/attempts/{id}/heartbeat")
+    ResponseEntity<Void> heartbeat(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id) {
+        service.heartbeat(UUID.fromString(jwt.getSubject()),id);
+        return ResponseEntity.noContent().header("Cache-Control","no-store").build();
+    }
 }

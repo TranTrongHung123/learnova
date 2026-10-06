@@ -24,6 +24,8 @@ servers:
     description: Local development
 
 tags:
+  - name: Monitoring
+    description: F16 owner-only committed progress and heartbeat presence, without answers or scores.
   - name: Results
     description: F15 policy-filtered history, best score and manual release.
   - name: Attempts
@@ -46,6 +48,93 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/exam-sessions/{id}/monitor:
+    get:
+      tags: [Monitoring]
+      operationId: getMonitoringSnapshot
+      summary: Session owner's monitoring snapshot
+      description: |
+        CREATOR and current ownership required. Includes current assignments union historical participants;
+        each row uses the latest attempt, never BEST_SCORE. PUBLIC includes only participants with attempts
+        and omits notStarted. NOT_APPLICABLE connection for unstarted/completed rows. CONNECTED means
+        a server-recorded start, save or heartbeat within 45 seconds; disconnect does not finalize attempts.
+        This read-only endpoint does not finalize overdue attempts; the existing server finalizer does.
+        Cache-Control no-store. Snapshot reads one committed database view.
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Committed session progress.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MonitoringSnapshot'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403':
+          description: FORBIDDEN, ACCOUNT_LOCKED or ACCOUNT_DISABLED.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '404':
+          description: SESSION_NOT_FOUND, including foreign-owned sessions.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503': {$ref: '#/components/responses/AuthUnavailable'}
+  /api/v1/attempts/{id}/heartbeat:
+    post:
+      tags: [Monitoring]
+      operationId: heartbeatAttempt
+      summary: Record presence for an owned active attempt
+      description: |
+        ACTIVE PARTICIPANT required. Records server time only while IN_PROGRESS and before persisted deadline.
+        No-op after completion/deadline. Does not change answers, revisions, deadline or submission.
+        Client sends every 15 seconds while exam taking is mounted. Cache-Control no-store.
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '204': {description: Heartbeat processed.}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404':
+          description: ATTEMPT_NOT_FOUND, including another participant's attempt.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+  /api/v1/monitoring/ws:
+    get:
+      tags: [Monitoring]
+      operationId: connectMonitoringWebSocket
+      summary: Upgrade to the monitoring WebSocket protocol
+      security: []
+      description: |
+        Native WebSocket, ws locally and wss with HTTPS. Explicit allowed origins share auth CORS config.
+        No credentials/query parameters in URL and no cookie authentication. Within 10 seconds send exactly
+        one JSON SUBSCRIBE frame {type: SUBSCRIBE, sessionId: UUID, accessToken: JWT}. Decoder validates JWT;
+        subscription validates current ACTIVE CREATOR and owner. No frame is sent before authorization.
+        Server sends SYNC sequence 1 with full rows, then DELTA every 2 seconds with changed rows/removals
+        and current summary. Frames follow MonitoringFrame. Reads see committed state only, intermediate
+        transitions may coalesce. The first SYNC reconciles changes between REST snapshot and subscribe.
+        Each connection has a new streamId and strictly increasing sequence, including empty keepalive DELTA.
+        Reconnect must fetch REST then open a new subscription. Ignore duplicate/old sequence; on sequence gap
+        or stream mismatch reconnect and resync. Never apply events from a previous socket to the new stream.
+        Authorization is checked each cycle; close 4401 for auth timeout/expiry, 4403 for denied subscription,
+        1007 for malformed data, 1008 for repeat subscription and 1011 for unavailable service/transport.
+        No refresh tokens, answers, answer keys, explanations or scores are accepted or broadcast.
+        See docs/architecture/f16-realtime-monitoring.md for operation and limits.
+      responses:
+        '101': {description: Protocol upgraded; application authentication is still required.}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
   /api/v1/participant/results:
     get:
       tags:
@@ -3753,6 +3842,70 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    MonitoringParticipant:
+      type: object
+      additionalProperties: false
+      required: [participantId, displayName, attemptNumber, status, answeredCount, totalQuestions, connectionStatus]
+      properties:
+        participantId: {type: string, format: uuid}
+        displayName: {type: string}
+        attemptId: {type: string, format: uuid}
+        attemptNumber: {type: integer, minimum: 0}
+        status: {type: string, enum: [NOT_STARTED, IN_PROGRESS, SUBMITTED, EXPIRED, GRADED]}
+        answeredCount: {type: integer, minimum: 0}
+        totalQuestions: {type: integer, minimum: 0}
+        lastSeen: {type: string, format: date-time}
+        connectionStatus: {type: string, enum: [CONNECTED, DISCONNECTED, NOT_APPLICABLE]}
+    MonitoringSummary:
+      type: object
+      additionalProperties: false
+      required: [total, inProgress, submitted, disconnected]
+      properties:
+        total: {type: integer, minimum: 0}
+        notStarted: {type: integer, minimum: 0}
+        inProgress: {type: integer, minimum: 0}
+        submitted: {type: integer, minimum: 0, description: Latest attempts in SUBMITTED, EXPIRED or GRADED state.}
+        disconnected: {type: integer, minimum: 0, description: IN_PROGRESS rows with stale or absent heartbeat.}
+    MonitoringSnapshot:
+      type: object
+      additionalProperties: false
+      required: [sessionId, title, sessionStatus, accessType, serverTime, summary, participants]
+      properties:
+        sessionId: {type: string, format: uuid}
+        title: {type: string}
+        sessionStatus: {type: string, enum: [DRAFT, SCHEDULED, OPEN, CLOSED, CANCELLED]}
+        accessType: {type: string, enum: [PUBLIC, CLASS, INDIVIDUAL]}
+        serverTime: {type: string, format: date-time}
+        summary: {$ref: '#/components/schemas/MonitoringSummary'}
+        participants:
+          type: array
+          items: {$ref: '#/components/schemas/MonitoringParticipant'}
+    MonitoringFrame:
+      type: object
+      additionalProperties: false
+      required: [type, streamId, sequence, sessionId, title, sessionStatus, accessType, serverTime, summary, changes, removedParticipantIds]
+      properties:
+        type: {type: string, enum: [SYNC, DELTA]}
+        streamId: {type: string, format: uuid}
+        sequence: {type: integer, minimum: 1}
+        sessionId: {type: string, format: uuid}
+        title: {type: string}
+        sessionStatus: {type: string, enum: [DRAFT, SCHEDULED, OPEN, CLOSED, CANCELLED]}
+        accessType: {type: string, enum: [PUBLIC, CLASS, INDIVIDUAL]}
+        serverTime: {type: string, format: date-time}
+        summary: {$ref: '#/components/schemas/MonitoringSummary'}
+        changes:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [type, participant]
+            properties:
+              type: {type: string, enum: [CONNECTED, DISCONNECTED, STARTED, SUBMITTED, PROGRESS]}
+              participant: {$ref: '#/components/schemas/MonitoringParticipant'}
+        removedParticipantIds:
+          type: array
+          items: {type: string, format: uuid}
     ResultScore:
       type: object
       additionalProperties: false

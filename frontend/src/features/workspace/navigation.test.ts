@@ -59,6 +59,7 @@ describe("Workspace navigation", () => {
         ...(workspace === "CREATOR" ? [expect.objectContaining({ href: "/creator/exams", icon: "exam", available: true })] : []),
         ...(workspace === "CREATOR" ? [expect.objectContaining({ href: "/creator/sessions", icon: "sessions", available: true })] : []),
         ...(workspace === "ADMIN" ? [] : [expect.objectContaining({ href: `${workspaceInfo[workspace].href}/classes`, icon: "classes" })]),
+        ...(workspace === "CREATOR" ? [expect.objectContaining({ href: "/creator/monitor", icon: "monitor", available: true })] : []),
         expect.objectContaining({ href: "/profile", icon: "profile" }),
       ]);
     },
