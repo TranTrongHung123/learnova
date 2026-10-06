@@ -2232,6 +2232,22 @@ Completed date
 
 ## UC-MON-01 - Theo dõi Session realtime
 
+F16 flow:
+
+1. CREATOR ACTIVE mở Session thuộc mình → Giám sát.
+2. REST lấy snapshot với assignment hiện tại hợp nhất lịch sử, mỗi người một lượt mới nhất.
+3. WebSocket nhận access JWT trong SUBSCRIBE frame, kiểm tra owner rồi gửi SYNC mới.
+4. Mỗi 2 giây đọc dữ liệu đã commit, gửi rows thay đổi/removal và summary; không gửi answers/score.
+5. Browser mất kết nối hiển thị dữ liệu cũ có cảnh báo. Reconnect refetch REST,
+   subscribe và thay thế bằng SYNC; duplicate/old sequence bị bỏ, gap yêu cầu đồng bộ lại.
+6. JWT hết hạn đóng kết nối; auth layer refresh rồi bắt đầu lại. Quyền bị thu hồi
+   đóng subscription và xóa dữ liệu khỏi màn hình.
+
+PUBLIC: Not Started không áp dụng. CLASS/INDIVIDUAL khử trùng assignment nhưng giữ
+người đã làm khi bị remove. Heartbeat server timestamp mỗi 15 giây; quá 45 giây chỉ
+đánh dấu DISCONNECTED cho IN_PROGRESS, không thay Attempt/Result. Unstarted/completed
+dùng NOT_APPLICABLE. Có thể xem dữ liệu khi Session chưa mở/đã kết thúc, kèm thông báo.
+
 **Actor:** Creator
 
 Có thể xem:

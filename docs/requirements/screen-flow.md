@@ -167,7 +167,7 @@ Sau auth, màn hình nghiệp vụ chưa triển khai giữ “Tính năng đang
 fixture gắn nhãn rõ, chọn tập role/workspace/UI state; không tạo token hoặc gọi API nghiệp vụ.
 Shell dùng sidebar từ 1024px, drawer trên màn hình nhỏ, switcher chỉ có các role được cấp;
 ADMIN không tự có PARTICIPANT/CREATOR. Trong preview, thiếu role hiển thị forbidden.
-Mục nghiệp vụ chưa có được disable kèm “Sắp có”; Monitoring/Reports chưa có route riêng.
+Mục nghiệp vụ chưa có được disable kèm “Sắp có”; F16 bổ sung Monitoring, Reports vẫn chưa có route riêng.
 F03 kết nối User thật, switch workspace theo roles; không thay business rule.
 
 Chi tiết: [kiến trúc F02](../architecture/f02-frontend-foundation.md),
@@ -222,6 +222,7 @@ Chi tiết: [kiến trúc F02](../architecture/f02-frontend-foundation.md),
 | `/creator/sessions/[sessionId]` | Exam Session Detail |
 | `/creator/sessions/[sessionId]/edit` | Edit Exam Session |
 | `/creator/sessions/[sessionId]/monitor` | Realtime Monitoring |
+| `/creator/monitor` | Chọn kỳ thi giám sát, mặc định lọc OPEN |
 | `/creator/sessions/[sessionId]/results` | Session Results |
 | `/creator/sessions/[sessionId]/analytics` | Session Analytics |
 
@@ -2468,8 +2469,8 @@ Some settings are locked because participants have already started this session.
 ---
 
 F11: Edit SCHEDULED chỉ đổi startTime sang tương lai; endTime chỉ qua Gia hạn.
-OPEN chỉ sửa tên, result policy bị khóa. Attempts/Results/Monitoring hiển thị chưa khả dụng
-cho tới feature tương ứng, không giả lập số liệu hoặc action.
+OPEN chỉ sửa tên, result policy bị khóa. F13–F16 đã tích hợp Attempt/Results/Monitoring
+với API thật; không giả lập số liệu hoặc action.
 
 # 19.6. Cancel Session Dialog
 
@@ -2518,6 +2519,27 @@ Attempt mới và thời điểm công bố `AFTER_SESSION_END` dùng `endTime` 
 ---
 
 # 20. Realtime Monitoring
+
+F16 đã triển khai sidebar Giám sát → `/creator/monitor` (danh sách mặc định OPEN),
+nút Giám sát ở Session card OPEN và “Giám sát kỳ thi” ở Session detail.
+
+Trang có summary cards, tìm Participant theo tên, phân trang 25 dòng, progress đã
+lưu, lượt mới nhất, business status, connection status và lastSeen giờ server.
+PUBLIC dùng “Đã tham gia” thay tổng assignment và “Chưa bắt đầu: Không áp dụng”.
+“Đã hoàn tất” gộp SUBMITTED/EXPIRED/GRADED nhưng từng dòng giữ đúng trạng thái.
+Desktop có bảng; mobile mỗi dòng thành nhóm có nhãn, không cuộn ngang.
+
+Initial loading → REST snapshot → WebSocket SYNC → DELTA. Status region hiển thị
+“Đang cập nhật trực tiếp” hoặc cảnh báo kết nối lại/dữ liệu cũ; không chuyển focus
+khi update. “Đồng bộ lại” refetch và mở subscription mới. Reconnect dùng backoff,
+sequence gap kích hoạt đồng bộ mới, SYNC khép khoảng trống REST → subscribe.
+403/404/4403 hiển thị forbidden/not-found và không giữ dữ liệu nhạy cảm cũ. Empty
+roster khác với không có kết quả tìm kiếm. Session không OPEN vẫn xem được, có banner.
+
+Connection của Participant dựa heartbeat 15 giây/lần; quá 45 giây IN_PROGRESS hiển
+thị “Mất kết nối”. Unstarted/completed hiển thị “Không áp dụng”. Có giải thích đây
+là tín hiệu mạng/browser, không phải tự nộp bài hoặc bằng chứng gian lận. Chỉ một
+live region cho kết nối Creator, không đọc lại bảng mỗi 2 giây.
 
 **Route**
 

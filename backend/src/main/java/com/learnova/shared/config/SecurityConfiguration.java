@@ -73,6 +73,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/monitoring/ws").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/google", "/api/v1/auth/google/config",
                                 "/api/v1/auth/google/flow").permitAll()
@@ -91,6 +92,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/exam-sessions", "/api/v1/exam-sessions/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/attempts/{id}").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/attempts/{id}/submit").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/attempts/{id}/heartbeat").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/attempts/{id}/answers/{questionId}").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/participant/exam-sessions", "/api/v1/participant/exam-sessions/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/participant/results", "/api/v1/participant/results/**").authenticated()

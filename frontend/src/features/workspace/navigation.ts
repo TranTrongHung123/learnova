@@ -69,7 +69,7 @@ export function navigationFor(workspace: Workspace): NavigationItem[] {
     items.push({ label: "Đề thi", href: `${base}/exams`, icon: "exam", available: true });
     items.push({ label: "Kỳ thi", href: `${base}/sessions`, icon: "sessions", available: true });
     items.push({ label: "Lớp học", href: `${base}/classes`, icon: "classes", available: true });
-    pending("Giám sát", undefined, "monitor");
+    items.push({ label: "Giám sát", href: `${base}/monitor`, icon: "monitor", available: true });
     pending("Báo cáo", undefined, "reports");
   } else {
     pending("Người dùng", `${base}/users`, "users");

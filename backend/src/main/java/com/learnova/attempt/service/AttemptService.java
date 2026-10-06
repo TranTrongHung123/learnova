@@ -42,6 +42,7 @@ public class AttemptService {
         if (used>=reserved.maxAttempts()) throw new AttemptFailure(409,"ATTEMPTS_EXHAUSTED");
         UUID id=UUID.randomUUID();
         attempts.create(id,actor,session,reserved.versionId(),used+1,reserved.startedAt(),reserved.deadline());
+        attempts.seen(id,now());
         var questions=new ArrayList<>(exams.takingQuestions(reserved.versionId()));
         if (reserved.shuffleQuestions()) Collections.shuffle(questions);
         for (int i=0;i<questions.size();i++) {
@@ -57,6 +58,13 @@ public class AttemptService {
 
     @Transactional
     public View submit(UUID actor, UUID id) { authorize(actor); return view(finalization.finish(owned(actor,id,true),true),now()); }
+
+    @Transactional
+    public void heartbeat(UUID actor, UUID id) {
+        authorize(actor);
+        var attempt=owned(actor,id,true);
+        if (attempt.status().equals("IN_PROGRESS") && now().isBefore(attempt.deadline())) attempts.seen(id,now());
+    }
 
     public Saved save(UUID actor, UUID id, UUID questionId, Save input) {
         Saved result=transaction.execute(status->saveLocked(actor,id,questionId,input));
@@ -81,6 +89,7 @@ public class AttemptService {
             activeTime=Math.max(activeTime==null?0:activeTime,Math.min(input.activeTimeMs(),elapsed));
         }
         attempts.save(id,questionId,input,activeTime,time);
+        attempts.seen(id,time);
         return new Saved(new State(questionId,input.answer(),input.markedForReview(),state.revision()+1,activeTime,time),time);
     }
     private View view(Attempt a, Instant time) {

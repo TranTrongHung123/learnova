@@ -367,3 +367,19 @@ Kiểm chứng local ngày 05/10/2026: 167 backend tests, 88 frontend unit tests
 16 browser tests (8 Attempt/3 Discovery/4 Session/1 production) pass; lint/typecheck/build pass.
 Chưa kiểm chứng CI remote, screen reader hoặc tải production. Bàn giao bằng commit local,
 người dùng tự push/PR/merge.
+
+## F16 — Realtime monitoring
+
+Creator mở Giám sát từ sidebar hoặc Session để xem tiến độ lượt mới nhất, answered
+count đã lưu, lastSeen và kết nối. Snapshot REST và WebSocket chỉ dành cho owner,
+không gửi answers/score. Reconnect refetch và đối soát SYNC, DELTA có stream/sequence.
+PUBLIC không có “Chưa bắt đầu”; CLASS/INDIVIDUAL hợp nhất assignment và lịch sử.
+
+V14 thêm lastSeen; heartbeat 15 giây, mất liên lạc 45 giây chỉ đổi connection status.
+Projection đọc dữ liệu đã commit mỗi 2 giây khi có người xem; monitoring scheduler
+tách khỏi deadline scheduler. Đây là view tiến độ, không phải audit log mọi event.
+
+Browser suite: `npm run test:monitoring`. Backend: `mvnw.cmd -B verify` (Windows) hoặc
+`./mvnw -B verify`. Cấu hình origin như auth; production proxy cần hỗ trợ WSS/Upgrade.
+Chi tiết protocol, sơ đồ và giới hạn tải tại
+[kiến trúc F16](docs/architecture/f16-realtime-monitoring.md).

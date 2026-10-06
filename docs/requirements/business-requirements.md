@@ -1574,6 +1574,25 @@ Hệ thống không trả Session Participant không có quyền.
 
 # 29. Realtime Monitoring
 
+F16: chỉ CREATOR ACTIVE sở hữu Session được đọc snapshot/subscribe. Mỗi Participant
+hiển thị lượt mới nhất, không phải lượt BEST_SCORE. CLASS/INDIVIDUAL hợp nhất người
+hiện được giao với người đã có Attempt, khử trùng; PUBLIC chỉ đếm người đã bắt đầu
+và “Not Started” không áp dụng. Submitted tổng quan gồm SUBMITTED/EXPIRED/GRADED.
+
+Answered count chỉ đếm answer đã lưu của đúng snapshot. LastSeen là giờ server ghi
+nhận start, autosave hoặc heartbeat 15 giây/lần. IN_PROGRESS không có heartbeat
+trong 45 giây hiển thị DISCONNECTED; trạng thái kết nối độc lập với Attempt, không
+tự nộp/hết giờ và không được xem là bằng chứng gian lận. Unstarted/completed có
+connection NOT_APPLICABLE. Không trả answer, correct answer, explanation hoặc score
+trong monitoring.
+
+REST snapshot → WebSocket subscribe → SYNC đối soát → incremental DELTA. Backend
+đọc projection đã commit mỗi 2 giây khi có người xem; nhiều chuyển trạng thái trong
+một chu kỳ có thể gộp lại. Monitoring là view tiến độ, không phải event log/audit.
+Reconnect luôn refetch REST và subscribe lại, đối soát SYNC khép khoảng trống;
+streamId/sequence ngăn duplicate/out-of-order làm lùi trạng thái. Xem
+[kiến trúc F16](../architecture/f16-realtime-monitoring.md).
+
 Creator có thể theo dõi một Session đang diễn ra.
 
 Thông tin tổng quan:
