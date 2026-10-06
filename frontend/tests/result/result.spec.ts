@@ -8,7 +8,7 @@ async function account(request: APIRequestContext, role: string) {
   const login = await (await request.post(`${api}/auth/login`, { headers, data: { email, password } })).json();
   return { email, id: login.user.id, headers: { Authorization: `Bearer ${login.accessToken}` } };
 }
-async function fixture(request: APIRequestContext, mode = "DETAILED") {
+async function fixture(request: APIRequestContext, mode = "DETAILED", graded = true) {
   const owner = await account(request, "CREATOR"), participant = await account(request, "PARTICIPANT"), headers = owner.headers;
   const q = await (await request.post(`${api}/questions`, { headers, data: { type: "TRUE_FALSE", status: "ACTIVE", content: "Snapshot question", explanation: "Snapshot explanation", options: [], correctBoolean: true } })).json();
   const exam = await (await request.post(`${api}/exams`, { headers, data: { name: "Result exam" } })).json();
@@ -20,7 +20,7 @@ async function fixture(request: APIRequestContext, mode = "DETAILED") {
   const started = await (await request.post(`${api}/exam-sessions/${s.id}/attempts`, { headers: participant.headers })).json();
   const a = started.attempt ?? started;
   expect((await request.put(`${api}/attempts/${a.id}/answers/${a.questions[0].id}`, { headers: participant.headers, data: { revision: 0, answer: { optionIds: [], booleanValue: true, numericValue: null }, markedForReview: false } })).status()).toBe(200);
-  expect((await request.post(`${api}/attempts/${a.id}/submit`, { headers: participant.headers })).status()).toBe(200);
+  if (graded) expect((await request.post(`${api}/attempts/${a.id}/submit`, { headers: participant.headers })).status()).toBe(200);
   return { owner, participant, s, a };
 }
 async function login(page: Page, email: string, role: string) {
@@ -62,4 +62,47 @@ test("hidden result stays unavailable after release and foreign participant is r
   await expect(page.getByText("Snapshot explanation")).toHaveCount(0);
   const other = await account(request, "PARTICIPANT");
   expect((await request.get(`${api}/participant/results/${f.a.id}`, { headers: other.headers })).status()).toBe(404);
+});
+
+test("reporting shows best score, all graded samples, immutable snapshot and downloads Excel", async ({ page, request }) => {
+  const f = await fixture(request, "HIDDEN");
+  const secondResponse = await request.post(`${api}/exam-sessions/${f.s.id}/attempts`, { headers: f.participant.headers });
+  expect(secondResponse.status()).toBe(201); const second = await secondResponse.json();
+  expect((await request.post(`${api}/attempts/${second.id}/submit`, { headers: f.participant.headers })).status()).toBe(200);
+  await login(page, f.owner.email, "creator"); await page.getByRole("link", { name: "Báo cáo", exact: true }).click();
+  await expect(page).toHaveURL(/\/creator\/reports$/);
+  await page.getByRole("link", { name: "Xem thống kê Result session", exact: true }).click();
+  await expect(page.getByText(/Mẫu BEST_SCORE: 1 người/)).toBeVisible();
+  await expect(page.locator("summary")).toHaveText("Câu 1 · 1 điểm — Xem snapshot");
+  await expect(page.getByRole("cell", { name: "50% (1)", exact: true })).toHaveCount(2);
+  await expect(page.getByRole("cell", { name: /Không có dữ liệu.*0 mẫu thời gian/ })).toBeVisible();
+  const snapshot = page.locator("summary").filter({ hasText: "Xem snapshot" });
+  await snapshot.focus(); await page.keyboard.press("Enter"); await expect(page.getByText("Snapshot question", { exact: true })).toBeVisible();
+  await expect(page.getByText("Giải thích: Snapshot explanation", { exact: true })).toBeVisible();
+  for (const width of [375, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 812 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+    await expect(page.getByRole("button", { name: "Xuất Excel", exact: true })).toBeVisible();
+    if (width === 375 || width === 1440) await page.screenshot({ path: `test-results/result/analytics-${width}.png`, fullPage: true });
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" }); await page.setViewportSize({ width: 640, height: 450 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+  const download = page.waitForEvent("download"); await page.getByRole("button", { name: "Xuất Excel", exact: true }).click();
+  const file = await download; expect(file.suggestedFilename()).toBe(`session-${f.s.id}.xlsx`); expect(await file.failure()).toBeNull();
+  await page.context().setOffline(true); await page.getByRole("button", { name: "Làm mới" }).click();
+  await expect(page.getByRole("button", { name: "Thử lại" })).toBeVisible(); await page.context().setOffline(false);
+  await page.getByRole("button", { name: "Thử lại" }).click(); await expect(page.getByText(/Mẫu BEST_SCORE: 1 người/)).toBeVisible();
+  await page.getByRole("link", { name: "Xem kết quả", exact: true }).click(); await expect(page.getByRole("button", { name: "Xuất Excel", exact: true })).toBeVisible();
+});
+
+test("reporting empty samples, export error retry and foreign owner state", async ({ page, request }) => {
+  const f = await fixture(request, "DETAILED", false);
+  await login(page, f.owner.email, "creator"); await page.goto(`/creator/sessions/${f.s.id}/analytics`);
+  await expect(page.getByText(/Chưa có lượt đã chấm/)).toBeVisible();
+  await page.context().setOffline(true); await page.getByRole("button", { name: "Xuất Excel", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Chưa thể kết nối" })).toBeVisible(); await page.context().setOffline(false);
+  const download = page.waitForEvent("download"); await page.getByRole("button", { name: "Xuất Excel", exact: true }).click();
+  expect(await (await download).failure()).toBeNull();
+  const foreign = await fixture(request); await page.goto(`/creator/sessions/${foreign.s.id}/analytics`);
+  await expect(page.getByRole("heading", { name: "Không tìm thấy trang" })).toBeVisible();
 });

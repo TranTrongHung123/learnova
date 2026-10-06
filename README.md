@@ -383,3 +383,16 @@ Browser suite: `npm run test:monitoring`. Backend: `mvnw.cmd -B verify` (Windows
 `./mvnw -B verify`. Cấu hình origin như auth; production proxy cần hỗ trợ WSS/Upgrade.
 Chi tiết protocol, sơ đồ và giới hạn tải tại
 [kiến trúc F16](docs/architecture/f16-realtime-monitoring.md).
+
+## F17 — Reporting, Question Analytics và Excel export
+
+Creator mở **Thống kê kỳ thi** từ Session detail hoặc **Xem thống kê** từ Results.
+Tổng quan lấy BEST_SCORE mỗi Participant; câu hỏi lấy mọi lượt GRADED với snapshot và
+số mẫu telemetry rõ ràng. Completion giữ người từng làm dù đã rời lớp; PUBLIC không áp dụng.
+Nút **Xuất Excel** ở Results/Analytics tải mọi lượt làm, không giới hạn trang hiện tại.
+
+API owner-only: `GET /api/v1/exam-sessions/{id}/analytics` và `GET .../{id}/export`.
+Không thêm migration/dependency. Chạy `mvnw.cmd -B verify` trong backend và
+`npm run test:result` trong frontend để kiểm tra F15/F17 với PostgreSQL/Redis thật.
+Chi tiết mẫu thống kê, định dạng Excel, UI và giới hạn:
+[kiến trúc F17](docs/architecture/f17-reporting-analytics-export.md).

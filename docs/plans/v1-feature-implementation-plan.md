@@ -16,12 +16,12 @@ Nguồn đối chiếu:
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
 | Database | PostgreSQL 17, Flyway V1–V14 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version, Session/assignment, Attempt, answer/order, grading, manual result release và lastSeen; Hibernate validate schema |
 | Authentication | Local/Google login, onboarding, link account, JWT, refresh rotation/reuse, logout-all và multi-role; Actuator vẫn đóng |
-| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix, Session, discovery, Exam Taking/Submit, Results/history/manual release và Monitoring tích hợp API thật |
+| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix, Session, discovery, Exam Taking/Submit, Results/history/manual release, Monitoring và Reporting/Excel export tích hợp API thật |
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; F16 native WebSocket owner-only, committed projection, SYNC/DELTA và reconnect reconciliation |
-| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams, Exam Sessions, Participant discovery, Attempts, Results và Monitoring; 68 paths, lỗi và pagination dùng chung |
-| Testing | F16: 178 backend, 92 unit frontend; browser 3 Monitoring và 8 Attempt pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
+| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams, Exam Sessions, Participant discovery, Attempts, Results, Monitoring và Reporting/Excel export; 70 paths, lỗi và pagination dùng chung |
+| Testing | F17: 182 backend, 92 unit frontend; 4 browser Results/Reporting pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
 | CI | Java 21/Node 22/Chromium/Linux; F06 từng fail reload hai tab và bootstrap trước tạo lớp, các bản sửa bước chờ chưa kiểm chứng remote |
-| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F16 |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F17 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
 **F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
@@ -40,7 +40,8 @@ lịch sử metadata theo phạm vi được chốt, nghiệm thu local ngày 04
 F13–F14 đã triển khai và kiểm chứng local ngày 05/10/2026 theo phạm vi được chốt.
 F14 xác nhận hoàn tất; F15 đã bổ sung result policy/UI, history và best score ngày 06/10/2026.
 F16 đã triển khai và kiểm chứng local ngày 06/10/2026; bàn giao bằng commit local.
-F17–F21 chưa hoàn thành.
+F17 đã triển khai và kiểm chứng local ngày 07/10/2026; bàn giao bằng commit local.
+F18–F21 chưa hoàn thành.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -752,16 +753,38 @@ Kiến trúc và sơ đồ: [F16 Realtime monitoring](../architecture/f16-realti
 **Nguồn:** UC-REPORT-01..03.  
 **Phụ thuộc:** F15, telemetry từ F13.
 
-- [ ] Tính average/highest/lowest, pass rate và score distribution theo BEST_SCORE mỗi Participant trong Session.
-- [ ] Question analytics mặc định dùng toàn bộ Attempt đã GRADED và ghi rõ mẫu thống kê.
-- [ ] Correct/incorrect/unanswered dựa snapshot; average answer time chỉ dùng telemetry hợp lệ, thiếu dữ liệu hiển thị không có dữ liệu.
-- [ ] Completion rate cho CLASS/INDIVIDUAL dùng tập Participant hiện được giao hợp nhất với người đã có Attempt; PUBLIC hiển thị không áp dụng.
-- [ ] Export `.xlsx` từ backend, đầy đủ các cột đã nêu trong requirements.
-- [ ] Export không phụ thuộc trang hiện tại trên UI; xử lý giá trị text để không trở thành công thức Excel.
+- [x] Tính average/highest/lowest, pass rate và score distribution theo BEST_SCORE mỗi Participant trong Session.
+- [x] Question analytics mặc định dùng toàn bộ Attempt đã GRADED và ghi rõ mẫu thống kê.
+- [x] Correct/incorrect/unanswered dựa snapshot; average answer time chỉ dùng telemetry hợp lệ, thiếu dữ liệu hiển thị không có dữ liệu.
+- [x] Completion rate cho CLASS/INDIVIDUAL dùng tập Participant hiện được giao hợp nhất với người đã có Attempt; PUBLIC hiển thị không áp dụng.
+- [x] Export `.xlsx` từ backend, đầy đủ các cột đã nêu trong requirements.
+- [x] Export không phụ thuộc trang hiện tại trên UI; xử lý giá trị text để không trở thành công thức Excel.
 
 **API/UI:** Session analytics/export; biểu đồ và bảng question analytics.
 
 **Nghiệm thu:** Aggregate khớp fixture biết trước; nhiều lượt không làm sai BEST_SCORE; mẫu số 0 không chia lỗi; sửa bank không đổi báo cáo cũ; export đúng quyền và đủ dữ liệu.
+
+**Kết quả kiểm chứng ngày 07/10/2026:**
+
+- Backend `mvnw.cmd -B verify`: 182 test pass, không fail/error/skip, PostgreSQL 17 và
+  Redis 7.4 thật. Sau khi bổ sung assertion biên 100%, quyền tài khoản khóa và sửa định
+  dạng điểm/duration, chạy lại 4 test `AttemptIntegrationTests#reporting*`: pass.
+- Fixture kiểm tra BEST_SCORE vs toàn bộ lượt GRADED, pass rate, buckets 0/25/100%,
+  đúng/sai/chưa trả lời, telemetry thiếu/không hợp lệ, snapshot khi sửa bank,
+  completion CLASS/INDIVIDUAL/PUBLIC và mẫu số 0, ownership/role/locked account.
+- Excel đọc lại bằng Apache POI: đủ 13 cột, mọi lượt dù UI/request phân trang; text
+  bắt đầu bằng `=` là STRING; điểm/count là NUMERIC; lượt chưa chấm để trống kết quả.
+- Frontend lint, typecheck, production build và 92 unit test pass. `npm run test:result`:
+  4 browser test pass với backend thật (2 F15 + 2 F17), gồm sidebar Báo cáo, snapshot
+  keyboard, file download, export/network error và retry, empty/foreign owner state.
+- Kiểm tra responsive 375/768/1024/1440 và 640x450, reduced motion; review ảnh desktop/mobile.
+  Biểu đồ có nhãn/số trực tiếp, bảng cuộn ngang có keyboard focus; không thêm chart dependency.
+- OpenAPI YAML parse và mọi internal reference resolve: 70 paths. Không thêm migration,
+  dependency, mock fallback hoặc background export. Requirements, screen flow và README đồng bộ.
+- Chưa chạy CI remote, benchmark export cực lớn hoặc kiểm chứng mọi screen reader/browser.
+  Local Java 21/Node 24/Windows/Edge; CI giữ cấu hình Java 21/Node 22/Chromium/Linux.
+
+Kiến trúc và sơ đồ: [F17 Reporting & Excel export](../architecture/f17-reporting-analytics-export.md).
 
 ### F18 — In-app notifications
 

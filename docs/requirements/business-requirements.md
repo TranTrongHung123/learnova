@@ -1639,6 +1639,18 @@ Không được quảng cáo là cơ chế chống gian lận tuyệt đối.
 
 # 30. Reporting & Analytics
 
+F17: chỉ Creator đang hoạt động, có role CREATOR và sở hữu Session được xem báo cáo/export.
+Tổng quan dùng `BEST_SCORE` của mỗi Participant trong Session (chỉ lượt GRADED), không
+đếm lặp người làm nhiều lượt. Average/highest/lowest dùng raw score; pass rate dùng
+passed của lượt best. Hòa điểm chọn lượt submittedAt sớm nhất, sau đó id.
+Phân bố gồm 10 khoảng phần trăm tổng điểm: `[0,10)`, …, `[90,100]`.
+
+Completion rate cho CLASS/INDIVIDUAL: số người có lượt SUBMITTED/EXPIRED/GRADED chia
+cho tập người hiện được giao hợp nhất với người từng có Attempt, khử trùng. Thành viên
+CLASS hiện tại là membership ACTIVE; người đã làm vẫn được giữ khi rời lớp. PUBLIC
+hiển thị không áp dụng. Mẫu số bằng 0 hoặc chưa có điểm: chỉ số tương ứng là null,
+không giả thành 0%. Các count vẫn là 0.
+
 Creator có thể xem:
 
 ```text
@@ -1664,6 +1676,16 @@ Không trộn dữ liệu lịch sử với Question Bank hiện tại.
 
 # 31. Question Analytics
 
+F17 mặc định dùng toàn bộ Attempt GRADED trong Session, gồm các lượt làm lại; UI ghi rõ
+mẫu này khác BEST_SCORE của tổng quan. Count/rate đúng từ persisted grading; sai là đã
+trả lời nhưng không đúng; chưa trả lời là answer rỗng. Giá trị boolean false/numeric 0
+không phải answer rỗng. Nội dung và đáp án lấy snapshot của ExamVersion đã làm.
+
+Average Answer Time chỉ lấy activeTimeMs hợp lệ (không null, không âm, có savedAt trong
+thời gian làm bài và không vượt min(submittedAt, deadline) - startedAt). Trả số mẫu thời
+gian riêng; thiếu toàn bộ thì hiển thị “Không có dữ liệu”, không thay bằng 0. Telemetry
+là tín hiệu tham khảo do browser cung cấp, không phải bằng chứng chống gian lận.
+
 Mỗi Question Snapshot có thể được phân tích:
 
 ```text
@@ -1685,6 +1707,14 @@ Hai chỉ số nâng cao không bắt buộc V1.
 ---
 
 # 32. Excel Export
+
+F17 xuất toàn bộ Attempt của Session, không phụ thuộc pagination trên UI; mỗi Attempt
+một hàng, best score của Participant lặp trên các hàng. Người chưa có Attempt không có
+hàng; không có Attempt thì file chỉ có header. Lượt chưa chấm để trống điểm raw,
+correct/incorrect/unanswered và pass/fail; lượt chưa nộp để trống submittedAt/duration.
+Bổ sung Status để phân biệt rõ trạng thái. Timestamp ISO-8601 UTC, Duration theo giây.
+Text phải là ô STRING để dữ liệu người dùng không được Excel diễn giải thành công thức.
+Creator được xem/export độc lập với chính sách công bố cho Participant.
 
 Creator có thể export:
 

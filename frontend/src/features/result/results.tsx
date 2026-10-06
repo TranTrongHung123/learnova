@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ExportButton } from "@/features/reporting/export-button";
 import { useApiQuery } from "@/lib/api/use-query";
 import { useAuth } from "@/features/auth/auth-provider";
 import { Button, LinkButton } from "@/components/ui/button";
@@ -78,6 +79,7 @@ export function CreatorResults({ id }: { id: string }) {
   return <div className="space-y-5"><div className="flex flex-wrap justify-between gap-3"><LinkButton variant="secondary" href={`/creator/sessions/${id}`}>Về kỳ thi</LinkButton><Button variant="secondary" onClick={query.reload}>Làm mới</Button></div>
     {!s ? <QueryState error={query.error} retry={query.reload} /> : <>
       <h2 className="text-2xl font-bold">{s.title}</h2><p>Điểm cao nhất được tính từ toàn bộ lượt đã chấm. Quyền xem của người tham gia vẫn tuân theo chính sách kỳ thi.</p>
+      <div className="flex flex-wrap gap-4"><LinkButton variant="secondary" href={`/creator/sessions/${id}/analytics`}>Xem thống kê</LinkButton><ExportButton id={id} /></div>
       {s.releasedAt && <p role="status">Đã công bố thủ công: {date(s.releasedAt)}</p>}{s.canRelease && <Button onClick={() => { setConfirm(true); setError(""); }}>Công bố kết quả</Button>}
       {!s.participants.content.length && <PageState kind="empty" title="Chưa có người tham gia làm bài" />}
       {s.participants.content.map(h => <article key={h.participantId} className={`${panel} space-y-3`}><h3 className="text-lg font-bold">{h.participantName}</h3><p>{h.attemptCount} lượt làm</p>

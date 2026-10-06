@@ -24,6 +24,8 @@ servers:
     description: Local development
 
 tags:
+  - name: Reporting
+    description: F17 owner-only Session analytics and Excel export.
   - name: Monitoring
     description: F16 owner-only committed progress and heartbeat presence, without answers or scores.
   - name: Results
@@ -48,6 +50,123 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/exam-sessions/{id}/analytics:
+    get:
+      tags:
+      - Reporting
+      operationId: getSessionAnalytics
+      summary: Session score and snapshot analytics
+      description: REPEATABLE_READ snapshot. BEST_SCORE per participant; all GRADED
+        attempts for question analytics. Percent rates. Null for missing denominators
+        or valid telemetry; PUBLIC completionRate is null. Ten normalized score bands,
+        lower inclusive, upper exclusive except 100%.
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '400':
+          description: Invalid identifier
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Active CREATOR required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: Session absent or not owned
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: Database unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '200':
+          description: 'Owner-only report. Cache-Control: no-store.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionAnalytics'
+  /api/v1/exam-sessions/{id}/export:
+    get:
+      tags:
+      - Reporting
+      operationId: exportSessionResults
+      summary: Export all session attempts
+      description: One row per attempt, including ungraded attempts with blank result
+        cells. Best score repeated per participant. No pagination. STRING text cells,
+        UTC ISO-8601 timestamps. Empty report has headers only.
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '400':
+          description: Invalid identifier
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Active CREATOR required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: Session absent or not owned
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: Database unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '200':
+          description: 'Owner-only report. Cache-Control: no-store.'
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: attachment; filename="session-{id}.xlsx"
+              schema:
+                type: string
   /api/v1/exam-sessions/{id}/monitor:
     get:
       tags: [Monitoring]
@@ -3842,6 +3961,181 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    SessionAnalytics:
+      type: object
+      required:
+      - sessionId
+      - examVersionId
+      - title
+      - totalScore
+      - accessType
+      - generatedAt
+      - scoreSample
+      - questionSample
+      - overview
+      - distribution
+      - questions
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        examVersionId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        totalScore:
+          type: string
+        accessType:
+          type: string
+          enum:
+          - PUBLIC
+          - CLASS
+          - INDIVIDUAL
+        generatedAt:
+          type: string
+          format: date-time
+        scoreSample:
+          type: string
+          const: BEST_SCORE_PER_PARTICIPANT
+        questionSample:
+          type: string
+          const: ALL_GRADED_ATTEMPTS
+        overview:
+          $ref: '#/components/schemas/ReportingOverview'
+        distribution:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreBucket'
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionAnalytics'
+    ReportingOverview:
+      type: object
+      required:
+      - participantCount
+      - gradedParticipantCount
+      - completedParticipantCount
+      - averageScore
+      - highestScore
+      - lowestScore
+      - passRate
+      - completionRate
+      properties:
+        participantCount:
+          type: integer
+          format: int64
+          minimum: 0
+        gradedParticipantCount:
+          type: integer
+          format: int64
+          minimum: 0
+        completedParticipantCount:
+          type: integer
+          format: int64
+          minimum: 0
+        averageScore:
+          type:
+          - number
+          - 'null'
+        highestScore:
+          type:
+          - number
+          - 'null'
+        lowestScore:
+          type:
+          - number
+          - 'null'
+        passRate:
+          type:
+          - number
+          - 'null'
+        completionRate:
+          type:
+          - number
+          - 'null'
+    ScoreBucket:
+      type: object
+      required:
+      - lowerPercent
+      - upperPercent
+      - upperInclusive
+      - count
+      properties:
+        lowerPercent:
+          type: integer
+        upperPercent:
+          type: integer
+        upperInclusive:
+          type: boolean
+        count:
+          type: integer
+          format: int64
+          minimum: 0
+    QuestionAnalytics:
+      type: object
+      required:
+      - id
+      - position
+      - points
+      - snapshot
+      - sampleCount
+      - correctCount
+      - incorrectCount
+      - unansweredCount
+      - timedSampleCount
+      - correctRate
+      - incorrectRate
+      - unansweredRate
+      - averageAnswerTimeMs
+      properties:
+        id:
+          type: string
+          format: uuid
+        position:
+          type: integer
+          minimum: 0
+        points:
+          type: string
+        snapshot:
+          $ref: '#/components/schemas/ExamQuestionSnapshot'
+        sampleCount:
+          type: integer
+          format: int64
+          minimum: 0
+        correctCount:
+          type: integer
+          format: int64
+          minimum: 0
+        incorrectCount:
+          type: integer
+          format: int64
+          minimum: 0
+        unansweredCount:
+          type: integer
+          format: int64
+          minimum: 0
+        timedSampleCount:
+          type: integer
+          format: int64
+          minimum: 0
+        correctRate:
+          type:
+          - number
+          - 'null'
+        incorrectRate:
+          type:
+          - number
+          - 'null'
+        unansweredRate:
+          type:
+          - number
+          - 'null'
+        averageAnswerTimeMs:
+          type:
+          - number
+          - 'null'
     MonitoringParticipant:
       type: object
       additionalProperties: false

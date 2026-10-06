@@ -132,3 +132,8 @@ F15 thêm ResultController/ResultService/ResultQueries/ResultVisibility/ResultDt
 module attempt. Read projections join grading/snapshot/Session/identity, không truy cập
 entity/repository nội bộ module khác. SessionService sở hữu command releaseResults,
 khóa Session và audit trong một transaction. Xem [F15](f15-result-visibility-history.md).
+
+F17 thêm module `reporting` (controller/dto/service/repository), gọi SessionService.detail
+để kiểm tra active CREATOR và ownership. JDBC read projection aggregate trên grading,
+snapshot và assignment; không tham chiếu repository/entity nội bộ module khác. Không
+thêm schema, cache hay async job. Xem [F17](f17-reporting-analytics-export.md).
