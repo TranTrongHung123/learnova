@@ -210,6 +210,9 @@ Build frontend hiện tải font qua `next/font/google`, cần truy cập mạng
 Auth browser test tự chạy backend ở 8081 và frontend ở 3104 cùng Testcontainers riêng;
 không cần đọc `.env` hoặc dùng database của bạn. Tắt server ở cổng này để tạo môi trường mới.
 Classroom, Question Bank, Excel Import và Exam Builder browser test dùng cùng cấu hình cổng với auth; chạy các suite tuần tự.
+Question Bank trên CI (`CI=true npm run test:question`) tự build và chạy production server;
+local mặc định vẫn dùng dev server. Khi suite lỗi, CI lưu JSON chẩn đoán route, số form,
+textarea và lỗi JavaScript trong artifact `question-page-diagnostics` (giữ 7 ngày).
 Google browser test dùng backend 8082, frontend 3105 và OIDC provider test 8092;
 provider chỉ tồn tại trong test classpath, không dùng OAuth credentials thật.
 Không ghi trace auth chứa password/token; ảnh form rỗng nằm trong test-results.
