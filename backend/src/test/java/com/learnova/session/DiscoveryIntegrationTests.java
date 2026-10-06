@@ -168,7 +168,8 @@ class DiscoveryIntegrationTests {
         jdbc.update("insert into "+schema+".users select * from public.users where id=?",owner.id());
         jdbc.update("insert into "+schema+".exams select * from public.exams where id=?",s.examId());
         jdbc.update("insert into "+schema+".exam_versions select * from public.exam_versions where id=?",s.examVersionId());
-        jdbc.update("insert into "+schema+".exam_sessions select * from public.exam_sessions where id=?",s.id());
+        String columns=String.join(",",jdbc.queryForList("select column_name from information_schema.columns where table_schema=? and table_name='exam_sessions' order by ordinal_position",String.class,schema));
+        jdbc.update("insert into "+schema+".exam_sessions ("+columns+") select "+columns+" from public.exam_sessions where id=?",s.id());
         org.flywaydb.core.Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load().migrate();
         assertThat(jdbc.queryForObject("select title from "+schema+".exam_sessions where id=?",String.class,s.id())).isEqualTo(s.title());
         assertThat(jdbc.queryForObject("select count(*) from "+schema+".attempts",Integer.class)).isZero();

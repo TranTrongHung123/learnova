@@ -37,4 +37,8 @@ public class SessionController {
     @PostMapping("/{id}/extend-end-time")
     Detail extend(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id,@Valid @RequestBody Extend input) { return service.extend(actor(jwt),id,input); }
     private UUID actor(Jwt jwt) { return UUID.fromString(jwt.getSubject()); }
+    @PostMapping("/{id}/release-results")
+    SessionService.ResultRelease release(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id) {
+        return service.releaseResults(actor(jwt),id);
+    }
 }

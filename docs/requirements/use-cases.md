@@ -2206,6 +2206,13 @@ Correct Answer và Explanation không bao giờ được trả sớm hơn policy
 
 ## UC-RESULT-03 - Lịch sử thi
 
+F15: lịch sử phân trang theo Session; tổng lượt gồm mọi trạng thái. BEST_SCORE chỉ
+dùng GRADED có kết quả persisted, chọn raw score lớn nhất trên toàn bộ lượt trước
+phân trang. Hòa điểm chọn submittedAt sớm hơn, rồi UUID tăng dần. Completed date là
+lần nộp gần nhất. Chưa được xem điểm thì không trả best score, pass/fail hoặc bestAttemptId.
+Creator mở danh sách mọi lượt phân trang riêng; danh sách Participant hợp nhất người
+đang được giao với người có lịch sử, giữ kết quả sau khi xóa membership.
+
 **Actor:** Participant
 
 Hiển thị:

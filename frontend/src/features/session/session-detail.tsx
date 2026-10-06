@@ -45,7 +45,7 @@ export function SessionScreen({ id }: { id: string }) {
       {s.actions.cancel && <Button variant="secondary" onClick={() => { setCommand("cancel"); setError(""); }}>Hủy kỳ thi</Button>}
       <Button variant="ghost" onClick={async () => { try { setCurrent(await session.api.request<SessionDetail>(`${apiRoot}/${id}`)); setError(""); } catch (e) { setError(message(e)); } }}>Tải lại trạng thái</Button>
     </div><SessionSummary s={s} />
-    <section className={`${panel} space-y-2`}><h3 className="text-lg font-bold">Bài làm, kết quả và giám sát</h3><p className="text-muted-foreground">Các chức năng này hiện chưa khả dụng.</p></section>
+    <section className={`${panel} space-y-2`}><h3 className="text-lg font-bold">Bài làm và kết quả</h3><LinkButton variant="secondary" href={`/creator/sessions/${id}/results`}>Xem kết quả và công bố</LinkButton></section>
     {error && !command && <p role="alert" className="text-danger">{error}</p>}
     {command && <Modal title={command === "cancel" ? "Hủy kỳ thi?" : command === "schedule" ? "Lên lịch kỳ thi?" : "Gia hạn giờ kết thúc"} close={() => setCommand(undefined)} busy={busy}>
       <form className="space-y-4" onSubmit={e => { e.preventDefault(); void execute(); }}>

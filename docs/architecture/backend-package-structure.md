@@ -127,3 +127,8 @@ ExamService.takingQuestions và IdentityService; không truy cập entity/reposi
 DTO lấy nội dung PUBLISHED an toàn, không chứa grading metadata. Khóa Session bảo vệ Start;
 khóa Attempt bảo vệ save và dành điểm đồng bộ cho finalize F14.
 Xem [F13](f13-attempt-autosave.md).
+
+F15 thêm ResultController/ResultService/ResultQueries/ResultVisibility/ResultDtos trong
+module attempt. Read projections join grading/snapshot/Session/identity, không truy cập
+entity/repository nội bộ module khác. SessionService sở hữu command releaseResults,
+khóa Session và audit trong một transaction. Xem [F15](f15-result-visibility-history.md).

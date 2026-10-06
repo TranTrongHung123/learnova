@@ -2575,6 +2575,17 @@ WebSocket không phải source of truth duy nhất.
 
 # 21. Creator Results Screen
 
+F15 triển khai danh sách Participant, tổng lượt, best score, pass/fail, thời điểm nộp,
+mở các lượt (kèm duration) và chi tiết tại
+`/creator/sessions/[sessionId]/results/[attemptId]`. Công bố thủ công có modal giải thích
+phạm vi cả Session và HIDDEN vẫn ẩn; retry không ghi audit trùng. Chỉ hiện action khi
+backend trả canRelease. Summary thống kê và Export Excel bên dưới thuộc F17.
+
+Participant vào `/participant/results` từ sidebar, hoặc kết quả từng lượt từ discovery
+history/submit completion. History có trạng thái HIDDEN, PENDING_RELEASE, PENDING_GRADING
+và AVAILABLE từ backend; không suy ra từ browser clock. Có loading, empty, lỗi mạng/retry,
+403/404, pagination và làm mới khi focus. Nội dung DETAILED theo thứ tự shuffle đã lưu.
+
 **Route**
 
 ```text

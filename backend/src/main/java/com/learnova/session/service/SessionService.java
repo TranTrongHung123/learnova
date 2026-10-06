@@ -55,6 +55,20 @@ public class SessionService {
         return PageResponse.from(result.map(s->view(s,now)));
     }
     public Detail detail(UUID actor, UUID id) { return view(owned(actor,id,false),now()); }
+    public record ResultRelease(Instant releasedAt) {}
+    @Transactional
+    public ResultRelease releaseResults(UUID actor, UUID id) {
+        var s=owned(actor,id,true);
+        if (s.getResultReleasePolicy()!=ResultReleasePolicy.MANUAL)
+            throw new SessionFailure(409,"RESULT_RELEASE_NOT_MANUAL");
+        if (s.effectiveStatus(now())==SessionStatus.DRAFT || s.effectiveStatus(now())==SessionStatus.CANCELLED)
+            throw new SessionFailure(409,"SESSION_INVALID_STATE");
+        if (s.getResultsReleasedAt()==null) {
+            s.releaseResults(now());
+            record(actor,s,AuditAction.RESULT_MANUALLY_RELEASED,Map.of());
+        }
+        return new ResultRelease(s.getResultsReleasedAt());
+    }
     public ParticipantDirectory.Participant lookup(UUID actor, String email) {
         authorize(actor); return participants.byEmail(email).orElseThrow(()->new SessionFailure(404,"PARTICIPANT_NOT_FOUND"));
     }
