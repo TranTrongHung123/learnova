@@ -225,6 +225,7 @@ Chi tiết: [kiến trúc F02](../architecture/f02-frontend-foundation.md),
 | `/creator/monitor` | Chọn kỳ thi giám sát, mặc định lọc OPEN |
 | `/creator/sessions/[sessionId]/results` | Session Results |
 | `/creator/sessions/[sessionId]/analytics` | Session Analytics |
+| `/creator/reports` | Chọn Session để xem báo cáo và export |
 
 ---
 
@@ -280,6 +281,9 @@ Profile
 `Monitoring` có thể dẫn tới danh sách Session đang `OPEN`.
 
 `Reports` có thể dẫn tới Session Results / Analytics.
+
+F17: mục Báo cáo dẫn tới `/creator/reports`, danh sách Session của Creator có lọc trạng
+thái và phân trang; mỗi Session có link xem thống kê/kết quả. Dùng API Session hiện có.
 
 ---
 
@@ -2663,6 +2667,19 @@ và chưa publish.
 ---
 
 # 22. Session Analytics Screen
+
+F17: link **Thống kê kỳ thi** từ Session detail; **Xem thống kê** từ Results. Màn hình
+có nút về kỳ thi, xem kết quả, làm mới và Xuất Excel. Results cũng có nút Xuất Excel.
+Export dùng toàn bộ lượt làm, có busy/error/retry, tải file `.xlsx` qua API thật.
+
+Tổng quan ghi rõ mẫu BEST_SCORE mỗi Participant; phân bố 10 khoảng phần trăm tổng điểm
+với nhãn và số người hiển thị trực tiếp. CLASS/INDIVIDUAL giải thích mẫu số completion;
+PUBLIC hiển thị “Không áp dụng”. Chưa có lượt GRADED hiển thị empty state và không có dữ liệu.
+
+Bảng câu hỏi ghi rõ mẫu toàn bộ lượt GRADED và số mẫu thời gian riêng. Missing telemetry
+hiển thị “Không có dữ liệu”. Snapshot mở bằng disclosure ngay trong bảng gồm nội dung,
+đáp án và giải thích của phiên bản đã xuất bản. Vùng bảng cuộn ngang bằng keyboard trên
+màn hình nhỏ. Loading/lỗi mạng/thử lại/403/404 dùng UI state chung; không có mock fallback.
 
 **Route**
 

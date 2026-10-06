@@ -41,6 +41,7 @@ export function SessionScreen({ id }: { id: string }) {
     {!s.actions.editConfiguration && s.actions.editTitle && <p className="rounded-lg bg-muted p-4">Cấu hình đã khóa vì kỳ thi đã mở hoặc đã có bài làm. Chỉ có thể sửa tên và gia hạn khi được phép.</p>}
     <div className="flex flex-wrap gap-3">{s.actions.editTitle && <LinkButton variant="secondary" href={`${path(id)}/edit`}>Chỉnh sửa</LinkButton>}
       <LinkButton variant="secondary" href={`${path(id)}/monitor`}>Giám sát kỳ thi</LinkButton>
+      <LinkButton variant="secondary" href={`${path(id)}/analytics`}>Thống kê kỳ thi</LinkButton>
       {s.actions.schedule && <Button onClick={() => { setCommand("schedule"); setError(""); }}>Lên lịch</Button>}
       {s.actions.extend && <Button variant="secondary" onClick={() => { setEndTime(localDate(s.endTime)); setError(""); setFieldError(""); setCommand("extend-end-time"); }}>Gia hạn</Button>}
       {s.actions.cancel && <Button variant="secondary" onClick={() => { setCommand("cancel"); setError(""); }}>Hủy kỳ thi</Button>}

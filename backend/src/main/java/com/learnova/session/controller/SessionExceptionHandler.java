@@ -11,7 +11,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-@Order(0) @RestControllerAdvice(assignableTypes={SessionController.class, DiscoveryController.class, com.learnova.attempt.controller.ResultController.class, com.learnova.monitoring.controller.MonitoringController.class})
+@Order(0) @RestControllerAdvice(assignableTypes={SessionController.class, DiscoveryController.class, com.learnova.attempt.controller.ResultController.class, com.learnova.monitoring.controller.MonitoringController.class, com.learnova.reporting.controller.ReportingController.class})
 class SessionExceptionHandler {
     private final ApiProblems problems;
     SessionExceptionHandler(ApiProblems problems) { this.problems=problems; }

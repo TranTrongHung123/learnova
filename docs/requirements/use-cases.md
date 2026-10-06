@@ -2298,6 +2298,11 @@ REST vẫn là source of truth cho dữ liệu persisted.
 
 ## UC-REPORT-01 - Thống kê tổng quan
 
+F17: Creator sở hữu Session mở Analytics từ Session detail hoặc Results. Backend kiểm
+tra active CREATOR và ownership; lấy BEST_SCORE mỗi Participant đã có lượt GRADED.
+Completion dùng người hoàn tất/tập assignment hiện tại hợp với người từng làm (PUBLIC:
+không áp dụng). Thiếu mẫu hiển thị không có dữ liệu. Reload đọc snapshot DB nhất quán.
+
 **Actor:** Creator
 
 Bao gồm:
@@ -2314,6 +2319,10 @@ Completion Rate
 ---
 
 ## UC-REPORT-02 - Question Analytics
+
+F17: bảng dùng tất cả lượt GRADED, ghi rõ số mẫu và số mẫu telemetry hợp lệ. Creator mở
+snapshot ngay trong bảng, không mở bản hiện tại của Question Bank. Missing timing không
+được coi là 0. Các rate dùng count trên tổng lượt đã chấm của chính câu đó.
 
 **Actor:** Creator
 
@@ -2340,6 +2349,11 @@ Analytics phải dựa trên dữ liệu của đúng Exam Version/Session, khô
 ---
 
 ## UC-REPORT-03 - Export Excel
+
+F17: từ Results hoặc Analytics, Creator bấm Xuất Excel; hiển thị đang xuất và lỗi có thể
+thử lại. Backend kiểm tra quyền trước khi đọc dữ liệu. File lấy toàn bộ lượt, mỗi lượt
+một hàng, best score lặp theo người, gồm Status; dữ liệu chưa chấm/nộp để trống các cột
+tương ứng. Không nhận pagination để cắt dữ liệu export. File rỗng vẫn có header.
 
 **Actor:** Creator
 

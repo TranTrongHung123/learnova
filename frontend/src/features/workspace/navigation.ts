@@ -70,7 +70,7 @@ export function navigationFor(workspace: Workspace): NavigationItem[] {
     items.push({ label: "Kỳ thi", href: `${base}/sessions`, icon: "sessions", available: true });
     items.push({ label: "Lớp học", href: `${base}/classes`, icon: "classes", available: true });
     items.push({ label: "Giám sát", href: `${base}/monitor`, icon: "monitor", available: true });
-    pending("Báo cáo", undefined, "reports");
+    items.push({ label: "Báo cáo", href: `${base}/reports`, icon: "reports", available: true });
   } else {
     pending("Người dùng", `${base}/users`, "users");
     pending("Nhật ký hoạt động", `${base}/audit-logs`, "audit");
