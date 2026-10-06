@@ -14,14 +14,14 @@ Nguồn đối chiếu:
 | Thành phần | Hiện trạng |
 |---|---|
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
-| Database | PostgreSQL 17, Flyway V1–V11 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version, Session/assignment, Attempt, order và answer/review/revision; Hibernate validate schema |
+| Database | PostgreSQL 17, Flyway V1–V13 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version, Session/assignment, Attempt, answer/order, grading và manual result release; Hibernate validate schema |
 | Authentication | Local/Google login, onboarding, link account, JWT, refresh rotation/reuse, logout-all và multi-role; Actuator vẫn đóng |
-| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix, Exam Session, Participant discovery và Exam Taking với Start/Resume/Autosave tích hợp API thật |
+| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix, Session, discovery, Exam Taking/Submit và Results/history/manual release tích hợp API thật |
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; WebSocket chưa triển khai |
-| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams, Exam Sessions, Participant discovery và Attempts; 57 paths, lỗi và pagination dùng chung |
+| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams, Exam Sessions, Participant discovery, Attempts và Results; 65 paths, lỗi và pagination dùng chung |
 | Testing | F13: 155 backend, 82 unit frontend; browser 5 Attempt, 3 Discovery, 4 Session, 6 Classroom và 1 production pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
 | CI | Java 21/Node 22/Chromium/Linux; F06 từng fail reload hai tab và bootstrap trước tạo lớp, các bản sửa bước chờ chưa kiểm chứng remote |
-| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F13 |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F15 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
 **F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
@@ -38,7 +38,8 @@ F11 đã triển khai theo phạm vi được chốt, nghiệm thu local ngày 0
 Start Attempt HTTP và deadline persisted tiếp tục ở F13. F12 đã triển khai discovery và
 lịch sử metadata theo phạm vi được chốt, nghiệm thu local ngày 04/10/2026.
 F13–F14 đã triển khai và kiểm chứng local ngày 05/10/2026 theo phạm vi được chốt.
-F14 chỉ xác nhận hoàn tất, không hiển thị điểm; result policy/UI tiếp tục ở F15. F15–F21 chưa hoàn thành.
+F14 xác nhận hoàn tất; F15 đã bổ sung result policy/UI, history và best score ngày 06/10/2026.
+F16–F21 chưa hoàn thành.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -675,16 +676,35 @@ Kiến trúc và sơ đồ: [F14 Submit/finalize/grading](../architecture/f14-su
 **Nguồn:** UC-RESULT-01..03, UC-SESSION-08.  
 **Phụ thuộc:** F14.
 
-- [ ] Creator xem kết quả Session, danh sách Participant và toàn bộ Attempt.
-- [ ] Participant xem history/detail theo cả display mode lẫn release policy.
-- [ ] Backend tính BEST_SCORE trên các Attempt đã chấm; giữ đầy đủ lịch sử.
-- [ ] Manual release idempotent và được audit.
-- [ ] Bảo vệ policy trên mọi response liên quan: submit, history, Session detail, dashboard và notification.
-- [ ] HIDDEN vẫn không trả điểm dù điều kiện release đã đạt; DETAILED mới cho xem đáp án/explanation.
+- [x] Creator xem kết quả Session, danh sách Participant và toàn bộ Attempt.
+- [x] Participant xem history/detail theo cả display mode lẫn release policy.
+- [x] Backend tính BEST_SCORE trên các Attempt đã chấm; giữ đầy đủ lịch sử.
+- [x] Manual release idempotent và được audit.
+- [x] Bảo vệ policy trên các response hiện có: submit, history, Session detail; dashboard F20 và notification F18 chưa có payload kết quả, phải dùng cùng policy khi triển khai.
+- [x] HIDDEN vẫn không trả điểm dù điều kiện release đã đạt; DETAILED mới cho xem đáp án/explanation.
 
 **API/UI:** Participant results/history, Creator Session results, release-results.
 
 **Nghiệm thu:** Test toàn bộ 4 display modes × 3 release policies, trước/sau điều kiện release; người khác không truy cập kết quả; gia hạn trước endTime làm thời điểm AFTER_SESSION_END theo endTime mới.
+
+**Kết quả triển khai ngày 06/10/2026:**
+
+- V13 lưu thời điểm công bố thủ công. Khóa Session, timestamp và audit cùng transaction;
+  retry/concurrent release chỉ ghi một lần, audit lỗi rollback công bố.
+- Backend read projection dùng persisted grading và snapshot; history tính best trước
+  pagination. Hòa điểm chọn submittedAt sớm hơn, rồi UUID. Không trả bestAttemptId khi
+  chưa được xem điểm. Creator thấy assignment hiện tại hợp với lịch sử Attempt.
+- Frontend tích hợp API thật cho history, detail, mọi lượt của Participant và manual release;
+  nối sidebar, discovery history, submit completion và Creator Session detail.
+- Backend `mvnw.cmd -B verify`: 171 test pass. Sau bổ sung hai test rollback/tie/pagination,
+  suite `AttemptIntegrationTests`: 24 test pass, gồm toàn bộ test F13–F15 trong suite này.
+- Frontend lint, typecheck, 88 unit test và production build pass. Browser F15: 2 test pass;
+  Discovery: 3 test pass; Attempt: 8 test pass. Kiểm tra API thật, policy, ownership, offline/retry, modal focus,
+  viewport 375/768/1024/1440 và 640×450 với reduced motion; đã review ảnh result mobile.
+- OpenAPI: 65 paths, 600 internal references hợp lệ, không duplicate key. CI đã thêm suite
+  result nhưng chưa chạy remote; chưa kiểm chứng mọi browser/screen reader hoặc HTTPS thật.
+
+Kiến trúc và sơ đồ: [F15 Result visibility/history](../architecture/f15-result-visibility-history.md).
 
 ### F16 — Realtime monitoring
 

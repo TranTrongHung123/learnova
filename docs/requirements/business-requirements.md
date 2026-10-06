@@ -1522,6 +1522,18 @@ Mục tiêu:
 
 ---
 
+F15 cụ thể hóa result policy: chỉ GRADED có persisted result mới được trả điểm;
+HIDDEN luôn bỏ score/pass-fail/summary/đáp án khỏi response. History cũng không trả
+ID của lượt best khi chưa được xem điểm. Best lấy raw score lớn nhất trước phân trang;
+hòa điểm chọn submittedAt sớm nhất, rồi UUID tăng dần; giữ mọi lượt cũ.
+Manual release áp dụng cho cả Session (bao gồm lượt được chấm sau đó), idempotent,
+ghi audit cùng transaction và không có thu hồi trong V1. Không release DRAFT/CANCELLED.
+AFTER_SESSION_END dùng endTime hiện tại sau gia hạn và Clock backend.
+
+Creator results gồm người hiện được giao và người có Attempt lịch sử; PUBLIC chỉ
+gồm người đã bắt đầu. Kết quả chi tiết dựa snapshot và thứ tự của Attempt. Metadata
+lượt làm vẫn được xem khi điểm chưa được công bố; summary/đáp án chỉ xuất hiện theo mode.
+
 # 28. My Exams / Exam Discovery
 
 F12 chốt quy tắc discovery:

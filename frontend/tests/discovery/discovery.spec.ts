@@ -74,7 +74,7 @@ test("completed overlap, exhausted attempts and personal history use database fi
   await expect(page.getByText("Bạn đã dùng hết số lượt làm bài.", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Lượt 1 · Đã nộp" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Lượt 2 · Đã chấm" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Xem kết quả · Sắp có" })).toHaveCount(2);
+  await expect(page.getByRole("link", { name: "Xem kết quả", exact: true })).toHaveCount(2);
   await page.getByRole("link", { name: "Về kỳ thi của tôi" }).click(); await page.getByRole("link", { name: "Có thể làm", exact: true }).click();
   await expect(page.getByRole("heading", { name: s.title })).toHaveCount(0);
 });

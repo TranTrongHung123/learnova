@@ -62,7 +62,7 @@ export function navigationFor(workspace: Workspace): NavigationItem[] {
   ) => items.push({ label, href, icon, available: false });
   if (workspace === "PARTICIPANT") {
     items.push({ label: "Kỳ thi của tôi", href: `${base}/exams`, icon: "exam", available: true });
-    pending("Kết quả", `${base}/results`, "results");
+    items.push({ label: "Kết quả", href: `${base}/results`, icon: "results", available: true });
     items.push({ label: "Lớp học của tôi", href: `${base}/classes`, icon: "classes", available: true });
   } else if (workspace === "CREATOR") {
     items.push({ label: "Ngân hàng câu hỏi", href: `${base}/questions`, icon: "questions", available: true });

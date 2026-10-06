@@ -46,6 +46,7 @@ class AttemptIntegrationTests {
     @TestConfiguration static class TimeConfig { @Bean @Primary MutableClock attemptClock() { return new MutableClock(); } }
     @Autowired MutableClock clock;
     @Autowired AttemptService attempts;
+    @Autowired com.learnova.attempt.service.ResultService results;
     @Autowired com.learnova.attempt.service.AttemptFinalization finalization;
     @Autowired com.learnova.attempt.config.AttemptScheduler scheduler;
     @Autowired SessionService sessions;
@@ -180,8 +181,10 @@ class AttemptIntegrationTests {
         String schema="attempt_upgrade_"+UUID.randomUUID().toString().replace("-","");
         org.flywaydb.core.Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).target("10").load().migrate();
         var f=fixture(AccessType.PUBLIC,true); open(f); var a=start(f);
-        for (String table:List.of("users","exams","exam_versions","exam_version_questions","exam_sessions"))
-            jdbc.update("insert into "+schema+"."+table+" select * from public."+table);
+        for (String table:List.of("users","exams","exam_versions","exam_version_questions","exam_sessions")) {
+            String columns=String.join(",",jdbc.queryForList("select column_name from information_schema.columns where table_schema=? and table_name=? order by ordinal_position",String.class,schema,table));
+            jdbc.update("insert into "+schema+"."+table+" ("+columns+") select "+columns+" from public."+table);
+        }
         jdbc.update("insert into "+schema+".attempts select id,participant_id,session_id,exam_version_id,attempt_number,status,started_at,deadline,submitted_at,revision from public.attempts");
         org.flywaydb.core.Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load().migrate();
         assertThat(jdbc.queryForObject("select count(*) from "+schema+".attempt_answers where attempt_id=?",Integer.class,a.id())).isEqualTo(4);
@@ -273,6 +276,99 @@ class AttemptIntegrationTests {
         jdbc.update("update users set status='ACTIVE' where id=?",f.participant.id());
         classes.remove(f.owner.id(),f.classroom,f.participant.id());
         mvc.perform(post(url).with(as(f.participant))).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("GRADED"));
+    }
+    @Test void resultMatrixProtectsEveryParticipantProjectionBeforeAndAfterRelease() throws Exception {
+        for (var mode:ResultDisplayMode.values()) for (var policy:ResultReleasePolicy.values()) {
+            var f=fixture(AccessType.PUBLIC,true); open(f); var a=start(f);
+            attempts.submit(f.participant.id(),a.id());
+            jdbc.update("update exam_sessions set result_display_mode=?,result_release_policy=? where id=?",mode.name(),policy.name(),f.session.id());
+            for (boolean after:List.of(false,true)) {
+                if (after && policy==ResultReleasePolicy.AFTER_SESSION_END) clock.time=f.session.endTime();
+                if (after && policy==ResultReleasePolicy.MANUAL) sessions.releaseResults(f.owner.id(),f.session.id());
+                boolean visible=mode!=ResultDisplayMode.HIDDEN && (policy==ResultReleasePolicy.IMMEDIATE||after);
+                var detail=results.detail(f.participant.id(),a.id(),false);
+                assertThat(detail.result()!=null).as("%s/%s after=%s",mode,policy,after).isEqualTo(visible);
+                assertThat(detail.summary()!=null).isEqualTo(visible&&mode!=ResultDisplayMode.SCORE_ONLY);
+                assertThat(detail.questions()!=null).isEqualTo(visible&&mode==ResultDisplayMode.DETAILED);
+                var history=results.history(f.participant.id(),new com.learnova.shared.api.PageQuery(0,1)).content().getFirst();
+                assertThat(history.bestResult()!=null).isEqualTo(visible);
+                assertThat(history.bestAttemptId()!=null).isEqualTo(visible);
+                var listed=results.attempts(f.participant.id(),f.session.id(),f.participant.id(),new com.learnova.shared.api.PageQuery(0,1),false).content().getFirst();
+                assertThat(listed.result()!=null).isEqualTo(visible);
+                String body=mvc.perform(get("/api/v1/participant/results/"+a.id()).with(as(f.participant))).andExpect(status().isOk())
+                    .andExpect(header().string("Cache-Control",org.hamcrest.Matchers.containsString("no-store"))).andReturn().getResponse().getContentAsString();
+                if (!visible) assertThat(body).doesNotContain("\"result\"","\"summary\"","\"questions\"","SECRET EXPLANATION","\"passed\"");
+                else if (mode!=ResultDisplayMode.DETAILED) assertThat(body).doesNotContain("SECRET EXPLANATION","correctBoolean","correctValue");
+            }
+        }
+    }
+    @Test void bestScoreKeepsEveryAttemptAndDetailedSnapshotAfterMembershipRemoval() throws Exception {
+        var f=fixture(AccessType.CLASS,true); open(f); var first=start(f);
+        for (var q:first.questions()) if (q.type().equals("TRUE_FALSE")) attempts.save(f.participant.id(),first.id(),q.id(),new Save(0L,new Answer(List.of(),true,null),false,null));
+        clock.time=clock.time.plusSeconds(5); attempts.submit(f.participant.id(),first.id());
+        var second=start(f); clock.time=clock.time.plusSeconds(5); attempts.submit(f.participant.id(),second.id());
+        jdbc.update("update exam_sessions set result_display_mode='DETAILED',result_release_policy='IMMEDIATE' where id=?",f.session.id());
+        classes.remove(f.owner.id(),f.classroom,f.participant.id());
+        jdbc.update("update questions set explanation='CHANGED BANK' where owner_id=?",f.owner.id());
+        var h=results.history(f.participant.id(),new com.learnova.shared.api.PageQuery(0,1)).content().getFirst();
+        assertThat(h.attemptCount()).isEqualTo(2); assertThat(h.bestAttemptId()).isEqualTo(first.id()); assertThat(h.bestResult().score()).isEqualTo("1");
+        assertThat(results.attempts(f.participant.id(),f.session.id(),f.participant.id(),new com.learnova.shared.api.PageQuery(0,1),false).totalElements()).isEqualTo(2);
+        var detail=results.detail(f.participant.id(),first.id(),false);
+        assertThat(detail.summary().correctCount()).isEqualTo(1); assertThat(detail.summary().unansweredCount()).isEqualTo(3);
+        assertThat(detail.summary().incorrectCount()).isZero(); assertThat(detail.summary().durationSeconds()).isEqualTo(5);
+        assertThat(detail.questions()).allMatch(q->q.explanation().equals("SECRET EXPLANATION"));
+        assertThat(detail.questions().stream().map(q->q.id()).toList()).isEqualTo(first.questions().stream().map(Question::id).toList());
+        assertThat(results.session(f.owner.id(),f.session.id(),new com.learnova.shared.api.PageQuery(0,20)).participants().content().getFirst().bestAttemptId()).isEqualTo(first.id());
+        mvc.perform(get("/api/v1/participant/results/"+first.id()).with(as(user("PARTICIPANT")))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/participant/results/"+first.id()).with(as(f.owner))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/exam-sessions/"+f.session.id()+"/results").with(as(user("CREATOR")))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/participant/results/"+first.id())).andExpect(status().isUnauthorized());
+    }
+    @Test void manualReleaseIsConcurrentIdempotentAuditedAndHiddenStaysHidden() throws Exception {
+        var f=fixture(AccessType.PUBLIC,false); open(f); var a=start(f); attempts.submit(f.participant.id(),a.id());
+        jdbc.update("update exam_sessions set result_display_mode='HIDDEN',result_release_policy='MANUAL' where id=?",f.session.id());
+        var released=parallel(()->sessions.releaseResults(f.owner.id(),f.session.id()),()->sessions.releaseResults(f.owner.id(),f.session.id()));
+        assertThat(released.getFirst()).isEqualTo(released.getLast());
+        assertThat(jdbc.queryForObject("select count(*) from audit_records where action='RESULT_MANUALLY_RELEASED' and target_id=?",Integer.class,f.session.id().toString())).isEqualTo(1);
+        assertThat(results.detail(f.participant.id(),a.id(),false).result()).isNull();
+        assertThat(results.detail(f.owner.id(),a.id(),true).questions()).hasSize(4);
+        mvc.perform(post("/api/v1/exam-sessions/"+f.session.id()+"/release-results").with(as(f.owner))).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/exam-sessions/"+f.session.id()+"/release-results").with(as(user("CREATOR")))).andExpect(status().isNotFound());
+    }
+    @Test void extensionMovesReleaseBoundaryAndInProgressNeverExposesGrading() {
+        var f=fixture(AccessType.PUBLIC,false); open(f); var a=start(f);
+        assertThat(results.detail(f.owner.id(),a.id(),true).questions()).isNull();
+        attempts.submit(f.participant.id(),a.id());
+        var current=sessions.detail(f.owner.id(),f.session.id());
+        var extended=sessions.extend(f.owner.id(),f.session.id(),new Extend(current.revision(),f.session.endTime().plusSeconds(600)));
+        clock.time=f.session.endTime(); assertThat(results.detail(f.participant.id(),a.id(),false).result()).isNull();
+        clock.time=extended.endTime(); assertThat(results.detail(f.participant.id(),a.id(),false).result()).isNotNull();
+        assertThatThrownBy(()->sessions.releaseResults(f.owner.id(),f.session.id())).hasMessage("RESULT_RELEASE_NOT_MANUAL");
+    }
+    @Test void releaseAuditFailureRollsBackTimestampAndRetrySucceeds() {
+        var f=fixture(AccessType.INDIVIDUAL,false);
+        jdbc.update("update exam_sessions set result_release_policy='MANUAL' where id=?",f.session.id());
+        String constraint="fail_release_"+UUID.randomUUID().toString().replace("-","");
+        jdbc.execute("alter table audit_records add constraint "+constraint+" check (action <> 'RESULT_MANUALLY_RELEASED' or target_id <> '"+f.session.id()+"')");
+        try {
+            assertThatThrownBy(()->sessions.releaseResults(f.owner.id(),f.session.id())).isInstanceOf(RuntimeException.class);
+            assertThat(jdbc.queryForObject("select results_released_at from exam_sessions where id=?",java.sql.Timestamp.class,f.session.id())).isNull();
+        } finally { jdbc.execute("alter table audit_records drop constraint "+constraint); }
+        assertThat(sessions.releaseResults(f.owner.id(),f.session.id()).releasedAt()).isNotNull();
+    }
+    @Test void creatorIncludesUnstartedAssignmentsAndBestTieIsStableAcrossPages() {
+        var f=fixture(AccessType.INDIVIDUAL,false);
+        var unstarted=results.session(f.owner.id(),f.session.id(),new com.learnova.shared.api.PageQuery(0,1)).participants();
+        assertThat(unstarted.totalElements()).isEqualTo(1); assertThat(unstarted.content().getFirst().attemptCount()).isZero();
+        assertThat(unstarted.content().getFirst().bestResult()).isNull();
+        open(f); var a=start(f); attempts.submit(f.participant.id(),a.id());
+        clock.time=clock.time.plusSeconds(1); var b=start(f); attempts.submit(f.participant.id(),b.id());
+        var best=results.session(f.owner.id(),f.session.id(),new com.learnova.shared.api.PageQuery(0,1)).participants().content().getFirst();
+        assertThat(best.bestAttemptId()).isEqualTo(a.id()); assertThat(best.bestResult().score()).isEqualTo("0");
+        var second=results.attempts(f.owner.id(),f.session.id(),f.participant.id(),new com.learnova.shared.api.PageQuery(1,1),true);
+        assertThat(second.content().getFirst().id()).isEqualTo(a.id()); assertThat(second.totalElements()).isEqualTo(2);
+        var empty=results.session(f.owner.id(),f.session.id(),new com.learnova.shared.api.PageQuery(1,1)).participants();
+        assertThat(empty.content()).isEmpty(); assertThat(empty.totalElements()).isEqualTo(1);
     }
     private Fixture fixture(AccessType access,boolean shuffle) {
         var owner=user("CREATOR"); var p=user("PARTICIPANT"); UUID classroom=null;

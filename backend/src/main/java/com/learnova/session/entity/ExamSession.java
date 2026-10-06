@@ -28,6 +28,7 @@ public class ExamSession {
     @Enumerated(EnumType.STRING) @Column(nullable=false, length=16) private ResultDisplayMode resultDisplayMode;
     @Enumerated(EnumType.STRING) @Column(nullable=false, length=24) private ResultReleasePolicy resultReleasePolicy;
     private Instant firstAttemptAt;
+    private Instant resultsReleasedAt;
     @Column(nullable=false) private long revision;
     @Column(nullable=false) private Instant createdAt;
     @Column(nullable=false) private Instant updatedAt;
@@ -58,5 +59,6 @@ public class ExamSession {
     public void rename(String value) { title=value.strip(); }
     public void extend(Instant value, Instant now) { endTime=value; touch(now); }
     public void touch(Instant now) { revision++; updatedAt=now; }
+    public void releaseResults(Instant now) { resultsReleasedAt=now; touch(now); }
     public void markFirstAttempt(Instant now) { if (firstAttemptAt==null) { firstAttemptAt=now; touch(now); } }
 }
