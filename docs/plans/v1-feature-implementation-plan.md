@@ -14,14 +14,14 @@ Nguồn đối chiếu:
 | Thành phần | Hiện trạng |
 |---|---|
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
-| Database | PostgreSQL 17, Flyway V1–V13 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version, Session/assignment, Attempt, answer/order, grading và manual result release; Hibernate validate schema |
+| Database | PostgreSQL 17, Flyway V1–V14 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version, Session/assignment, Attempt, answer/order, grading, manual result release và lastSeen; Hibernate validate schema |
 | Authentication | Local/Google login, onboarding, link account, JWT, refresh rotation/reuse, logout-all và multi-role; Actuator vẫn đóng |
-| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix, Session, discovery, Exam Taking/Submit và Results/history/manual release tích hợp API thật |
-| Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; WebSocket chưa triển khai |
-| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams, Exam Sessions, Participant discovery, Attempts và Results; 65 paths, lỗi và pagination dùng chung |
-| Testing | F13: 155 backend, 82 unit frontend; browser 5 Attempt, 3 Discovery, 4 Session, 6 Classroom và 1 production pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
+| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix, Session, discovery, Exam Taking/Submit, Results/history/manual release và Monitoring tích hợp API thật |
+| Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; F16 native WebSocket owner-only, committed projection, SYNC/DELTA và reconnect reconciliation |
+| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams, Exam Sessions, Participant discovery, Attempts, Results và Monitoring; 68 paths, lỗi và pagination dùng chung |
+| Testing | F16: 178 backend, 92 unit frontend; browser 3 Monitoring và 8 Attempt pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
 | CI | Java 21/Node 22/Chromium/Linux; F06 từng fail reload hai tab và bootstrap trước tạo lớp, các bản sửa bước chờ chưa kiểm chứng remote |
-| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F15 |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F16 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
 **F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
@@ -39,7 +39,8 @@ Start Attempt HTTP và deadline persisted tiếp tục ở F13. F12 đã triển
 lịch sử metadata theo phạm vi được chốt, nghiệm thu local ngày 04/10/2026.
 F13–F14 đã triển khai và kiểm chứng local ngày 05/10/2026 theo phạm vi được chốt.
 F14 xác nhận hoàn tất; F15 đã bổ sung result policy/UI, history và best score ngày 06/10/2026.
-F16–F21 chưa hoàn thành.
+F16 đã triển khai và kiểm chứng local ngày 06/10/2026; bàn giao bằng commit local.
+F17–F21 chưa hoàn thành.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -711,14 +712,40 @@ Kiến trúc và sơ đồ: [F15 Result visibility/history](../architecture/f15-
 **Nguồn:** UC-MON-01.  
 **Phụ thuộc:** F13–F15.
 
-- [ ] REST snapshot cho Session owner; WebSocket gửi incremental updates sau khi nghiệp vụ commit.
-- [ ] Hiển thị progress, answered count, lastSeen và trạng thái kết nối.
-- [ ] Tách trạng thái kết nối khỏi trạng thái Attempt; disconnected không đồng nghĩa submitted/expired.
-- [ ] Authorize kết nối và subscription; không dùng refresh token hoặc gửi đáp án qua event.
-- [ ] Reconnect refetch snapshot, resubscribe và đối soát để tránh thiếu update trong khoảng nối lại.
-- [ ] PUBLIC không có danh sách người được giao cố định: số “Not Started” hiển thị không áp dụng.
+- [x] REST snapshot cho Session owner; WebSocket gửi incremental updates sau khi nghiệp vụ commit.
+- [x] Hiển thị progress, answered count, lastSeen và trạng thái kết nối.
+- [x] Tách trạng thái kết nối khỏi trạng thái Attempt; disconnected không đồng nghĩa submitted/expired.
+- [x] Authorize kết nối và subscription; không dùng refresh token hoặc gửi đáp án qua event.
+- [x] Reconnect refetch snapshot, resubscribe và đối soát để tránh thiếu update trong khoảng nối lại.
+- [x] PUBLIC không có danh sách người được giao cố định: số “Not Started” hiển thị không áp dụng.
 
 **Nghiệm thu:** Creator khác không subscribe được; duplicate/out-of-order event không làm lùi trạng thái; mất WebSocket không mất answers/results.
+
+**Kết quả ngày 06/10/2026:**
+
+- Migration V14 lưu lastSeen; heartbeat 15 giây, TTL 45 giây độc lập Attempt status.
+  CLASS/INDIVIDUAL dùng assignment hiện tại hợp nhất lịch sử; mỗi người hiển thị lượt mới nhất.
+- Native WebSocket xác thực access JWT trong SUBSCRIBE, origin allowlist, owner/role/status
+  được kiểm tra khi subscribe và mỗi chu kỳ. Hết hạn JWT đóng kết nối; không đưa token vào URL.
+- Server đối soát projection đã commit mỗi 2 giây khi có subscription, gửi rows thay đổi;
+  có thể gộp các trạng thái trung gian, không phải event audit log. SYNC đầu kết nối khép khoảng
+  trống REST → subscribe; streamId/sequence, watchdog, offline và backoff bảo vệ reconnect.
+  Scheduler monitoring tách riêng khỏi scheduler xử lý deadline.
+- UI `/creator/monitor` và `/creator/sessions/[sessionId]/monitor` tích hợp API thật,
+  summary, tìm kiếm, phân trang 25 rows, trạng thái mạng và progress. Đã xem ảnh 375/1440px;
+  browser kiểm tra thêm 768/1024/640×450, keyboard focus và reduced motion.
+- Backend Maven `verify` báo BUILD SUCCESS: 178 test pass, không fail/error/skip,
+  PostgreSQL 17/Redis 7.4 thật. Suite Attempt/Monitoring có 29 test, gồm REST/WS quyền owner,
+  origin, auth timeout/expiry, heartbeat timeout, rollback isolation và payload privacy.
+- Frontend lint, typecheck, production build và 92 unit test pass; 3 browser monitoring pass.
+  Luồng live/reconnect đã chạy lại sau bản sửa watchdog/offline và keyboard assertion: pass.
+  Regression `npm run test:attempt`: 8 test pass, gồm autosave/reload, offline, hai tab,
+  delayed save/submit, server expiry, removed membership và responsive.
+- OpenAPI parse: 68 paths, 616 internal references resolve; CI thêm browser monitoring.
+  Chưa chạy CI remote, WSS/proxy production, load test hoặc screen reader đầy đủ.
+  Projection hiện đọc theo từng connection và toàn roster; giới hạn tải ghi rõ ở tài liệu kiến trúc.
+
+Kiến trúc và sơ đồ: [F16 Realtime monitoring](../architecture/f16-realtime-monitoring.md).
 
 ### F17 — Reporting, question analytics và Excel export
 

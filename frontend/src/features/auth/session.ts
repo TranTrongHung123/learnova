@@ -31,6 +31,7 @@ export type GoogleFlow = {
 
 export class AuthSession {
   private token: string | null = null;
+  private tokenExpiresAt = 0;
   private generation = 0;
   private state: AuthState = initialAuth;
   private listeners = new Set<() => void>();
@@ -58,6 +59,22 @@ export class AuthSession {
     });
   }
   getSnapshot = () => this.state;
+  async monitoringSocket(sessionId: string, signal: AbortSignal) {
+    const generation = this.generation;
+    // API client dùng shared refresh khi access token hết hạn; token chỉ đi trong frame đầu.
+    if (this.tokenExpiresAt <= Date.now() + 15000) await this.refresh();
+    await this.api.request("/api/v1/auth/me", { signal });
+    signal.throwIfAborted();
+    if (generation !== this.generation || !this.token) throw new DOMException("Authentication changed", "AbortError");
+    const url = new URL("/api/v1/monitoring/ws", this.baseUrl);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    const socket = new WebSocket(url);
+    socket.addEventListener("open", () => {
+      if (signal.aborted || generation !== this.generation || !this.token) { socket.close(); return; }
+      socket.send(JSON.stringify({ type: "SUBSCRIBE", sessionId, accessToken: this.token }));
+    }, { once: true });
+    return socket;
+  }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => {
@@ -95,6 +112,7 @@ export class AuthSession {
   private accept(result: Tokens, generation: number) {
     if (generation !== this.generation) return;
     this.token = result.accessToken;
+    this.tokenExpiresAt = Date.parse(result.expiresAt);
     this.publish({ status: "AUTHENTICATED", user: result.user });
   }
   private async locked<T>(operation: () => Promise<T>): Promise<T> {

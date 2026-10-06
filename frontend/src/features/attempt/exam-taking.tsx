@@ -24,6 +24,17 @@ export function ExamTaking({ id }: { id: string }) {
     save: (question, input) => session.api.request<Saved>(`/api/v1/attempts/${id}/answers/${question}`, { method: "PUT", json: input, signal: AbortSignal.timeout(10000) }),
   }), [id, session]);
   const data = useSyncExternalStore(engine.subscribe, engine.getSnapshot, engine.getSnapshot);
+  const active = data.attempt?.status === "IN_PROGRESS";
+  useEffect(() => {
+    if (!active) return;
+    const controller = new AbortController();
+    const heartbeat = () => session.api.request(`/api/v1/attempts/${id}/heartbeat`, {
+      method: "POST", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]),
+    }).catch(() => { /* Presence không chặn autosave hoặc nộp bài. */ });
+    void heartbeat();
+    const timer = setInterval(() => void heartbeat(), 15000);
+    return () => { controller.abort(); clearInterval(timer); };
+  }, [active, id, session]);
   const [index, setIndex] = useState(0), [navigatorOpen, setNavigatorOpen] = useState(false);
   const leaveDialog = useRef<HTMLDialogElement>(null), heading = useRef<HTMLHeadingElement>(null);
   const submitDialog = useRef<HTMLDialogElement>(null), completedHeading = useRef<HTMLHeadingElement>(null), flushTelemetry = useRef<() => void>(() => {});

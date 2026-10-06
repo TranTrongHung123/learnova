@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties={"learnova.session.lifecycle-delay-ms=3600000","learnova.attempt.finalization-delay-ms=3600000"})
+@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties={"learnova.session.lifecycle-delay-ms=3600000","learnova.attempt.finalization-delay-ms=3600000"})
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, AttemptIntegrationTests.TimeConfig.class})
 class AttemptIntegrationTests {
@@ -59,8 +59,114 @@ class AttemptIntegrationTests {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
     @Autowired javax.sql.DataSource dataSource;
+    @Autowired com.learnova.monitoring.service.MonitoringService monitoring;
+    @Autowired com.learnova.monitoring.controller.MonitoringSocket monitoringSocket;
+    @Autowired org.springframework.transaction.PlatformTransactionManager transactionManager;
+    @org.springframework.beans.factory.annotation.Value("${local.server.port}") int port;
     @BeforeEach void time() { clock.time=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS); }
     record Fixture(AuthDtos.UserSummary owner,AuthDtos.UserSummary participant,Detail session,UUID classroom) {}
+
+    @Test void monitoringPresenceIsSeparateAndOnlyCountsPersistedAnswers() throws Exception {
+        var f=fixture(AccessType.INDIVIDUAL,false);
+        assertThat(monitoring.snapshot(f.owner.id(),f.session.id()).summary().notStarted()).isEqualTo(1);
+        open(f); var a=start(f);
+        var initial=monitoring.snapshot(f.owner.id(),f.session.id());
+        assertThat(initial.participants().getFirst().connectionStatus()).isEqualTo("CONNECTED");
+        clock.time=clock.time.plusSeconds(45);
+        var disconnected=monitoring.snapshot(f.owner.id(),f.session.id());
+        assertThat(disconnected.summary().disconnected()).isEqualTo(1);
+        assertThat(disconnected.participants().getFirst().status()).isEqualTo("IN_PROGRESS");
+        mvc.perform(post("/api/v1/attempts/"+a.id()+"/heartbeat").with(as(f.participant))).andExpect(status().isNoContent());
+        assertThat(monitoring.snapshot(f.owner.id(),f.session.id()).summary().disconnected()).isZero();
+        var q=a.questions().stream().filter(x->x.type().equals("TRUE_FALSE")).findFirst().orElseThrow();
+        attempts.save(f.participant.id(),a.id(),q.id(),new Save(0L,new Answer(List.of(),false,null),false,null));
+        assertThat(monitoring.snapshot(f.owner.id(),f.session.id()).participants().getFirst().answeredCount()).isEqualTo(1);
+        attempts.save(f.participant.id(),a.id(),q.id(),new Save(1L,Answer.empty(),false,null));
+        assertThat(monitoring.snapshot(f.owner.id(),f.session.id()).participants().getFirst().answeredCount()).isZero();
+        attempts.submit(f.participant.id(),a.id());
+        var completed=monitoring.snapshot(f.owner.id(),f.session.id());
+        assertThat(completed.summary().submitted()).isEqualTo(1);
+        assertThat(completed.participants().getFirst().connectionStatus()).isEqualTo("NOT_APPLICABLE");
+        assertThat(json.writeValueAsString(completed)).doesNotContain("SECRET", "correctBoolean", "optionIds", "rawScore");
+    }
+    @Test void monitoringOwnerRolePublicRosterAndLatestAttempt() throws Exception {
+        var f=fixture(AccessType.PUBLIC,false); open(f);
+        assertThat(monitoring.snapshot(f.owner.id(),f.session.id()).summary().notStarted()).isNull();
+        var a=start(f); attempts.submit(f.participant.id(),a.id()); var b=start(f);
+        var snapshot=monitoring.snapshot(f.owner.id(),f.session.id());
+        assertThat(snapshot.participants()).hasSize(1);
+        assertThat(snapshot.participants().getFirst().attemptId()).isEqualTo(b.id());
+        mvc.perform(get("/api/v1/exam-sessions/"+f.session.id()+"/monitor").with(as(user("CREATOR")))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/exam-sessions/"+f.session.id()+"/monitor").with(as(f.participant))).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/exam-sessions/"+f.session.id()+"/monitor")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/attempts/"+b.id()+"/heartbeat").with(as(user("PARTICIPANT")))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/exam-sessions/"+f.session.id()+"/monitor").with(as(f.owner))).andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"));
+    }
+    @Test void monitoringKeepsRemovedMembersAndDeduplicatesClassAudience() {
+        var f=fixture(AccessType.CLASS,false); open(f); start(f);
+        classes.remove(f.owner.id(),f.classroom,f.participant.id());
+        assertThat(monitoring.snapshot(f.owner.id(),f.session.id()).participants()).hasSize(1);
+        var p=user("PARTICIPANT"); classes.add(f.owner.id(),f.classroom,p.id());
+        assertThat(monitoring.snapshot(f.owner.id(),f.session.id()).summary().notStarted()).isEqualTo(1);
+    }
+    static class SocketMessages implements java.net.http.WebSocket.Listener {
+        final BlockingQueue<String> messages=new LinkedBlockingQueue<>();
+        final BlockingQueue<Integer> closed=new LinkedBlockingQueue<>();
+        final StringBuilder buffer=new StringBuilder();
+        public void onOpen(java.net.http.WebSocket ws) { ws.request(1); }
+        public CompletionStage<?> onText(java.net.http.WebSocket ws,CharSequence text,boolean last) {
+            buffer.append(text); if(last) { messages.add(buffer.toString()); buffer.setLength(0); } ws.request(1); return null;
+        }
+        public CompletionStage<?> onClose(java.net.http.WebSocket ws,int code,String reason) { closed.add(code); return null; }
+    }
+    private java.net.http.WebSocket socket(SocketMessages listener,String origin) {
+        return java.net.http.HttpClient.newHttpClient().newWebSocketBuilder().header("Origin",origin)
+            .buildAsync(java.net.URI.create("ws://localhost:"+port+"/api/v1/monitoring/ws"),listener).join();
+    }
+    private String subscribe(AuthDtos.UserSummary actor,UUID session) {
+        return json.writeValueAsString(Map.of("type","SUBSCRIBE","sessionId",session,"accessToken",tokens.issue(actor,"monitor-test").accessToken()));
+    }
+    @Test void websocketAuthorizesSubscriptionsOriginsTimeoutAndExpiry() throws Exception {
+        var f=fixture(AccessType.PUBLIC,false); open(f);
+        assertThatThrownBy(()->socket(new SocketMessages(),"https://untrusted.example")).isInstanceOf(CompletionException.class);
+        var denied=new SocketMessages(); var other=socket(denied,"http://localhost:3000");
+        other.sendText(subscribe(user("CREATOR"),f.session.id()),true).join();
+        assertThat(denied.closed.poll(10,TimeUnit.SECONDS)).isEqualTo(4403); assertThat(denied.messages).isEmpty();
+        var unauthenticated=new SocketMessages(); socket(unauthenticated,"http://localhost:3000");
+        clock.time=clock.time.plusSeconds(11); monitoringSocket.update();
+        assertThat(unauthenticated.closed.poll(10,TimeUnit.SECONDS)).isEqualTo(4401);
+        var allowed=new SocketMessages(); var owner=socket(allowed,"http://localhost:3000");
+        owner.sendText(subscribe(f.owner,f.session.id()),true).join();
+        assertThat(json.readTree(allowed.messages.poll(10,TimeUnit.SECONDS)).path("type").asText()).isEqualTo("SYNC");
+        clock.time=clock.time.plusSeconds(901); monitoringSocket.update();
+        assertThat(allowed.closed.poll(10,TimeUnit.SECONDS)).isEqualTo(4401);
+    }
+    @Test void websocketSyncClosesRestGapAndNeverPublishesUncommittedAnswers() throws Exception {
+        var f=fixture(AccessType.PUBLIC,false); open(f);
+        assertThat(monitoring.snapshot(f.owner.id(),f.session.id()).participants()).isEmpty();
+        var a=start(f); var listener=new SocketMessages(); var ws=socket(listener,"http://localhost:3000");
+        ws.sendText(subscribe(f.owner,f.session.id()),true).join();
+        var sync=json.readTree(listener.messages.poll(10,TimeUnit.SECONDS));
+        assertThat(sync.path("changes").size()).isEqualTo(1);
+        assertThat(sync.path("changes").get(0).path("participant").path("attemptId").asText()).isEqualTo(a.id().toString());
+        var q=a.questions().stream().filter(x->x.type().equals("TRUE_FALSE")).findFirst().orElseThrow();
+        try (var executor=Executors.newSingleThreadExecutor()) {
+            new org.springframework.transaction.support.TransactionTemplate(transactionManager).executeWithoutResult(tx->{
+                attempts.save(f.participant.id(),a.id(),q.id(),new Save(0L,new Answer(List.of(),true,null),false,null));
+                try { executor.submit(()->monitoring.snapshot(f.owner.id(),f.session.id())).get(10,TimeUnit.SECONDS)
+                    .participants().forEach(p->assertThat(p.answeredCount()).isZero()); }
+                catch(Exception ex) { throw new RuntimeException(ex); }
+                tx.setRollbackOnly();
+            });
+        }
+        attempts.save(f.participant.id(),a.id(),q.id(),new Save(0L,new Answer(List.of(),true,null),false,null));
+        monitoringSocket.update();
+        String update=null;
+        for(int i=0;i<5;i++) { update=listener.messages.poll(5,TimeUnit.SECONDS); if(update!=null && update.contains("PROGRESS")) break; }
+        assertThat(update).contains("PROGRESS").doesNotContain("optionIds","correctBoolean","SECRET");
+        assertThat(json.readTree(update).path("changes").get(0).path("participant").path("answeredCount").asInt()).isEqualTo(1);
+        ws.sendClose(1000,"done").join();
+    }
 
     @Test void concurrentStartReturnsSameAttemptAndKeepsOrderAfterReload() throws Exception {
         var f=fixture(AccessType.PUBLIC,true); open(f);
