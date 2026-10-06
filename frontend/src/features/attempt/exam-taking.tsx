@@ -1,4 +1,5 @@
 "use client";
+import { LinkButton } from "@/components/ui/button";
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
@@ -65,7 +66,7 @@ export function ExamTaking({ id }: { id: string }) {
     <p>Máy chủ đã hoàn tất bài làm từ các câu trả lời đã lưu.</p>
     {unsaved > 0 && <p className="text-warning">Trình duyệt chưa xác nhận lưu được một số thay đổi. Bài được chấm theo dữ liệu máy chủ đã nhận trước khi kết thúc.</p>}
     {a.submittedAt && <p>Thời điểm kết thúc: {new Date(a.submittedAt).toLocaleString("vi-VN")}</p>}
-    <p className="text-muted-foreground">Chức năng xem kết quả sẽ được bổ sung sau.</p>
+    <LinkButton variant="secondary" href={`/participant/results/${a.id}`}>Xem kết quả</LinkButton>
     <Button onClick={leave}>Về kỳ thi</Button>
   </section>;
   return <div className="space-y-5 [overflow-wrap:anywhere]">

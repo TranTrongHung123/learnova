@@ -60,12 +60,12 @@ function History({ id }: { id: string }) {
   const [page, setPage] = useState(0);
   const query = useApiQuery<PageResult<AttemptMetadata>>(`${apiRoot}/${id}/attempts?page=${page}`, true);
   return <section aria-labelledby="history-title" className="space-y-4"><h2 id="history-title" className="text-xl font-bold">Lịch sử bài làm</h2>
-    <p className="text-sm text-muted-foreground">Lịch sử được giữ lại kể cả khi bạn không còn là thành viên lớp. Kết quả sẽ được bổ sung sau.</p>
+    <p className="text-sm text-muted-foreground">Lịch sử được giữ lại kể cả khi bạn không còn là thành viên lớp. Kết quả tuân theo chính sách công bố của kỳ thi.</p>
     {!query.data ? <QueryState error={query.error} retry={query.reload} /> : <>
       {query.data.content.length === 0 ? <p className={panel}>Bạn chưa có bài làm trong kỳ thi này.</p> : query.data.content.map(a => <article key={a.id} className={`${panel} space-y-3`}>
         <h3 className="font-bold">Lượt {a.attemptNumber} · {attemptLabels[a.status]}</h3>
         <p>Bắt đầu: {date(a.startedAt)}</p><p>Hạn làm bài: {date(a.deadline)}</p>{a.submittedAt && <p>Nộp bài: {date(a.submittedAt)}</p>}
-        {a.status !== "IN_PROGRESS" && <Button variant="secondary" disabled>Xem kết quả · Sắp có</Button>}
+        {a.status !== "IN_PROGRESS" && <LinkButton variant="secondary" href={`/participant/results/${a.id}`}>Xem kết quả</LinkButton>}
       </article>)}
       <Pagination result={query.data} onPage={setPage} />
     </>}

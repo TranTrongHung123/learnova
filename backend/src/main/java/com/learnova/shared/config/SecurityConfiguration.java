@@ -93,6 +93,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/attempts/{id}/submit").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/attempts/{id}/answers/{questionId}").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/participant/exam-sessions", "/api/v1/participant/exam-sessions/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/participant/results", "/api/v1/participant/results/**").authenticated()
                         .requestMatchers("/api/v1/question-imports", "/api/v1/question-imports/**").authenticated()
                         .requestMatchers("/actuator", "/actuator/**").denyAll()
                         .anyRequest().denyAll())

@@ -24,6 +24,8 @@ servers:
     description: Local development
 
 tags:
+  - name: Results
+    description: F15 policy-filtered history, best score and manual release.
   - name: Attempts
     description: F13–F14 start, resume, autosave, idempotent submit and server finalization.
   - name: Participant Discovery
@@ -44,6 +46,424 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/participant/results:
+    get:
+      tags:
+      - Results
+      operationId: listResultHistory
+      summary: Own result history grouped by session
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Success. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultHistoryPage'
+        '400':
+          description: Invalid pagination or identifier
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Active business role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: Resource missing or belongs to another user
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: Service unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      description: Participant requires ACTIVE PARTICIPANT and ownership, even after
+        classroom removal. HIDDEN never discloses results. AFTER_SESSION_END uses current
+        session endTime and server time, including extensions. IMMEDIATE requires GRADED.
+        MANUAL requires persisted release. No scores or answers are added to submit/discovery
+        responses.
+  /api/v1/participant/results/{id}:
+    get:
+      tags:
+      - Results
+      operationId: getParticipantResult
+      summary: Own result filtered by display and release policies
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Success. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultDetail'
+        '400':
+          description: Invalid pagination or identifier
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Active business role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: Resource missing or belongs to another user
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: Service unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      description: Participant requires ACTIVE PARTICIPANT and ownership, even after
+        classroom removal. HIDDEN never discloses results. AFTER_SESSION_END uses current
+        session endTime and server time, including extensions. IMMEDIATE requires GRADED.
+        MANUAL requires persisted release. No scores or answers are added to submit/discovery
+        responses.
+  /api/v1/participant/exam-sessions/{id}/results:
+    get:
+      tags:
+      - Results
+      operationId: listParticipantResults
+      summary: Every own attempt in a session, newest attempt first
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Success. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultAttemptPage'
+        '400':
+          description: Invalid pagination or identifier
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Active business role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: Resource missing or belongs to another user
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: Service unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      description: Participant requires ACTIVE PARTICIPANT and ownership, even after
+        classroom removal. HIDDEN never discloses results. AFTER_SESSION_END uses current
+        session endTime and server time, including extensions. IMMEDIATE requires GRADED.
+        MANUAL requires persisted release. No scores or answers are added to submit/discovery
+        responses.
+  /api/v1/exam-sessions/{id}/results:
+    get:
+      tags:
+      - Results
+      operationId: getSessionResults
+      summary: Creator owner participant results and manual release capability
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Success. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResults'
+        '400':
+          description: Invalid pagination or identifier
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Active business role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: Resource missing or belongs to another user
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: Service unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      description: Participant requires ACTIVE PARTICIPANT and ownership, even after
+        classroom removal. HIDDEN never discloses results. AFTER_SESSION_END uses current
+        session endTime and server time, including extensions. IMMEDIATE requires GRADED.
+        MANUAL requires persisted release. No scores or answers are added to submit/discovery
+        responses.
+  /api/v1/exam-sessions/{id}/results/{participantId}/attempts:
+    get:
+      tags:
+      - Results
+      operationId: listCreatorParticipantResults
+      summary: Creator owner views all attempts of a participant
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: participantId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Success. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultAttemptPage'
+        '400':
+          description: Invalid pagination or identifier
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Active business role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: Resource missing or belongs to another user
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: Service unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      description: Participant requires ACTIVE PARTICIPANT and ownership, even after
+        classroom removal. HIDDEN never discloses results. AFTER_SESSION_END uses current
+        session endTime and server time, including extensions. IMMEDIATE requires GRADED.
+        MANUAL requires persisted release. No scores or answers are added to submit/discovery
+        responses.
+  /api/v1/exam-sessions/{id}/attempts/{attemptId}/result:
+    get:
+      tags:
+      - Results
+      operationId: getCreatorResult
+      summary: Creator owner detailed graded attempt
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: attemptId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Success. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultDetail'
+        '400':
+          description: Invalid pagination or identifier
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Active business role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: Resource missing or belongs to another user
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: Service unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      description: Participant requires ACTIVE PARTICIPANT and ownership, even after
+        classroom removal. HIDDEN never discloses results. AFTER_SESSION_END uses current
+        session endTime and server time, including extensions. IMMEDIATE requires GRADED.
+        MANUAL requires persisted release. No scores or answers are added to submit/discovery
+        responses.
+  /api/v1/exam-sessions/{id}/release-results:
+    post:
+      tags:
+      - Results
+      operationId: releaseSessionResults
+      summary: Idempotent manual release with transactional audit
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Success. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultRelease'
+        '400':
+          description: Invalid pagination or identifier
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '401':
+          description: Authentication required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '403':
+          description: Active business role required
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '404':
+          description: Resource missing or belongs to another user
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '503':
+          description: Service unavailable
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+        '409':
+          description: RESULT_RELEASE_NOT_MANUAL or SESSION_INVALID_STATE (DRAFT/CANCELLED).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ApiProblem'
+      description: MANUAL only, session owner and ACTIVE CREATOR required. Locks session;
+        first call persists release timestamp and RESULT_MANUALLY_RELEASED audit in
+        one transaction. Retries return original timestamp. HIDDEN remains hidden. Release
+        also applies to future graded attempts in this session.
   /api/v1/exam-sessions/{id}/attempts:
     post:
       tags: [Attempts]
@@ -3333,6 +3753,257 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    ResultScore:
+      type: object
+      additionalProperties: false
+      required:
+      - score
+      - totalScore
+      - passed
+      properties:
+        score:
+          type: string
+        totalScore:
+          type: string
+        passed:
+          type: boolean
+    ResultAvailability:
+      type: string
+      enum:
+      - AVAILABLE
+      - HIDDEN
+      - PENDING_RELEASE
+      - PENDING_GRADING
+    ResultSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - correctCount
+      - incorrectCount
+      - unansweredCount
+      - durationSeconds
+      properties:
+        correctCount:
+          type: integer
+          minimum: 0
+        incorrectCount:
+          type: integer
+          minimum: 0
+        unansweredCount:
+          type: integer
+          minimum: 0
+        durationSeconds:
+          type: integer
+          minimum: 0
+    ResultQuestion:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - type
+      - content
+      - options
+      - answer
+      - correctBoolean
+      - correctValue
+      - tolerance
+      - explanation
+      - correct
+      - points
+      - awardedScore
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        content:
+          type: string
+        options:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - id
+            - content
+            - correct
+            properties:
+              id:
+                type: string
+                format: uuid
+              content:
+                type: string
+              correct:
+                type: boolean
+        answer:
+          $ref: '#/components/schemas/ParticipantAnswer'
+        correctBoolean:
+          type:
+          - boolean
+          - 'null'
+        correctValue:
+          type:
+          - string
+          - 'null'
+        tolerance:
+          type:
+          - string
+          - 'null'
+        explanation:
+          type:
+          - string
+          - 'null'
+        correct:
+          type: boolean
+        points:
+          type: string
+        awardedScore:
+          type: string
+    ResultDetail:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - sessionId
+      - title
+      - attemptNumber
+      - status
+      - displayMode
+      - availability
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        attemptNumber:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        displayMode:
+          type: string
+          enum:
+          - HIDDEN
+          - SCORE_ONLY
+          - SUMMARY
+          - DETAILED
+        availability:
+          $ref: '#/components/schemas/ResultAvailability'
+        result:
+          $ref: '#/components/schemas/ResultScore'
+        summary:
+          $ref: '#/components/schemas/ResultSummary'
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResultQuestion'
+      description: 'Unavailable: result, summary and questions are absent. SCORE_ONLY:
+        result only. SUMMARY adds summary. DETAILED adds questions from immutable snapshot
+        in attempt order. Creator owner sees DETAILED only for GRADED attempts. All scores
+        are exact decimal strings.'
+    ResultHistory:
+      type: object
+      additionalProperties: false
+      required:
+      - sessionId
+      - title
+      - examName
+      - participantId
+      - participantName
+      - attemptCount
+      - availability
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        examName:
+          type: string
+        participantId:
+          type: string
+          format: uuid
+        participantName:
+          type: string
+        attemptCount:
+          type: integer
+          minimum: 0
+        completedAt:
+          type: string
+          format: date-time
+        bestAttemptId:
+          type: string
+          format: uuid
+        availability:
+          $ref: '#/components/schemas/ResultAvailability'
+        bestResult:
+          $ref: '#/components/schemas/ResultScore'
+      description: One row per session/participant. Best among all GRADED attempts, raw
+        score descending, submittedAt then UUID ascending for ties. BestResult and bestAttemptId
+        omitted unless policy permits. completedAt is latest submission; attemptCount
+        includes all statuses. Creator includes assigned participants without attempts
+        and historical participants.
+    ResultHistoryPage:
+      allOf:
+      - $ref: '#/components/schemas/PageResponse'
+      - type: object
+        properties:
+          content:
+            type: array
+            items:
+              $ref: '#/components/schemas/ResultHistory'
+    ResultAttemptPage:
+      allOf:
+      - $ref: '#/components/schemas/PageResponse'
+      - type: object
+        properties:
+          content:
+            type: array
+            items:
+              $ref: '#/components/schemas/ResultDetail'
+    SessionResults:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - displayMode
+      - releasePolicy
+      - releasedAt
+      - canRelease
+      - participants
+      properties:
+        title:
+          type: string
+        displayMode:
+          type: string
+        releasePolicy:
+          type: string
+        releasedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        canRelease:
+          type: boolean
+        participants:
+          $ref: '#/components/schemas/ResultHistoryPage'
+    ResultRelease:
+      type: object
+      additionalProperties: false
+      required:
+      - releasedAt
+      properties:
+        releasedAt:
+          type: string
+          format: date-time
     ParticipantAnswer:
       type: object
       additionalProperties: false

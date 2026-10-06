@@ -305,7 +305,7 @@ Mất membership không mất lịch sử hoặc khả năng tiếp tục bài c
 từ membership đã remove. Không gửi câu hỏi/đáp án, điểm bài làm hoặc pass/fail qua discovery.
 
 Migration V10 bổ sung nền metadata Attempt và constraint bảo toàn lịch sử. F13 đã mở
-Start/Continue bằng API thật; kết quả giữ nhãn “Sắp có” đến F15.
+Start/Continue bằng API thật; F15 đã nối lịch sử với màn hình kết quả theo policy.
 Không có mock fallback. Xem [kiến trúc F12](docs/architecture/f12-participant-exam-discovery.md)
 và [OpenAPI](docs/api/openapi.yaml).
 
@@ -343,11 +343,25 @@ Restart tự xử lý backlog từ PostgreSQL; lỗi một bài không chặn b�
 
 Bốn loại câu hỏi chấm theo published snapshot bằng BigDecimal; pass/fail dùng raw score,
 format điểm hai chữ số HALF_UP. Metadata giữ completionReason và thời điểm kết thúc/chấm.
-UI F14 chỉ xác nhận đã nộp/hết giờ và về kỳ thi; API/UI xem kết quả theo policy thuộc F15.
+UI F14 xác nhận đã nộp/hết giờ; F15 thêm đường dẫn xem kết quả theo policy.
 
 API mới: `POST /api/v1/attempts/{id}/submit` (không gửi answers). Migration V12 bổ sung
 Result, chi tiết và completion metadata. Xem [kiến trúc F14](docs/architecture/f14-submit-finalize-grading.md)
 và [OpenAPI](docs/api/openapi.yaml). Browser suite: `npm run test:attempt` trong frontend.
+
+## F15 — Result visibility, history và best score
+
+Participant xem `/participant/results` và kết quả từng lượt theo display mode/release
+policy do backend quyết định. HIDDEN luôn ẩn điểm; SUMMARY không có đáp án, DETAILED
+đọc snapshot đúng phiên bản đã làm. BEST_SCORE chỉ dùng lượt GRADED, tính trước pagination.
+
+Creator xem `/creator/sessions/[sessionId]/results`, mọi lượt của từng Participant và
+công bố MANUAL có xác nhận. V13 lưu resultsReleasedAt; retry/concurrency không ghi
+audit trùng, lỗi audit rollback công bố. Gia hạn dời mốc AFTER_SESSION_END.
+
+Browser suite: `npm run test:result` trong frontend. Chi tiết và sơ đồ tại
+[kiến trúc F15](docs/architecture/f15-result-visibility-history.md); kiểm chứng và giới hạn
+tại [kế hoạch V1](docs/plans/v1-feature-implementation-plan.md).
 
 Kiểm chứng local ngày 05/10/2026: 167 backend tests, 88 frontend unit tests và
 16 browser tests (8 Attempt/3 Discovery/4 Session/1 production) pass; lint/typecheck/build pass.
