@@ -877,13 +877,39 @@ Kiến trúc, sơ đồ và hướng dẫn bootstrap:
 **Nguồn:** Phần Dashboard trong requirements; UC-ADMIN-07.  
 **Phụ thuộc:** F15–F19.
 
-- [ ] Participant: kỳ thi sắp tới/khả dụng, Attempt đang làm, kết quả được phép xem và notification.
-- [ ] Creator: Question/Exam counts, active/upcoming Sessions, Participant counts và quick actions.
-- [ ] Admin: thống kê User, role, Exam và Session; label “tài khoản ACTIVE” phản ánh account status.
-- [ ] Query aggregate ở backend; không tải toàn bộ danh sách để tính phía client.
-- [ ] Điểm trung bình Participant chỉ dùng kết quả đã được policy cho phép xem; hiển thị rõ thang điểm khi tổng hợp khác đề.
+- [x] Participant: kỳ thi sắp tới/khả dụng, Attempt đang làm, kết quả được phép xem và notification.
+- [x] Creator: Question/Exam counts, active/upcoming Sessions, Participant counts và quick actions.
+- [x] Admin: thống kê User, role, Exam và Session; label “tài khoản ACTIVE” phản ánh account status.
+- [x] Query aggregate ở backend; không tải toàn bộ danh sách để tính phía client.
+- [x] Điểm trung bình Participant chỉ dùng kết quả đã được policy cho phép xem; hiển thị rõ thang điểm khi tổng hợp khác đề.
 
 **Nghiệm thu:** Không rò rỉ kết quả chưa release qua card/average; User multi-role switch workspace không logout; có loading/empty/error state đúng.
+
+**Triển khai và kiểm chứng local ngày 07/10/2026:**
+
+- Ba dashboard `/participant`, `/creator`, `/admin` dùng API thật tương ứng. Backend
+  aggregate và preview tối đa 5; scope theo actor, account ACTIVE và role hiện tại.
+  Không thêm migration, dependency, cache, mock fallback hoặc business domain mới.
+- Participant dùng eligibility F12; resume Attempt còn hạn khi đã rời lớp. Kết quả
+  và average lọc policy trước aggregate; BEST_SCORE mỗi Session chuẩn hóa thang 100,
+  trọng số bằng nhau, null nếu rỗng. Creator count distinct audience hợp history;
+  Admin role đếm độc lập và nhãn ACTIVE chỉ account status.
+- Backend `mvnw.cmd -B verify`: **207 tests pass**, 0 failure/error/skipped, PostgreSQL
+  17/Redis thật. Năm test F20 kiểm tra toàn ma trận result policy và mốc endTime,
+  BEST_SCORE/khác thang điểm/null/0, ownership/role/locked, resume/expiry, bounded preview,
+  notification owner và audience không đếm trùng. Các regression/migration cũ pass.
+- Frontend lint, typecheck, production build và **105 unit tests pass**.
+  `npm run test:dashboard`: **5 browser tests pass** với API thật; release/resume,
+  multi-role switch/reload, deep link, empty/loading/offline/retry và Admin isolation.
+  `npm run test:auth`: **11 tests pass**; `npm run test:google`: **5 tests pass**
+  với provider kiểm thử local; cập nhật assertion tiêu đề workspace mới.
+- Responsive 375/768/1024/1440px, viewport thấp, keyboard và reduced motion được kiểm tra;
+  đã review ảnh desktop/mobile cả ba workspace. OpenAPI không duplicate key,
+  **83 paths / 733 references** hợp lệ. Requirements, screen flow, README và CI đồng bộ.
+- Chưa chạy CI remote, benchmark dữ liệu production lớn hoặc screen reader thực.
+  Dashboard lấy snapshot khi vào trang, refocus hoặc Làm mới, không phải realtime.
+
+Kiến trúc và sơ đồ: [F20 Dashboard ba workspace](../architecture/f20-workspace-dashboards.md).
 
 ### F21 — Nghiệm thu V1 và vận hành
 

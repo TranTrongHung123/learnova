@@ -2603,6 +2603,14 @@ Không audit toàn bộ GET request.
 
 Dashboard là read model tổng hợp, không phải domain độc lập.
 
+F20 tích hợp ba API `/api/v1/participant/dashboard`, `/api/v1/creator/dashboard`,
+`/api/v1/admin/dashboard`. Role/account/ownership do backend enforce; preview tối đa 5,
+count/average trên toàn bộ tập khớp. Participant average dùng BEST_SCORE mỗi Session
+được phép xem, chuẩn hóa thang 100, trọng số bằng nhau và làm tròn 2 chữ số; rỗng là null.
+HIDDEN/chưa release không đóng góp kết quả. Creator đếm distinct assignment hợp với lịch
+sử Attempt trong Session sở hữu. Admin đếm role độc lập; ACTIVE là trạng thái tài khoản.
+Semantics chi tiết: [kiến trúc F20](../architecture/f20-workspace-dashboards.md).
+
 ## 30.1. Participant Dashboard
 
 Hiển thị:

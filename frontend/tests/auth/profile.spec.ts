@@ -82,7 +82,7 @@ test("password change keeps current session, revokes other devices and logout-al
     await page.getByRole("button", { name: "Đổi mật khẩu", exact: true }).click();
     await expect(page.getByRole("main").getByRole("alert")).toContainText("Mật khẩu hiện tại chưa đúng");
     await device.reload();
-    await expect(device.getByRole("heading", { name: "Không gian người tham gia", exact: true })).toBeVisible();
+    await expect(device.getByRole("heading", { name: "Tổng quan người tham gia", exact: true })).toBeVisible();
     await page.locator("#password-currentPassword").fill(password);
     await page.getByRole("button", { name: "Đổi mật khẩu", exact: true }).click();
     await expect(page.getByRole("status")).toContainText("Đã đổi mật khẩu");

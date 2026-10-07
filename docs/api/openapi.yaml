@@ -54,6 +54,93 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/participant/dashboard:
+    get:
+      tags: [Reporting]
+      operationId: getParticipantDashboard
+      summary: ParticipantDashboard
+      description: >-
+        Own eligible sessions, live attempts, visible BEST_SCORE results and owner notifications. Average is the equal-weight mean of best rawScore / totalScore * 100 per visible Session, rounded to 2 decimals; null when empty. Hidden/unreleased results contribute neither scores nor result IDs. Discovery previews preserve F12 eligibility, including resuming removed members. All previews are limited to 5 rows; aggregates cover all matching rows.
+        Backend time determines effective Session state. Response is Cache-Control no-store.
+        Current account must be ACTIVE with the matching role; ADMIN does not imply business roles.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Consistent read-only dashboard snapshot.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ParticipantDashboard'}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: ACCESS_DENIED, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: SERVICE_UNAVAILABLE; retry the read request later.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+  /api/v1/creator/dashboard:
+    get:
+      tags: [Reporting]
+      operationId: getCreatorDashboard
+      summary: CreatorDashboard
+      description: >-
+        Owner-only aggregates, effective active/upcoming Sessions, recent Exams and graded Attempts. Participant count is distinct across assigned audiences and historical attempts, including removed members with history. Cancelled assignments alone do not contribute. All previews are limited to 5 rows; aggregates cover all matching rows.
+        Backend time determines effective Session state. Response is Cache-Control no-store.
+        Current account must be ACTIVE with the matching role; ADMIN does not imply business roles.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Consistent read-only dashboard snapshot.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CreatorDashboard'}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: ACCESS_DENIED, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: SERVICE_UNAVAILABLE; retry the read request later.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+  /api/v1/admin/dashboard:
+    get:
+      tags: [Reporting]
+      operationId: getAdminDashboard
+      summary: AdminDashboard
+      description: >-
+        Active ADMIN only. Global account/role/Exam/Session counts. ACTIVE means account status, not online presence. Role counts overlap for multi-role accounts; totals include archived Exams and all Session states. Aggregates cover all matching rows.
+        Backend time determines effective Session state. Response is Cache-Control no-store.
+        Current account must be ACTIVE with the matching role; ADMIN does not imply business roles.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Consistent read-only dashboard snapshot.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminDashboard'}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: ACCESS_DENIED, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: SERVICE_UNAVAILABLE; retry the read request later.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
   /api/v1/admin/users:
     get:
       tags: [Admin]
@@ -4269,6 +4356,297 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    DashboardAttempt:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - sessionId
+      - title
+      - deadline
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        deadline:
+          type: string
+          format: date-time
+    DashboardResult:
+      type: object
+      additionalProperties: false
+      required:
+      - attemptId
+      - sessionId
+      - title
+      - completedAt
+      - rawScore
+      - totalScore
+      - passed
+      properties:
+        attemptId:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+        rawScore:
+          type: string
+        totalScore:
+          type: string
+        passed:
+          type: boolean
+    DashboardScores:
+      type: object
+      additionalProperties: false
+      required:
+      - visibleSessionCount
+      - averagePercentage
+      properties:
+        visibleSessionCount:
+          type: integer
+          format: int64
+          minimum: 0
+        averagePercentage:
+          type:
+          - string
+          - 'null'
+          description: Equal-weight mean of normalized BEST_SCORE per visible Session; 0–100, rounded to 2 decimals.
+            Null for no visible results.
+    DashboardCounts:
+      type: object
+      additionalProperties: false
+      required:
+      - questions
+      - exams
+      - activeSessions
+      - upcomingSessions
+      - participants
+      properties:
+        questions:
+          type: integer
+          format: int64
+          minimum: 0
+        exams:
+          type: integer
+          format: int64
+          minimum: 0
+        activeSessions:
+          type: integer
+          format: int64
+          minimum: 0
+        upcomingSessions:
+          type: integer
+          format: int64
+          minimum: 0
+        participants:
+          type: integer
+          format: int64
+          minimum: 0
+    DashboardQuestionCounts:
+      type: object
+      additionalProperties: false
+      required:
+      - draft
+      - active
+      - archived
+      properties:
+        draft:
+          type: integer
+          format: int64
+          minimum: 0
+        active:
+          type: integer
+          format: int64
+          minimum: 0
+        archived:
+          type: integer
+          format: int64
+          minimum: 0
+    DashboardSession:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - title
+      - startTime
+      - endTime
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+    DashboardExam:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+    ParticipantDashboard:
+      type: object
+      additionalProperties: false
+      required:
+      - serverTime
+      - available
+      - upcoming
+      - completed
+      - inProgress
+      - scores
+      - recentResults
+      - unreadCount
+      - notifications
+      properties:
+        serverTime:
+          type: string
+          format: date-time
+        available:
+          $ref: '#/components/schemas/DiscoveryPage'
+        upcoming:
+          $ref: '#/components/schemas/DiscoveryPage'
+        completed:
+          $ref: '#/components/schemas/DiscoveryPage'
+        inProgress:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/DashboardAttempt'
+        scores:
+          $ref: '#/components/schemas/DashboardScores'
+        recentResults:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/DashboardResult'
+        unreadCount:
+          type: integer
+          format: int64
+          minimum: 0
+        notifications:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/Notification'
+    CreatorDashboard:
+      type: object
+      additionalProperties: false
+      required:
+      - serverTime
+      - counts
+      - questionCounts
+      - activeSessions
+      - upcomingSessions
+      - recentExams
+      - recentResults
+      properties:
+        serverTime:
+          type: string
+          format: date-time
+        counts:
+          $ref: '#/components/schemas/DashboardCounts'
+        questionCounts:
+          $ref: '#/components/schemas/DashboardQuestionCounts'
+        activeSessions:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/DashboardSession'
+        upcomingSessions:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/DashboardSession'
+        recentExams:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/DashboardExam'
+        recentResults:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/DashboardResult'
+    AdminDashboard:
+      type: object
+      additionalProperties: false
+      required:
+      - serverTime
+      - users
+      - activeUsers
+      - participants
+      - creators
+      - admins
+      - exams
+      - sessions
+      - activeSessions
+      - upcomingSessions
+      properties:
+        serverTime:
+          type: string
+          format: date-time
+        users:
+          type: integer
+          format: int64
+          minimum: 0
+        activeUsers:
+          type: integer
+          format: int64
+          minimum: 0
+        participants:
+          type: integer
+          format: int64
+          minimum: 0
+        creators:
+          type: integer
+          format: int64
+          minimum: 0
+        admins:
+          type: integer
+          format: int64
+          minimum: 0
+        exams:
+          type: integer
+          format: int64
+          minimum: 0
+        sessions:
+          type: integer
+          format: int64
+          minimum: 0
+        activeSessions:
+          type: integer
+          format: int64
+          minimum: 0
+        upcomingSessions:
+          type: integer
+          format: int64
+          minimum: 0
     AdminUser:
       type: object
       required: [id, email, displayName, roles, status, createdAt, onboardingCompleted]
