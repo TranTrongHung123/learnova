@@ -55,11 +55,6 @@ export function navigationFor(workspace: Workspace): NavigationItem[] {
   const items: NavigationItem[] = [
     { label: "Tổng quan", href: base, icon: "dashboard", available: true },
   ];
-  const pending = (
-    label: string,
-    href: string | undefined,
-    icon: NavigationItem["icon"],
-  ) => items.push({ label, href, icon, available: false });
   if (workspace === "PARTICIPANT") {
     items.push({ label: "Kỳ thi của tôi", href: `${base}/exams`, icon: "exam", available: true });
     items.push({ label: "Kết quả", href: `${base}/results`, icon: "results", available: true });
@@ -72,8 +67,8 @@ export function navigationFor(workspace: Workspace): NavigationItem[] {
     items.push({ label: "Giám sát", href: `${base}/monitor`, icon: "monitor", available: true });
     items.push({ label: "Báo cáo", href: `${base}/reports`, icon: "reports", available: true });
   } else {
-    pending("Người dùng", `${base}/users`, "users");
-    pending("Nhật ký hoạt động", `${base}/audit-logs`, "audit");
+    items.push({ label: "Người dùng", href: `${base}/users`, icon: "users", available: true });
+    items.push({ label: "Nhật ký hoạt động", href: `${base}/audit-logs`, icon: "audit", available: true });
   }
   if (workspace !== "ADMIN")
     items.push({ label: "Thông báo", href: "/notifications", icon: "notifications", available: true });

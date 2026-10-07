@@ -55,6 +55,7 @@ class AttemptIntegrationTests {
     @Autowired ClassroomService classes;
     @Autowired QuestionService questions;
     @Autowired IdentityService identity;
+    @Autowired com.learnova.identity.service.AdminUserService adminUsers;
     @Autowired AccessTokens tokens;
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
@@ -580,6 +581,21 @@ class AttemptIntegrationTests {
         for(String endpoint:List.of("analytics","export"))
             mvc.perform(get("/api/v1/exam-sessions/"+f.session.id()+"/"+endpoint).with(as(f.owner))).andExpect(status().isForbidden());
     }
+    @Test void adminLockUnlockAndRoleChangesPreserveGradedHistory() {
+        var f = fixture(AccessType.CLASS, false); open(f); var a = start(f);
+        attempts.submit(f.participant.id(), a.id());
+        var actor = user("CREATOR");
+        jdbc.update("insert into user_roles(user_id,role) values (?,'ADMIN')", actor.id());
+        String before = jdbc.queryForObject("select row_to_json(r)::text from attempt_results r where attempt_id=?", String.class, a.id());
+        adminUsers.status(actor.id(), f.participant.id(), true);
+        adminUsers.roles(actor.id(), f.participant.id(), new com.learnova.identity.dto.AdminUserDtos.RolesRequest(List.of("CREATOR")));
+        adminUsers.status(actor.id(), f.participant.id(), false);
+        assertThat(jdbc.queryForObject("select row_to_json(r)::text from attempt_results r where attempt_id=?", String.class, a.id())).isEqualTo(before);
+        assertThat(jdbc.queryForObject("select count(*) from attempts where id=?", Integer.class, a.id())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from attempt_answers where attempt_id=?", Integer.class, a.id())).isEqualTo(4);
+        assertThat(jdbc.queryForObject("select count(*) from audit_records where target_id=? and action in ('ACCOUNT_LOCKED','ROLE_CHANGED','ACCOUNT_UNLOCKED')", Integer.class, f.participant.id().toString())).isEqualTo(3);
+    }
+
     private Fixture fixture(AccessType access,boolean shuffle) {
         var owner=user("CREATOR"); var p=user("PARTICIPANT"); UUID classroom=null;
         if(access==AccessType.CLASS) { classroom=classes.create(owner.id(),new WriteClassroom("Class",null)).id(); classes.add(owner.id(),classroom,p.id()); }

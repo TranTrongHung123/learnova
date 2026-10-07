@@ -39,6 +39,33 @@ public class IdentityService {
     }
 
     @Transactional
+    public Login googleLogin(UUID id, String previous) {
+        users.lockById(id).orElseThrow(() -> new AuthFailure(401, "AUTHENTICATION_REQUIRED"));
+        var user = activeUser(id);
+        if (previous != null) {
+            try { sessions.revoke(sessions.lookup(previous)); }
+            catch (AuthFailure ignored) { /* Cookie cũ không ngăn phiên đăng nhập mới. */ }
+        }
+        return new Login(user, sessions.create(id));
+    }
+
+    @Transactional
+    public Login refresh(String token) {
+        var session = sessions.lookup(token);
+        // Cùng khóa với quản trị User: không cấp session sau khi tài khoản đã bị khóa.
+        users.lockById(session.userId()).orElseThrow(() -> new AuthFailure(401, "AUTHENTICATION_REQUIRED"));
+        AuthDtos.UserSummary user;
+        try { user = activeUser(session.userId()); }
+        catch (AuthFailure failure) { sessions.revoke(session); throw failure; }
+        return new Login(user, sessions.rotate(token, session));
+    }
+
+    @Transactional(readOnly = true)
+    public void requireAdmin(UUID id) {
+        if (!activeUser(id).roles().contains("ADMIN")) throw new AuthFailure(403, "ACCESS_DENIED");
+    }
+
+    @Transactional
     public Login login(AuthDtos.LoginRequest request, String previous) {
         // Giữ khóa đến sau cấp session để mật khẩu cũ không vượt qua một lần đổi mật khẩu đồng thời.
         users.lockByEmail(normalizeEmail(request.email()));
