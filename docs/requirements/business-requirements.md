@@ -1811,6 +1811,11 @@ WEBSOCKET_CONNECTED
 
 # 34. Participant Dashboard
 
+F20: aggregate ở backend, preview tối đa 5 mục. Điểm trung bình chỉ dùng BEST_SCORE của
+mỗi Session đã được policy cho phép xem; chuẩn hóa từng điểm về thang 100 rồi lấy trung
+bình trọng số bằng nhau, làm tròn 2 chữ số. Không có kết quả trả “Chưa có điểm”. Kết quả
+HIDDEN/chưa release không đóng góp vào card, danh sách điểm hoặc trung bình.
+
 Dashboard nên hiển thị:
 
 ```text
@@ -1826,6 +1831,11 @@ Notifications
 ---
 
 # 35. Creator Dashboard
+
+F20: dữ liệu chỉ thuộc Creator hiện tại; tổng Question/Exam gồm archived. Người tham gia
+là số người distinct đang được giao CLASS/INDIVIDUAL (không gồm assignment của Session
+CANCELLED) hợp với người đã có Attempt trong các Session sở hữu; PUBLIC chỉ đếm người
+đã có Attempt. Active/upcoming dùng thời gian backend. Mỗi preview tối đa 5 mục.
 
 Có thể hiển thị:
 
@@ -1853,6 +1863,10 @@ Open Monitoring
 ---
 
 # 36. Admin
+
+F20 dashboard đếm User, role, Exam và Session bằng aggregate backend. Role đếm độc lập
+vì User multi-role; tổng bao gồm account đã khóa/đề đã lưu trữ/kỳ thi mọi state. Nhãn
+“Tài khoản ACTIVE” phản ánh account status, không đồng nghĩa người đang online.
 
 Admin V1 tập trung vào User Management.
 

@@ -581,6 +581,123 @@ class AttemptIntegrationTests {
         for(String endpoint:List.of("analytics","export"))
             mvc.perform(get("/api/v1/exam-sessions/"+f.session.id()+"/"+endpoint).with(as(f.owner))).andExpect(status().isForbidden());
     }
+    @Autowired com.learnova.reporting.service.DashboardService dashboards;
+
+    @Test void dashboardVisibilityMatrixAndBoundaryNeverLeakScores() throws Exception {
+        var f=fixture(AccessType.INDIVIDUAL,false); open(f); var a=start(f);
+        attempts.submit(f.participant.id(),a.id());
+        for (var mode:ResultDisplayMode.values()) for (var policy:ResultReleasePolicy.values()) {
+            for (boolean released:List.of(false,true)) for (boolean ended:List.of(false,true)) {
+                Instant now=ended?f.session.endTime():f.session.startTime(); clock.time=now;
+                jdbc.update("update exam_sessions set result_display_mode=?,result_release_policy=?,results_released_at=? where id=?",
+                    mode.name(),policy.name(),released?java.sql.Timestamp.from(now):null,f.session.id());
+                boolean visible=com.learnova.attempt.service.ResultVisibility.availability(mode.name(),policy.name(),f.session.endTime(),released?now:null,now,true).equals("AVAILABLE");
+                var d=dashboards.participant(f.participant.id());
+                assertThat(d.scores().visibleSessionCount()).isEqualTo(visible?1:0);
+                assertThat(d.scores().averagePercentage()).isEqualTo(visible?"0":null);
+                assertThat(d.recentResults()).hasSize(visible?1:0);
+                if (!visible) assertThat(json.writeValueAsString(d)).doesNotContain("rawScore","passed","correctAnswer","SECRET");
+            }
+        }
+        mvc.perform(get("/api/v1/participant/dashboard").with(as(f.participant)))
+            .andExpect(status().isOk()).andExpect(header().string("Cache-Control","no-store"));
+    }
+    @Test void dashboardAverageUsesBestPerSessionAndNormalizedEqualWeights() {
+        var f=fixture(AccessType.INDIVIDUAL,false); open(f);
+        var a=start(f); attempts.submit(f.participant.id(),a.id());
+        var b=start(f); attempts.submit(f.participant.id(),b.id());
+        jdbc.update("update attempt_results set raw_score=2,passed=true where attempt_id=?",b.id());
+        jdbc.update("update exam_sessions set result_release_policy='IMMEDIATE' where id=?",f.session.id());
+        var other=fixture(AccessType.PUBLIC,false); open(other);
+        var c=attempts.start(f.participant.id(),other.session.id()).attempt(); attempts.submit(f.participant.id(),c.id());
+        jdbc.update("update attempt_results set raw_score=15,total_score=20,passed=true where attempt_id=?",c.id());
+        jdbc.update("update exam_sessions set result_release_policy='IMMEDIATE' where id=?",other.session.id());
+        var d=dashboards.participant(f.participant.id());
+        assertThat(d.scores().visibleSessionCount()).isEqualTo(2);
+        assertThat(d.scores().averagePercentage()).isEqualTo("62.5");
+        assertThat(d.recentResults()).extracting(x->x.attemptId()).containsExactlyInAnyOrder(b.id(),c.id());
+        jdbc.update("update exam_sessions set result_display_mode='HIDDEN' where id=?",other.session.id());
+        assertThat(dashboards.participant(f.participant.id()).scores().averagePercentage()).isEqualTo("50");
+        var empty=dashboards.participant(user("PARTICIPANT").id());
+        assertThat(empty.scores().averagePercentage()).isNull();
+        assertThat(empty.recentResults()).isEmpty();
+    }
+    @Test void dashboardScopesCreatorAndRetainsActiveRemovedMembership() {
+        var f=fixture(AccessType.CLASS,false);
+        assertThat(dashboards.creator(f.owner.id()).counts().upcomingSessions()).isEqualTo(1);
+        open(f); var a=start(f); classes.remove(f.owner.id(),f.classroom,f.participant.id());
+        var p=dashboards.participant(f.participant.id());
+        assertThat(p.inProgress()).extracting(x->x.id()).containsExactly(a.id());
+        assertThat(p.available().content()).extracting(x->x.id()).contains(f.session.id());
+        var d=dashboards.creator(f.owner.id());
+        assertThat(d.counts().questions()).isEqualTo(4);
+        assertThat(d.counts().exams()).isEqualTo(1);
+        assertThat(d.counts().participants()).isEqualTo(1);
+        assertThat(d.counts().activeSessions()).isEqualTo(1);
+        assertThat(d.questionCounts().active()).isEqualTo(4);
+        var foreign=dashboards.creator(user("CREATOR").id());
+        assertThat(foreign.counts().questions()).isZero(); assertThat(foreign.activeSessions()).isEmpty();
+        clock.time=a.deadline();
+        assertThat(dashboards.participant(f.participant.id()).inProgress()).isEmpty();
+        clock.time=f.session.endTime();
+        assertThat(dashboards.creator(f.owner.id()).counts().activeSessions()).isZero();
+    }
+    @Test void dashboardPreviewLimitsDoNotTruncateAggregatesAndDeduplicatesAudience() {
+        var f=fixture(AccessType.CLASS,false); open(f); var a=start(f);
+        attempts.submit(f.participant.id(),a.id());
+        var classroom=classes.create(f.owner.id(),new WriteClassroom("Second class",null));
+        classes.add(f.owner.id(),classroom.id(),f.participant.id());
+        jdbc.update("insert into session_class_assignments(session_id,classroom_id) values (?,?)",f.session.id(),classroom.id());
+        assertThat(dashboards.creator(f.owner.id()).counts().participants()).isEqualTo(1);
+        long existingUpcoming=dashboards.participant(f.participant.id()).upcoming().totalElements();
+        for (int i=0;i<6;i++) {
+            var created=sessions.create(f.owner.id(),new WriteSession(null,"Upcoming "+i,f.session.examVersionId(),
+                clock.time.plusSeconds(100+i),clock.time.plusSeconds(3700+i),10,1,"1",AccessType.INDIVIDUAL,
+                List.of(),List.of(f.participant.id()),false,false,null,null));
+            sessions.schedule(f.owner.id(),created.id(),created.revision());
+        }
+        var participant=dashboards.participant(f.participant.id());
+        assertThat(participant.upcoming().totalElements()).isEqualTo(existingUpcoming+6);
+        assertThat(participant.upcoming().content()).hasSize(5);
+        assertThat(participant.notifications()).hasSize(5);
+        assertThat(participant.unreadCount()).isGreaterThan(5);
+        var creator=dashboards.creator(f.owner.id());
+        assertThat(creator.counts().upcomingSessions()).isEqualTo(6);
+        assertThat(creator.upcomingSessions()).hasSize(5);
+        assertThat(creator.counts().participants()).isEqualTo(1);
+        assertThat(creator.recentResults()).extracting(x->x.attemptId()).containsExactly(a.id());
+        assertThat(dashboards.participant(user("PARTICIPANT").id()).notifications()).isEmpty();
+    }
+
+    @Test void dashboardRoleAccountAndAdminCounts() throws Exception {
+        var participant=user("PARTICIPANT"); var creator=user("CREATOR"); var both=user("PARTICIPANT","CREATOR");
+        var admin=user("PARTICIPANT");
+        jdbc.update("delete from user_roles where user_id=?",admin.id());
+        jdbc.update("insert into user_roles(user_id,role) values (?,'ADMIN')",admin.id());
+        admin=identity.activeUser(admin.id());
+        for (String role:List.of("participant","creator","admin")) {
+            String path="/api/v1/"+role+"/dashboard";
+            mvc.perform(get(path)).andExpect(status().isUnauthorized());
+            mvc.perform(get(path).with(as(admin))).andExpect(role.equals("admin")?status().isOk():status().isForbidden());
+            mvc.perform(get(path).with(as(participant))).andExpect(role.equals("participant")?status().isOk():status().isForbidden());
+            mvc.perform(get(path).with(as(creator))).andExpect(role.equals("creator")?status().isOk():status().isForbidden());
+            mvc.perform(get(path).with(as(both))).andExpect(role.equals("admin")?status().isForbidden():status().isOk());
+        }
+        var before=dashboards.admin(admin.id());
+        var extra=user("PARTICIPANT","CREATOR");
+        var after=dashboards.admin(admin.id());
+        assertThat(after.users()).isEqualTo(before.users()+1);
+        assertThat(after.participants()).isEqualTo(before.participants()+1);
+        assertThat(after.creators()).isEqualTo(before.creators()+1);
+        jdbc.update("update users set status='LOCKED' where id=?",extra.id());
+        assertThat(dashboards.admin(admin.id()).activeUsers()).isEqualTo(before.activeUsers());
+        for (var actor:List.of(participant,creator,admin,both)) {
+            jdbc.update("update users set status='LOCKED' where id=?",actor.id());
+            String role=actor.id().equals(admin.id())?"admin":actor.roles().contains("CREATOR")?"creator":"participant";
+            mvc.perform(get("/api/v1/"+role+"/dashboard").with(as(actor))).andExpect(status().isForbidden());
+        }
+    }
+
     @Test void adminLockUnlockAndRoleChangesPreserveGradedHistory() {
         var f = fixture(AccessType.CLASS, false); open(f); var a = start(f);
         attempts.submit(f.participant.id(), a.id());

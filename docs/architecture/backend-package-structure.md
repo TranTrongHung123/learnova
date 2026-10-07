@@ -147,3 +147,8 @@ F19 thêm AdminUserController/AdminUserService/AdminUserQueries và bootstrap tr
 `identity`, nơi sở hữu User/roles/credentials/sessions. Module `admin` điều phối read
 audit qua IdentityService và AuditQueryService; `audit` không phụ thuộc ngược identity.
 Không expose entity/repository xuyên module. Xem [F19](f19-admin-user-management-audit.md).
+
+F20 bổ sung DashboardController/Service/Queries/DTO trong `reporting`: read model cho ba
+workspace, gọi IdentityService, DiscoveryService và NotificationService. JDBC projection
+join dữ liệu persistence, không truy cập repository/entity module khác. Xem
+[F20](f20-workspace-dashboards.md).

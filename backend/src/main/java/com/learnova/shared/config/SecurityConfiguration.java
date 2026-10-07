@@ -89,6 +89,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/change-password").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout-all").authenticated()
                         .requestMatchers("/api/v1/notifications", "/api/v1/notifications/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/participant/dashboard", "/api/v1/creator/dashboard").authenticated()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/classrooms", "/api/v1/classrooms/**").authenticated()
                         .requestMatchers("/api/v1/questions", "/api/v1/questions/**").authenticated()

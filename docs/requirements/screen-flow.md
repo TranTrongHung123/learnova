@@ -808,6 +808,16 @@ RESULT_RELEASED về `/participant/results/[attemptId]`; assignment/reminder v�
 
 # 12.1. Participant Dashboard
 
+F20 dùng API thật `/api/v1/participant/dashboard`. Card available/upcoming/completed,
+điểm trung bình thang 100 chỉ từ BEST_SCORE được phép xem; null hiển thị Chưa có điểm.
+Bài đang làm ưu tiên trước danh sách, CTA tới Attempt; các kỳ thi khác tới detail để
+backend kiểm tra lại eligibility. Recent Results chỉ chứa kết quả được phép xem;
+Hoàn thành gần đây là metadata, không công bố điểm sớm. Notification có deep link an toàn.
+
+Mỗi preview tối đa 5 mục, Xem tất cả tới danh sách đầy đủ. Loading dùng Skeleton;
+empty riêng từng nhóm, network/403 có trạng thái phù hợp và retry. Làm mới/refocus lấy
+snapshot mới; không giữ số giả khi request lỗi. Switch workspace giữ session hiện tại.
+
 **Route**
 
 ```text
@@ -1409,6 +1419,15 @@ Membership REMOVED có thể tham gia lại bằng mã còn hợp lệ.
 # 14. Creator Workspace
 
 # 14.1. Creator Dashboard
+
+F20 dùng API thật `/api/v1/creator/dashboard`, scope owner. Card tổng Question/Exam,
+active Session, distinct Participant; phân bố Question DRAFT/ACTIVE/ARCHIVED. Active
+Session mở Monitoring, upcoming mở detail, recent Exam mở detail, Result mở lượt làm.
+Quick actions tới Create Question/Import Excel/Create Exam/Create Session/Monitoring.
+
+Mỗi preview tối đa 5 mục, Xem tất cả tới danh sách đầy đủ. Loading dùng Skeleton;
+empty riêng từng nhóm, network/403 có trạng thái phù hợp và retry. Làm mới/refocus lấy
+snapshot mới; không giữ số giả khi request lỗi. Switch workspace giữ session hiện tại.
 
 **Route**
 
@@ -2758,6 +2777,14 @@ không sử dụng Question Bank current state làm dữ liệu lịch sử.
 # 23. Admin Workspace
 
 # 23.1. Admin Dashboard
+
+F20 dùng API thật `/api/v1/admin/dashboard`. Tổng account, role PARTICIPANT/CREATOR/ADMIN,
+Exam, Session, active/upcoming Session; nhãn Tài khoản ACTIVE có giải thích là account
+status, không phải online. Card User/role đi tới User list với filter URL tương ứng.
+Không link tới workspace nghiệp vụ chỉ vì có ADMIN.
+
+Loading dùng Skeleton; tập dữ liệu rỗng hiển thị số 0. Network/403 có trạng thái phù hợp và retry. Làm mới/refocus lấy
+snapshot mới; không giữ số giả khi request lỗi. Switch workspace giữ session hiện tại.
 
 **Route**
 

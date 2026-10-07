@@ -426,3 +426,11 @@ V16 bổ sung index User. Kiểm thử: backend `mvnw.cmd -B verify`; frontend
 `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:admin`.
 Browser suite tạo PostgreSQL/Redis test và dùng credential bootstrap ngẫu nhiên;
 không thay đổi database vận hành. Port riêng: backend 8093, frontend 3119.
+
+### F20 — Dashboard ba workspace
+
+`/participant`, `/creator`, `/admin` dùng aggregate backend và preview tối đa 5 mục,
+không có mock fallback. Participant average là BEST_SCORE được phép xem, chuẩn hóa
+thang 100; Admin ACTIVE là account status. Kiến trúc và semantics:
+[Dashboard F20](docs/architecture/f20-workspace-dashboards.md).
+Browser integration với API/PostgreSQL/Redis thật: `cd frontend` rồi `npm run test:dashboard`.
