@@ -18,6 +18,7 @@
     "test:discovery": "playwright test --config playwright.discovery.config.ts",
     "test:attempt": "playwright test --config playwright.attempt.config.ts",
     "test:notification": "playwright test --config playwright.notification.config.ts",
+    "test:dashboard": "playwright test --config playwright.dashboard.config.ts",
     "test:admin": "playwright test --config playwright.admin.config.ts",
     "test:result": "playwright test --config playwright.result.config.ts",
     "test:monitoring": "playwright test --config playwright.monitoring.config.ts",

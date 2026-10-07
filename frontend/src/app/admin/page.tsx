@@ -1,5 +1,6 @@
 import { ProtectedWorkspace } from "@/features/auth/protected-workspace";
-export const metadata = { title: "Không gian quản trị" };
+import { AdminOverview } from "@/features/dashboard/admin";
+export const metadata = { title: "Tổng quan quản trị" };
 export default function Page() {
-  return <ProtectedWorkspace workspace="ADMIN" title="Không gian quản trị" />;
+  return <ProtectedWorkspace workspace="ADMIN" title="Tổng quan quản trị"><AdminOverview /></ProtectedWorkspace>;
 }

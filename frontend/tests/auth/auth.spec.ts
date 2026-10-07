@@ -64,7 +64,7 @@ test("register, multi-role, preference, real cookie, reload and logout", async (
   await page.reload();
   await expect(
     page.getByRole("heading", {
-      name: "Không gian người tham gia",
+      name: "Tổng quan người tham gia",
       exact: true,
     }),
   ).toBeVisible();
@@ -93,7 +93,7 @@ test("two tabs reload concurrently without refresh reuse and logout synchronizes
   await other.goto("/participant");
   await expect(
     other.getByRole("heading", {
-      name: "Không gian người tham gia",
+      name: "Tổng quan người tham gia",
       exact: true,
     }),
   ).toBeVisible();
@@ -101,7 +101,7 @@ test("two tabs reload concurrently without refresh reuse and logout synchronizes
   for (const tab of [page, other])
     await expect(
       tab.getByRole("heading", {
-        name: "Không gian người tham gia",
+        name: "Tổng quan người tham gia",
         exact: true,
       }),
     ).toBeVisible();
@@ -173,7 +173,7 @@ test("single role cannot enter creator, validation and network failure stay acti
   await page.goto("/participant");
   await expect(
     page.getByRole("heading", {
-      name: "Không gian người tham gia",
+      name: "Tổng quan người tham gia",
       exact: true,
     }),
   ).toBeVisible();

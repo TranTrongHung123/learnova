@@ -39,7 +39,7 @@ test("new Google user resumes onboarding, selects both roles, reloads and signs 
   await page.getByRole("button", { name: "Vào không gian người tạo" }).click();
   await expect(page).toHaveURL(/\/creator$/);
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Không gian người tạo", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tổng quan người tạo", exact: true })).toBeVisible();
   await page.goto("/profile");
   await expect(page.getByText("Bạn đăng nhập bằng Google.", { exact: false })).toBeVisible();
   await expect(page.getByRole("button", { name: "Đổi mật khẩu", exact: true })).toHaveCount(0);

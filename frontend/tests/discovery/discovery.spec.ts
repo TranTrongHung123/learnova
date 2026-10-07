@@ -34,6 +34,8 @@ async function login(page: Page, email: string) {
   await page.goto("/login"); await page.locator("#email").fill(email); await page.locator("#password").fill(password);
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click(); await expect(page).toHaveURL(/\/participant$/);
   await page.getByRole("link", { name: "Kỳ thi của tôi", exact: true }).click();
+  await expect(page).toHaveURL(/\/participant\/exams$/);
+  await expect(page.getByRole("heading", { name: "Kỳ thi của tôi", exact: true, level: 1 })).toBeVisible();
 }
 test("real list/detail, filters, reload, safe metadata and responsive keyboard navigation", async ({ page, request }) => {
   const p = await account(request), s = await session(request, p), upcoming = await session(request, p, "INDIVIDUAL", true);
@@ -68,7 +70,8 @@ test("completed overlap, exhausted attempts and personal history use database fi
   const p = await account(request), s = await session(request, p);
   expect((await request.post(`${api}/exam-sessions/${s.id}/test-fixture?status=SUBMITTED`, { headers: p.headers })).status()).toBe(200);
   await login(page, p.email); await expect(page.getByRole("heading", { name: s.title })).toBeVisible();
-  await page.getByRole("link", { name: "Đã hoàn thành", exact: true }).click(); await expect(page.getByRole("heading", { name: s.title })).toBeVisible();
+  await page.getByRole("link", { name: "Đã hoàn thành", exact: true }).click(); await expect(page).toHaveURL(/tab=COMPLETED/);
+  await expect(page.getByRole("heading", { name: s.title })).toBeVisible();
   expect((await request.post(`${api}/exam-sessions/${s.id}/test-fixture?status=GRADED`, { headers: p.headers })).status()).toBe(200);
   await page.getByRole("link", { name: `Xem chi tiết ${s.title}` }).click();
   await expect(page.getByText("Bạn đã dùng hết số lượt làm bài.", { exact: true })).toBeVisible();
