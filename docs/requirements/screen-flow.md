@@ -787,6 +787,23 @@ CLASS_JOINED
 
 ---
 
+### Triển khai F18
+
+Chuông trên topbar và sidebar Participant/Creator mở `/notifications`. Badge lấy unread
+count toàn User, poll 30 giây khi tab đang mở, refresh sau mutation/focus/online. Lỗi
+count không hiển thị badge giả bằng 0. Multi-role dùng chung hộp thông báo.
+
+Trang có loading, empty, error/retry, checkbox Chỉ chưa đọc và pagination 20 mục. Mỗi
+card hiển thị icon, title/message, timestamp địa phương, nhãn Đã đọc/Chưa đọc và hai
+action riêng: mở resource, đánh dấu đã đọc. Mark-all áp dụng toàn bộ trang; nút disabled
+khi chưa biết count, count=0 hoặc mutation đang chạy. Lỗi mutation không báo đã lưu.
+Sau mark-read trong bộ lọc chưa đọc trở về trang đầu để tránh trang rỗng do giảm tổng.
+Deep link CLASS_JOINED của Participant về `/participant/classes`, Creator về chi tiết lớp.
+RESULT_RELEASED về `/participant/results/[attemptId]`; assignment/reminder về
+`/participant/exams/[sessionId]`. Mỗi API đích vẫn kiểm tra quyền mới nhất.
+
+---
+
 # 12. Participant Workspace
 
 # 12.1. Participant Dashboard

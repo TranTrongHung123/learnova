@@ -137,3 +137,8 @@ F17 thêm module `reporting` (controller/dto/service/repository), gọi SessionS
 để kiểm tra active CREATOR và ownership. JDBC read projection aggregate trên grading,
 snapshot và assignment; không tham chiếu repository/entity nội bộ module khác. Không
 thêm schema, cache hay async job. Xem [F17](f17-reporting-analytics-export.md).
+
+F18 thêm module `notification` (controller/dto/service/repository/config). Nhận immutable
+ApplicationEvent từ Session/Classroom bằng listener đồng bộ trong transaction gốc;
+module nguồn không phụ thuộc notification service. Job JDBC đọc persisted projections
+cho assignment/reminder/result, unique key chống retry. Xem [F18](f18-in-app-notifications.md).

@@ -791,16 +791,39 @@ Kiến trúc và sơ đồ: [F17 Reporting & Excel export](../architecture/f17-r
 **Nguồn:** UC-NOTI-01..03.  
 **Phụ thuộc:** F06, F11, F15.
 
-- [ ] Lưu notification, list/pagination, unread count, mark-read và mark-all-read theo owner.
-- [ ] Tích hợp `EXAM_ASSIGNED`, `EXAM_REMINDER`, `RESULT_RELEASED`, `CLASS_JOINED`.
-- [ ] Assignment notification phát khi Session được Schedule hoặc Participant mới đủ điều kiện nhận Session đã Schedule.
-- [ ] PUBLIC không gửi assignment/reminder hàng loạt tới toàn bộ User.
-- [ ] Reminder mặc định 24 giờ trước start; Session được schedule muộn hơn không gửi nhắc bù trùng với assignment.
-- [ ] Result notification chỉ phát khi người nhận thực sự được phép xem kết quả.
-- [ ] Dùng persistence và khóa chống trùng theo event/recipient; job retry không tạo notification lặp.
-- [ ] Deep link là route nội bộ; truy cập resource vẫn được backend kiểm tra.
+- [x] Lưu notification, list/pagination, unread count, mark-read và mark-all-read theo owner.
+- [x] Tích hợp `EXAM_ASSIGNED`, `EXAM_REMINDER`, `RESULT_RELEASED`, `CLASS_JOINED`.
+- [x] Assignment notification phát khi Session được Schedule hoặc Participant mới đủ điều kiện nhận Session đã Schedule.
+- [x] PUBLIC không gửi assignment/reminder hàng loạt tới toàn bộ User.
+- [x] Reminder mặc định 24 giờ trước start; Session được schedule muộn hơn không gửi nhắc bù trùng với assignment.
+- [x] Result notification chỉ phát khi người nhận thực sự được phép xem kết quả.
+- [x] Dùng persistence và khóa chống trùng theo event/recipient; job retry không tạo notification lặp.
+- [x] Deep link là route nội bộ; truy cập resource vẫn được backend kiểm tra.
 
 **Nghiệm thu:** Không đọc/sửa thông báo người khác; rollback nghiệp vụ không để notification sai; job chạy lại không nhân đôi.
+
+**Kết quả kiểm chứng ngày 07/10/2026:**
+
+- Migration V15 lưu notification và scheduledAt. Listener đồng bộ cùng transaction
+  Schedule/update/member activation; unique type/event/recipient chống retry/race.
+  Job 30 giây đối soát assignment, reminder và result; PUBLIC không broadcast.
+- Backend `mvnw.cmd -B verify`: BUILD SUCCESS, 191 test pass, không fail/error/skip,
+  PostgreSQL 17/Redis thật. 9 test F18 kiểm tra ownership/read idempotency, pagination,
+  active role/account, rollback, nhiều lớp/rejoin, mốc 24 giờ/schedule muộn, PUBLIC,
+  cancelled/removed/locked, toàn bộ ma trận result policy và concurrent job.
+  Assertion schema nền tảng đã cập nhật V14 → V15; regression migration/history pass.
+- Frontend lint, typecheck, production build và 105 unit test pass. Hai browser test
+  `npm run test:notification` pass với backend thật: assignment/class/result, deep link,
+  phân trang 21 thông báo, owner isolation, mutation failure/retry, offline và read-all.
+- Kiểm tra responsive 375/768/1024/1440 và 640×450, keyboard, reduced motion; đã review
+  ảnh desktop/mobile. UI bám Master, không thêm dependency hoặc mock fallback.
+- OpenAPI: 74 paths, 650 internal references hợp lệ, không duplicate key. Requirements,
+  use cases, screen flow, README và CI browser suite đã đồng bộ.
+- Chưa chạy CI remote, benchmark lượng notification cực lớn hoặc mọi screen reader/browser.
+  Job assignment/reminder hiện scan tập assignment hoạt động; result tối đa 500 thông báo
+  mới mỗi chu kỳ. Reminder/result có độ trễ định kỳ, không dùng WebSocket push/email.
+
+Kiến trúc và sơ đồ: [F18 In-app notifications](../architecture/f18-in-app-notifications.md).
 
 ### F19 — Admin User Management và Audit UI
 

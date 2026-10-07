@@ -29,10 +29,11 @@ public class SessionService {
     private final IdentityService identity;
     private final AuditService audit;
     private final Clock clock;
+    private final org.springframework.context.ApplicationEventPublisher events;
     public SessionService(SessionRepository sessions, SessionViews views, ExamService exams, ClassroomService classrooms,
-            ParticipantDirectory participants, IdentityService identity, AuditService audit, Clock clock) {
+            ParticipantDirectory participants, IdentityService identity, AuditService audit, Clock clock, org.springframework.context.ApplicationEventPublisher events) {
         this.sessions=sessions; this.views=views; this.exams=exams; this.classrooms=classrooms;
-        this.participants=participants; this.identity=identity; this.audit=audit; this.clock=clock;
+        this.participants=participants; this.identity=identity; this.audit=audit; this.clock=clock; this.events=events;
     }
     public PageResponse<Detail> list(UUID actor, SessionStatus status, UUID examId, UUID classroomId, PageQuery page) {
         authorize(actor); Instant now=now();
@@ -56,6 +57,7 @@ public class SessionService {
     }
     public Detail detail(UUID actor, UUID id) { return view(owned(actor,id,false),now()); }
     public record ResultRelease(Instant releasedAt) {}
+    public record AssignmentChanged(UUID sessionId) {}
     @Transactional
     public ResultRelease releaseResults(UUID actor, UUID id) {
         var s=owned(actor,id,true);
@@ -101,6 +103,7 @@ public class SessionService {
             s.configure(version==null?s.getExamId():version.examId(),input,score);
         }
         s.advance(now()); s.touch(now()); sessions.flush();
+        events.publishEvent(new AssignmentChanged(s.getId()));
         record(actor,s,AuditAction.SESSION_UPDATED,Map.of()); return view(s,now());
     }
     @Transactional
@@ -111,7 +114,7 @@ public class SessionService {
         validate(actor,input(s),new BigDecimal(version.totalScore()));
         Instant now=now();
         if (!s.getEndTime().isAfter(now)) invalid("endTime","Cửa sổ thi đã kết thúc.");
-        s.schedule(now); sessions.flush(); record(actor,s,AuditAction.SESSION_SCHEDULED,Map.of()); return view(s,now);
+        s.schedule(now); sessions.flush(); events.publishEvent(new AssignmentChanged(s.getId())); record(actor,s,AuditAction.SESSION_SCHEDULED,Map.of()); return view(s,now);
     }
     @Transactional
     public Detail cancel(UUID actor, UUID id, long revision) {

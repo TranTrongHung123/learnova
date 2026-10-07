@@ -55,6 +55,7 @@ type ShellProps = {
   onLogout: () => void;
   onLogoutAll?: () => void;
   hrefFor?: (href: string) => string;
+  notificationBell?: ReactNode;
 };
 
 export function WorkspaceShell({
@@ -67,6 +68,7 @@ export function WorkspaceShell({
   onLogout,
   onLogoutAll,
   hrefFor = (href) => href,
+  notificationBell,
 }: ShellProps) {
   const drawer = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -262,7 +264,7 @@ export function WorkspaceShell({
             </div>
           )}
         </div>
-        <div
+        <div className="flex items-center gap-2">{notificationBell}<div
           ref={menuRoot}
           className="relative"
           onBlur={(event) => {
@@ -341,6 +343,7 @@ export function WorkspaceShell({
               )}
             </div>
           )}
+        </div>
         </div>
       </header>
       <main

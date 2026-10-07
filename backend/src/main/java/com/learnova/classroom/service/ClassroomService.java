@@ -32,11 +32,12 @@ public class ClassroomService {
     private final ParticipantDirectory participants;
     private final AuditService audit;
     private final Clock clock;
+    private final org.springframework.context.ApplicationEventPublisher events;
 
     public ClassroomService(ClassroomRepository classrooms, MembershipRepository memberships, JoinCodeRepository codes,
-            ClassroomQueries queries, IdentityService identity, ParticipantDirectory participants, AuditService audit, Clock clock) {
+            ClassroomQueries queries, IdentityService identity, ParticipantDirectory participants, AuditService audit, Clock clock, org.springframework.context.ApplicationEventPublisher events) {
         this.classrooms = classrooms; this.memberships = memberships; this.codes = codes; this.queries = queries;
-        this.identity = identity; this.participants = participants; this.audit = audit; this.clock = clock;
+        this.identity = identity; this.participants = participants; this.audit = audit; this.clock = clock; this.events = events;
     }
     public PageResponse<OwnerSummary> owned(UUID actor, String search, PageQuery page) {
         requireRole(actor, "CREATOR");
@@ -135,11 +136,14 @@ public class ClassroomService {
         return c;
     }
     private ClassroomFailure invalidCode() { return new ClassroomFailure(400, "JOIN_CODE_INVALID"); }
+    public record MemberJoined(UUID classroomId, UUID userId, UUID membershipId, java.time.Instant joinedAt) {}
     private Membership activate(UUID actor, UUID id, UUID userId, AuditAction action) {
         var existing = memberships.findByClassroomIdAndUserId(id, userId);
         if (existing.isPresent() && existing.get().getStatus() == MembershipStatus.ACTIVE) return membership(existing.get());
         var member = existing.orElseGet(() -> memberships.save(new ClassroomMembership(id, userId, now())));
         member.changeStatus(MembershipStatus.ACTIVE, now());
+        memberships.flush();
+        events.publishEvent(new MemberJoined(id, userId, member.getId(), member.getUpdatedAt()));
         record(actor, id, action, Map.of("userId", userId.toString(), "membershipId", member.getId().toString(), "status", "ACTIVE"));
         return membership(member);
     }

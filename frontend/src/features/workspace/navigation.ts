@@ -76,7 +76,7 @@ export function navigationFor(workspace: Workspace): NavigationItem[] {
     pending("Nhật ký hoạt động", `${base}/audit-logs`, "audit");
   }
   if (workspace !== "ADMIN")
-    pending("Thông báo", "/notifications", "notifications");
+    items.push({ label: "Thông báo", href: "/notifications", icon: "notifications", available: true });
   items.push({ label: "Hồ sơ", href: "/profile", icon: "profile", available: true });
   return items;
 }
