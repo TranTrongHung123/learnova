@@ -2423,17 +2423,34 @@ Có thể dùng Application/Domain Event trong modular monolith.
 
 **Actor:** Participant, Creator
 
+**Precondition:** Đăng nhập, tài khoản ACTIVE, onboarding hoàn tất và còn role tương ứng.
+
+1. Mở chuông hoặc menu Thông báo; tải danh sách của User, mới nhất trước, 20 mục/trang.
+2. Có thể lọc Chỉ chưa đọc, chuyển trang và làm mới. Count tính toàn bộ danh sách.
+3. Mở nội dung liên quan qua route nội bộ; resource API kiểm tra quyền hiện tại.
+
+Empty/loading/network error có trạng thái riêng và retry. Notification không cấp lại
+quyền lớp/Session đã bị thu hồi. Không tải hoặc trả notification của người khác.
+
 ---
 
 ## UC-NOTI-02 - Đánh dấu đã đọc
 
 **Actor:** Participant, Creator
 
+Chọn Đánh dấu đã đọc; backend kiểm tra owner, lưu readAt. Retry giữ thời điểm đầu tiên.
+UI chỉ cập nhật khi API thành công, refetch danh sách/count; lỗi giữ trạng thái và cho thử lại.
+Notification không tồn tại hoặc không thuộc actor trả 404.
+
 ---
 
 ## UC-NOTI-03 - Đánh dấu tất cả đã đọc
 
 **Actor:** Participant, Creator
+
+Chọn Đánh dấu tất cả đã đọc; backend cập nhật unread của User trên mọi trang trong một
+statement. Retry an toàn; notification đến sau snapshot vẫn chưa đọc. UI refetch sau
+thành công, lọc chưa đọc có thể về trạng thái rỗng.
 
 ---
 

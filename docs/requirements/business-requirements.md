@@ -1765,6 +1765,24 @@ Nghiệp vụ:
 
 ---
 
+### Quy tắc F18
+
+- Notification thuộc User, dùng chung giữa các workspace; Participant/Creator chỉ đọc/sửa của mình.
+- Assignment gửi khi Schedule hoặc người mới đủ điều kiện nhận Session SCHEDULED/OPEN
+  chưa hết giờ; INDIVIDUAL và hợp nhất thành viên ACTIVE của các lớp CLASS, không broadcast PUBLIC.
+- Nhắc mặc định 24 giờ trước startTime, tối đa một lần mỗi Session/người nhận. Schedule
+  hoặc nhận assignment ở/sau mốc nhắc thì không nhắc bù; job trễ chỉ nhắc trước giờ bắt đầu.
+- RESULT_RELEASED gửi một lần mỗi Attempt GRADED khi policy thực sự cho phép xem;
+  HIDDEN không gửi. Payload chỉ thông báo và deep link, không chứa điểm/đáp án.
+- CLASS_JOINED gửi cho Participant và Creator chủ lớp khi add/join/activation mới.
+  Retry membership đang ACTIVE không gửi lại; leave/rejoin giữ lịch sử.
+- Persistence/unique key chống trùng; rollback nghiệp vụ không để lại notification.
+- Mốc time dùng backend. Job đối soát mặc định 30 giây; read-all chỉ ảnh hưởng các thông
+  báo đã tồn tại tại snapshot của câu lệnh, không tự đánh dấu thông báo đến sau.
+- Deep link chỉ route nội bộ; quyền truy cập resource được kiểm tra lại ở API đích.
+
+Chi tiết vận hành: [F18](../architecture/f18-in-app-notifications.md).
+
 ## 33.2. Email Notification
 
 Email là:

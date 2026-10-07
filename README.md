@@ -396,3 +396,14 @@ Không thêm migration/dependency. Chạy `mvnw.cmd -B verify` trong backend và
 `npm run test:result` trong frontend để kiểm tra F15/F17 với PostgreSQL/Redis thật.
 Chi tiết mẫu thống kê, định dạng Excel, UI và giới hạn:
 [kiến trúc F17](docs/architecture/f17-reporting-analytics-export.md).
+
+## F18 — In-app notifications
+
+Notification được lưu trong PostgreSQL, owner-only, phân trang/count, read/read-all
+idempotent; tích hợp EXAM_ASSIGNED, EXAM_REMINDER, RESULT_RELEASED và CLASS_JOINED.
+Listener cùng transaction và unique key chống rollback sai/duplicate; job mặc định
+30 giây (`learnova.notification.delay-ms`) đối soát reminder/result theo backend policy.
+PUBLIC không broadcast assignment/reminder. UI `/notifications` và chuông dùng API thật.
+
+Chạy backend `mvnw.cmd -B verify`; frontend `npm run test:notification` cho browser
+integration. Contract và giới hạn tại [kiến trúc F18](docs/architecture/f18-in-app-notifications.md).

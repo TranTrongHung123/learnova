@@ -24,6 +24,8 @@ servers:
     description: Local development
 
 tags:
+  - name: Notifications
+    description: F18 owner-scoped in-app notifications.
   - name: Reporting
     description: F17 owner-only Session analytics and Excel export.
   - name: Monitoring
@@ -50,6 +52,141 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: List the current user's notifications
+      description: Newest first by createdAt and id descending. Shared across workspaces; never accepts recipientId. Internal targetPath is navigation only; destination APIs enforce current access.
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+        - in: query
+          name: unreadOnly
+          schema: {type: boolean, default: false}
+      responses:
+        '200':
+          description: Owner-scoped page.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/NotificationPage'}
+        '400':
+          description: INVALID_REQUEST or VALIDATION_FAILED for invalid pagination/filter.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401':
+          description: Bearer authentication required; cookies do not authenticate this API.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '403':
+          description: Active onboarded PARTICIPANT or CREATOR required. ACCOUNT_LOCKED, ACCOUNT_DISABLED, ONBOARDING_REQUIRED or ACCESS_DENIED.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: SERVICE_UNAVAILABLE; retry later.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+  /api/v1/notifications/unread-count:
+    get:
+      tags: [Notifications]
+      operationId: notificationUnreadCount
+      summary: Count current user's unread notifications
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Count across all pages and workspaces.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [unreadCount]
+                properties:
+                  unreadCount: {type: integer, format: int64, minimum: 0}
+        '401':
+          description: Bearer authentication required; cookies do not authenticate this API.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '403':
+          description: Active onboarded PARTICIPANT or CREATOR required. ACCOUNT_LOCKED, ACCOUNT_DISABLED, ONBOARDING_REQUIRED or ACCESS_DENIED.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: SERVICE_UNAVAILABLE; retry later.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+  /api/v1/notifications/{id}/read:
+    post:
+      tags: [Notifications]
+      operationId: markNotificationRead
+      summary: Mark one owned notification read, idempotently
+      description: Preserves the first readAt. Requires only access bearer, no CSRF cookie. No request body.
+      security: [{bearerAuth: []}]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '204':
+          description: Read state persisted, including repeated requests.
+        '400':
+          description: INVALID_REQUEST for malformed UUID.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '404':
+          description: RESOURCE_NOT_FOUND for missing or foreign notification.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '401':
+          description: Bearer authentication required; cookies do not authenticate this API.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '403':
+          description: Active onboarded PARTICIPANT or CREATOR required. ACCOUNT_LOCKED, ACCOUNT_DISABLED, ONBOARDING_REQUIRED or ACCESS_DENIED.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: SERVICE_UNAVAILABLE; retry later.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+  /api/v1/notifications/read-all:
+    post:
+      tags: [Notifications]
+      operationId: markAllNotificationsRead
+      summary: Mark all current user's existing unread notifications read
+      description: Idempotent, affects all pages. Notifications inserted after this statement's snapshot remain unread. No request body or CSRF cookie; access bearer required.
+      security: [{bearerAuth: []}]
+      responses:
+        '204':
+          description: Read state persisted.
+        '401':
+          description: Bearer authentication required; cookies do not authenticate this API.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '403':
+          description: Active onboarded PARTICIPANT or CREATOR required. ACCOUNT_LOCKED, ACCOUNT_DISABLED, ONBOARDING_REQUIRED or ACCESS_DENIED.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
+        '503':
+          description: SERVICE_UNAVAILABLE; retry later.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/ApiProblem'}
   /api/v1/exam-sessions/{id}/analytics:
     get:
       tags:
@@ -3961,6 +4098,31 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    Notification:
+      type: object
+      required: [id, type, title, message, targetPath, createdAt, readAt]
+      properties:
+        id: {type: string, format: uuid}
+        type: {type: string, enum: [EXAM_ASSIGNED, EXAM_REMINDER, RESULT_RELEASED, CLASS_JOINED]}
+        title: {type: string, maxLength: 250}
+        message: {type: string, maxLength: 1000}
+        targetPath:
+          type: string
+          maxLength: 200
+          description: Allowlisted internal route for participant exam/result, participant classes or creator class. No scores, answers, external URLs or auth tokens.
+        createdAt: {type: string, format: date-time}
+        readAt: {type: [string, 'null'], format: date-time}
+    NotificationPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items: {$ref: '#/components/schemas/Notification'}
+        page: {type: integer, minimum: 0}
+        size: {type: integer, minimum: 1, maximum: 100}
+        totalElements: {type: integer, format: int64, minimum: 0}
+        totalPages: {type: integer, minimum: 0}
     SessionAnalytics:
       type: object
       required:
