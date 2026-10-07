@@ -48,6 +48,12 @@ server:
     include-exception: false
 
 learnova:
+  admin:
+    bootstrap:
+      enabled: ${ADMIN_BOOTSTRAP_ENABLED:false}
+      email: ${ADMIN_BOOTSTRAP_EMAIL:}
+      password: ${ADMIN_BOOTSTRAP_PASSWORD:}
+      display-name: ${ADMIN_BOOTSTRAP_DISPLAY_NAME:}
   auth:
     jwt-secret: ${JWT_SECRET}
     issuer: ${JWT_ISSUER:learnova}

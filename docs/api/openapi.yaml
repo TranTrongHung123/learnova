@@ -24,6 +24,8 @@ servers:
     description: Local development
 
 tags:
+  - name: Admin
+    description: F19 active ADMIN user management and read-only critical audit history.
   - name: Notifications
     description: F18 owner-scoped in-app notifications.
   - name: Reporting
@@ -52,6 +54,135 @@ tags:
     description: API kiểm tra trạng thái hệ thống
 
 paths:
+  /api/v1/admin/users:
+    get:
+      tags: [Admin]
+      operationId: listAdminUsers
+      summary: Search and filter users
+      description: Active onboarded ADMIN required, checked against current database roles as well as bearer claims. Literal case-insensitive substring search on email/displayName. Sorted by createdAt DESC and id DESC. No lastLoginAt is collected in V1.
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+        - {in: query, name: search, schema: {type: string, maxLength: 254}}
+        - {in: query, name: role, schema: {type: string, enum: [PARTICIPANT, CREATOR, ADMIN]}}
+        - {in: query, name: status, schema: {type: string, enum: [ACTIVE, LOCKED, DISABLED]}}
+      responses:
+        '200':
+          description: User page, including pending onboarding accounts.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminUserPage'}
+        '400': {$ref: '#/components/responses/AdminInvalidRequest'}
+        '401': {$ref: '#/components/responses/AdminUnauthorized'}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '503': {$ref: '#/components/responses/AdminUnavailable'}
+  /api/v1/admin/users/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/AdminUserId'}
+    get:
+      tags: [Admin]
+      operationId: getAdminUser
+      summary: View user account details
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/AdminUserDetail'}
+        '400': {$ref: '#/components/responses/AdminInvalidRequest'}
+        '401': {$ref: '#/components/responses/AdminUnauthorized'}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/AdminUserNotFound'}
+        '503': {$ref: '#/components/responses/AdminUnavailable'}
+  /api/v1/admin/users/{id}/lock:
+    parameters:
+      - {$ref: '#/components/parameters/AdminUserId'}
+    post:
+      tags: [Admin]
+      operationId: lockAdminUser
+      summary: Lock an account and revoke all refresh sessions
+      description: ACTIVE to LOCKED; already LOCKED is idempotent without another audit. Self-lock is rejected. DISABLED cannot transition. Login, Google session issuance and refresh serialize on the same User lock. Revocation must succeed before DB commit; audit and status commit together. Existing access JWT may remain valid up to 15 minutes; Start Attempt checks ACTIVE. Preserves all history. No request body.
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/AdminUserDetail'}
+        '400': {$ref: '#/components/responses/AdminInvalidRequest'}
+        '401': {$ref: '#/components/responses/AdminUnauthorized'}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/AdminUserNotFound'}
+        '409': {$ref: '#/components/responses/AdminConflict'}
+        '503': {$ref: '#/components/responses/AdminUnavailable'}
+  /api/v1/admin/users/{id}/unlock:
+    parameters:
+      - {$ref: '#/components/parameters/AdminUserId'}
+    post:
+      tags: [Admin]
+      operationId: unlockAdminUser
+      summary: Unlock an account without restoring sessions
+      description: LOCKED to ACTIVE; already ACTIVE is idempotent without another audit. DISABLED cannot transition. Requires a new login. Revokes any residual sessions before transition; never restores old refresh sessions. Preserves history. No request body.
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {$ref: '#/components/responses/AdminUserDetail'}
+        '400': {$ref: '#/components/responses/AdminInvalidRequest'}
+        '401': {$ref: '#/components/responses/AdminUnauthorized'}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/AdminUserNotFound'}
+        '409': {$ref: '#/components/responses/AdminConflict'}
+        '503': {$ref: '#/components/responses/AdminUnavailable'}
+  /api/v1/admin/users/{id}/roles:
+    parameters:
+      - {$ref: '#/components/parameters/AdminUserId'}
+    put:
+      tags: [Admin]
+      operationId: replaceUserBusinessRoles
+      summary: Replace PARTICIPANT and CREATOR roles
+      description: Only these two roles may be submitted; ADMIN and unknown roles/fields are rejected. Existing ADMIN is preserved. Final effective roles cannot be empty; an ADMIN-only account may submit an empty business-role list. Pending onboarding accounts cannot change roles. Same effective set is idempotent. ROLE_CHANGED old/new role metadata commits atomically. Existing JWT claims can remain stale up to 15 minutes; refresh reads current roles and business APIs enforce their own current permission checks. Preserves all historical data.
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [roles]
+              properties:
+                roles:
+                  type: array
+                  maxItems: 2
+                  uniqueItems: true
+                  items: {type: string, enum: [PARTICIPANT, CREATOR]}
+      responses:
+        '200': {$ref: '#/components/responses/AdminUserDetail'}
+        '400': {$ref: '#/components/responses/AdminInvalidRequest'}
+        '401': {$ref: '#/components/responses/AdminUnauthorized'}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '404': {$ref: '#/components/responses/AdminUserNotFound'}
+        '409': {$ref: '#/components/responses/AdminConflict'}
+        '503': {$ref: '#/components/responses/AdminUnavailable'}
+  /api/v1/admin/audit-logs:
+    get:
+      tags: [Admin]
+      operationId: listAdminAuditLogs
+      summary: Search critical audit history
+      description: Read-only; active onboarded ADMIN required. All supplied filters combine with AND. IDs/type/action are exact and case-sensitive. Sorted by occurredAt DESC and id DESC. Server timestamps, nullable actorUserId for System. Returns only explicitly allowed metadata keys per action, never raw credentials, entities or request payloads. No mutation/export API.
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/Size'}
+        - {in: query, name: actorUserId, schema: {type: string, minLength: 1, maxLength: 128}}
+        - {in: query, name: action, schema: {$ref: '#/components/schemas/AuditAction'}}
+        - {in: query, name: targetType, schema: {type: string, minLength: 1, maxLength: 64}, description: 'Existing values include User, Classroom, QUESTION, QUESTION_IMPORT, EXAM, EXAM_VERSION, EXAM_SESSION.'}
+        - {in: query, name: targetId, schema: {type: string, minLength: 1, maxLength: 128}}
+        - {in: query, name: from, schema: {type: string, format: date-time}, description: Inclusive timestamp with timezone.}
+        - {in: query, name: to, schema: {type: string, format: date-time}, description: Exclusive timestamp with timezone; must be after from when both exist.}
+      responses:
+        '200':
+          description: Page of audit records.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuditPage'}
+        '400': {$ref: '#/components/responses/AdminInvalidRequest'}
+        '401': {$ref: '#/components/responses/AdminUnauthorized'}
+        '403': {$ref: '#/components/responses/AdminForbidden'}
+        '503': {$ref: '#/components/responses/AdminUnavailable'}
   /api/v1/notifications:
     get:
       tags: [Notifications]
@@ -3919,6 +4050,11 @@ components:
       name: learnova_refresh
 
   parameters:
+    AdminUserId:
+      in: path
+      name: id
+      required: true
+      schema: {type: string, format: uuid}
     QuestionImportId:
       in: path
       name: importId
@@ -3951,6 +4087,41 @@ components:
         default: 20
 
   responses:
+    AdminUserDetail:
+      description: Current safe account details; never includes password hash, credentials or refresh tokens.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/AdminUser'}
+    AdminInvalidRequest:
+      description: INVALID_REQUEST or VALIDATION_FAILED; invalid filter, timestamp, pagination, role set or unknown JSON field.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    AdminUnauthorized:
+      description: AUTHENTICATION_REQUIRED; valid bearer token required, cookie alone does not authorize.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    AdminForbidden:
+      description: ACCESS_DENIED, ACCOUNT_LOCKED, ACCOUNT_DISABLED or ONBOARDING_REQUIRED; requires current active onboarded ADMIN.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    AdminUserNotFound:
+      description: USER_NOT_FOUND.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    AdminConflict:
+      description: SELF_LOCK_FORBIDDEN, USER_STATE_CONFLICT (DISABLED), or USER_ONBOARDING_PENDING (role mutation).
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
+    AdminUnavailable:
+      description: SERVICE_UNAVAILABLE; database/Redis access failed. Refresh revocation can survive a rolled-back DB transaction; log in again if needed.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ApiProblem'}
     AttemptConflict:
       description: ANSWER_REVISION_CONFLICT, ATTEMPT_DEADLINE_PASSED, ATTEMPT_NOT_EDITABLE, ATTEMPTS_EXHAUSTED or SESSION_INVALID_STATE. No mutation committed.
       content:
@@ -4098,6 +4269,76 @@ components:
             $ref: '#/components/schemas/ApiProblem'
 
   schemas:
+    AdminUser:
+      type: object
+      required: [id, email, displayName, roles, status, createdAt, onboardingCompleted]
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        displayName: {type: string}
+        roles: {type: array, uniqueItems: true, items: {type: string, enum: [PARTICIPANT, CREATOR, ADMIN]}}
+        status: {type: string, enum: [ACTIVE, LOCKED, DISABLED]}
+        createdAt: {type: string, format: date-time}
+        onboardingCompleted: {type: boolean}
+    AdminUserPage:
+      allOf:
+        - {$ref: '#/components/schemas/PageResponse'}
+        - type: object
+          properties:
+            content: {type: array, items: {$ref: '#/components/schemas/AdminUser'}}
+    AuditAction:
+      type: string
+      enum:
+        - ADMIN_BOOTSTRAPPED
+        - ROLE_CHANGED
+        - ACCOUNT_LOCKED
+        - ACCOUNT_UNLOCKED
+        - PASSWORD_CHANGED
+        - GOOGLE_ACCOUNT_LINKED
+        - ONBOARDING_COMPLETED
+        - CLASSROOM_CREATED
+        - CLASSROOM_UPDATED
+        - CLASSROOM_MEMBER_ADDED
+        - CLASSROOM_MEMBER_REMOVED
+        - CLASSROOM_JOINED
+        - CLASSROOM_LEFT
+        - CLASSROOM_JOIN_CODE_GENERATED
+        - CLASSROOM_JOIN_CODE_REVOKED
+        - QUESTIONS_IMPORTED
+        - QUESTION_CREATED
+        - QUESTION_UPDATED
+        - QUESTION_ARCHIVED
+        - QUESTION_RESTORED
+        - EXAM_CREATED
+        - EXAM_VERSION_CREATED
+        - EXAM_VERSION_PUBLISHED
+        - EXAM_ARCHIVED
+        - SESSION_CREATED
+        - SESSION_SCHEDULED
+        - SESSION_UPDATED
+        - SESSION_CANCELLED
+        - SESSION_END_TIME_EXTENDED
+        - RESULT_MANUALLY_RELEASED
+    AuditItem:
+      type: object
+      required: [id, actorUserId, action, targetType, targetId, metadata, occurredAt]
+      properties:
+        id: {type: string, format: uuid}
+        actorUserId: {type: [string, 'null']}
+        action: {$ref: '#/components/schemas/AuditAction'}
+        targetType: {type: string}
+        targetId: {type: string}
+        occurredAt: {type: string, format: date-time}
+        metadata:
+          type: object
+          additionalProperties: {type: string}
+          description: 'Per-action allowlist: oldRoles/newRoles; oldStatus/newStatus; version; status/revision; importedRows/skippedRows; userId/membershipId/status; oldEndTime/newEndTime. Other actions return {}.'
+    AuditPage:
+      allOf:
+        - {$ref: '#/components/schemas/PageResponse'}
+        - type: object
+          properties:
+            content: {type: array, items: {$ref: '#/components/schemas/AuditItem'}}
     Notification:
       type: object
       required: [id, type, title, message, targetPath, createdAt, readAt]

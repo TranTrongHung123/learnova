@@ -407,3 +407,22 @@ PUBLIC không broadcast assignment/reminder. UI `/notifications` và chuông dù
 
 Chạy backend `mvnw.cmd -B verify`; frontend `npm run test:notification` cho browser
 integration. Contract và giới hạn tại [kiến trúc F18](docs/architecture/f18-in-app-notifications.md).
+
+## F19 — Admin User Management và Audit UI
+
+Admin tra cứu User tại `/admin/users`, khóa/mở khóa và quản lý PARTICIPANT/CREATOR
+tại trang chi tiết. `/admin/audit-logs` lọc người thực hiện, hành động, đối tượng và
+thời gian, chỉ trả metadata an toàn. Lock thu hồi refresh sessions, giữ nguyên lịch sử;
+unlock yêu cầu login lại. Không cấp ADMIN qua UI/API thông thường.
+
+Bootstrap ADMIN mặc định tắt. Vận hành cung cấp `ADMIN_BOOTSTRAP_ENABLED=true`,
+`ADMIN_BOOTSTRAP_EMAIL`, `ADMIN_BOOTSTRAP_PASSWORD`, `ADMIN_BOOTSTRAP_DISPLAY_NAME`
+qua môi trường backend khi chưa có ADMIN; tắt và gỡ secret sau khi khởi tạo.
+Không có password mặc định, không tự nâng quyền tài khoản đã đăng ký.
+Xem quy trình, transaction và sơ đồ tại
+[kiến trúc F19](docs/architecture/f19-admin-user-management-audit.md).
+
+V16 bổ sung index User. Kiểm thử: backend `mvnw.cmd -B verify`; frontend
+`npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:admin`.
+Browser suite tạo PostgreSQL/Redis test và dùng credential bootstrap ngẫu nhiên;
+không thay đổi database vận hành. Port riêng: backend 8093, frontend 3119.

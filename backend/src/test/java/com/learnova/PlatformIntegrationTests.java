@@ -51,7 +51,7 @@ class PlatformIntegrationTests {
     @Test
     void contextValidatesMigratedPostgres17SchemaWithoutGeneratedUser() {
         assertThat(jdbc.queryForObject("SHOW server_version", String.class)).startsWith("17.");
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("15");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("16");
         flyway.validate();
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(entityManagerFactory.isOpen()).isTrue();
