@@ -17,7 +17,8 @@ async function register(page: Page, multi = false) {
     .getByRole("button", { name: "Tạo tài khoản", exact: true })
     .click();
   await expect(page).toHaveURL(/\/login\?registered=1/);
-  await expect(page.getByRole("status")).toContainText("Đăng ký thành công");
+  await expect(page.getByRole("status").filter({ hasText: "Đăng ký thành công" }))
+    .toHaveText("Đăng ký thành công. Bạn có thể đăng nhập.");
   return email;
 }
 async function login(page: Page, email: string) {
@@ -40,7 +41,20 @@ test("register, multi-role, preference, real cookie, reload and logout", async (
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  const email = await register(page, true);
+  let releaseGoogleConfig!: () => void;
+  const googleConfigPending = new Promise<void>(resolve => { releaseGoogleConfig = resolve; });
+  await page.route("**/api/v1/auth/google/config", async route => {
+    if (new URL(page.url()).pathname === "/login") await googleConfigPending;
+    await route.continue();
+  });
+  let email: string;
+  try {
+    email = await register(page, true);
+    await expect(page.getByRole("status").filter({ hasText: "Đang kiểm tra Google Login" })).toBeVisible();
+  } finally {
+    releaseGoogleConfig();
+    await page.unrouteAll({ behavior: "wait" });
+  }
   await login(page, email);
   await expect(
     page.getByRole("heading", {
