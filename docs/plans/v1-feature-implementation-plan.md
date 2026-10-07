@@ -14,14 +14,14 @@ Nguồn đối chiếu:
 | Thành phần | Hiện trạng |
 |---|---|
 | Backend | Spring Boot 4.1.1, Java 21; có health, ProblemDetail, pagination và audit foundation |
-| Database | PostgreSQL 17, Flyway V1–V14 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version, Session/assignment, Attempt, answer/order, grading, manual result release và lastSeen; Hibernate validate schema |
+| Database | PostgreSQL 17, Flyway V1–V16 gồm identity, audit, classroom/membership, Question Bank, import preview, Exam Version, Session/assignment, Attempt, answer/order, grading, manual result release, lastSeen, notification và index quản trị User; Hibernate validate schema |
 | Authentication | Local/Google login, onboarding, link account, JWT, refresh rotation/reuse, logout-all và multi-role; Actuator vẫn đóng |
-| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix, Session, discovery, Exam Taking/Submit, Results/history/manual release, Monitoring và Reporting/Excel export tích hợp API thật |
+| Frontend | Workspace shell, auth/profile, Classroom, Question Bank, Excel Import, Exam Builder/Matrix, Session, discovery, Exam Taking/Submit, Results/history/manual release, Monitoring, Reporting/Excel export, Notification và Admin User/Audit tích hợp API thật |
 | Redis, WebSocket | Redis 7.4 lưu refresh session/hash, OAuth/pending flow và chạy Lua atomic; F16 native WebSocket owner-only, committed projection, SYNC/DELTA và reconnect reconciliation |
-| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams, Exam Sessions, Participant discovery, Attempts, Results, Monitoring và Reporting/Excel export; 70 paths, lỗi và pagination dùng chung |
-| Testing | F17: 182 backend, 92 unit frontend; 4 browser Results/Reporting pass local; các suite khác xem thời điểm kiểm chứng tại từng feature |
+| OpenAPI | Health, auth/profile/password, Classroom, Questions, Question Imports, Exams, Exam Sessions, Participant discovery, Attempts, Results, Monitoring, Reporting/Excel export, Notification và Admin User/Audit; lỗi và pagination dùng chung |
+| Testing | Kết quả backend, frontend unit/build và browser integration được ghi theo từng feature bên dưới |
 | CI | Java 21/Node 22/Chromium/Linux; F06 từng fail reload hai tab và bootstrap trước tạo lớp, các bản sửa bước chờ chưa kiểm chứng remote |
-| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F17 |
+| Tài liệu | Requirements, screen flow, OpenAPI, README và sơ đồ kiến trúc đồng bộ qua F19 |
 
 **F01–F02 đã hoàn thành và kiểm chứng local ngày 26/09/2026.** M0 hoàn thành.
 **F03 đã triển khai, kiểm chứng local và CI ngày 28/09/2026**; đã push nhánh và mở
@@ -41,7 +41,9 @@ F13–F14 đã triển khai và kiểm chứng local ngày 05/10/2026 theo phạ
 F14 xác nhận hoàn tất; F15 đã bổ sung result policy/UI, history và best score ngày 06/10/2026.
 F16 đã triển khai và kiểm chứng local ngày 06/10/2026; bàn giao bằng commit local.
 F17 đã triển khai và kiểm chứng local ngày 07/10/2026; bàn giao bằng commit local.
-F18–F21 chưa hoàn thành.
+F18 đã triển khai và kiểm chứng local theo kết quả ghi bên dưới.
+F19 đã triển khai Admin User Management và Audit UI; kết quả kiểm chứng ở mục F19.
+F20–F21 chưa hoàn thành.
 
 Cách triển khai đã thống nhất: dựng nền tảng chung, sau đó hoàn chỉnh từng feature theo chuỗi:
 
@@ -830,14 +832,45 @@ Kiến trúc và sơ đồ: [F18 In-app notifications](../architecture/f18-in-ap
 **Nguồn:** UC-ADMIN-01..06, 08.  
 **Phụ thuộc:** F03 và audit từ F01.
 
-- [ ] Bootstrap ADMIN bằng cơ chế vận hành có cấu hình bảo vệ, không có mật khẩu mặc định được commit.
-- [ ] List/search/filter/detail User; lock, unlock và quản lý PARTICIPANT/CREATOR.
-- [ ] Lock chặn login/refresh, revoke refresh sessions; unlock yêu cầu login lại.
-- [ ] Giữ trade-off access JWT tối đa 15 phút theo Use Cases; Start Attempt vẫn kiểm tra account ACTIVE.
-- [ ] UI quản trị không cấp ADMIN và không mặc định có quyền nghiệp vụ Creator/Participant.
-- [ ] Audit list/filter theo actor, action, target và thời gian; không expose secret.
+- [x] Bootstrap ADMIN bằng cơ chế vận hành có cấu hình bảo vệ, không có mật khẩu mặc định được commit.
+- [x] List/search/filter/detail User; lock, unlock và quản lý PARTICIPANT/CREATOR.
+- [x] Lock chặn login/refresh, revoke refresh sessions; unlock yêu cầu login lại.
+- [x] Giữ trade-off access JWT tối đa 15 phút theo Use Cases; Start Attempt vẫn kiểm tra account ACTIVE.
+- [x] UI quản trị không cấp ADMIN và không mặc định có quyền nghiệp vụ Creator/Participant.
+- [x] Audit list/filter theo actor, action, target và thời gian; không expose secret.
 
 **Nghiệm thu:** Participant/Creator bị chặn khỏi Admin API; request sửa role trái phép bị reject; lock/unlock không xóa lịch sử; mỗi critical mutation có audit tương ứng.
+
+**Triển khai F19:** `/admin/users`, `/admin/users/[userId]`, `/admin/audit-logs`, sáu
+API quản trị và migration V16 index User. Bootstrap mặc định tắt, tạo ADMIN đầu tiên
+với credential vận hành; không takeover User thường, không reset credential khi chạy lại.
+User mutation có row lock và audit cùng transaction. Login local/Google/refresh cùng
+khóa User; Redis revoke lỗi ngăn DB commit. UI có dialog xác nhận, filter/page trên URL,
+loading/empty/error/retry và table/card responsive, không mock fallback.
+
+**Kiểm chứng local ngày 07/10/2026:**
+
+- Backend `.\mvnw.cmd -B verify`: **202 tests pass**, 0 failure/error/skipped;
+  PostgreSQL 17/Redis Testcontainers, schema V16 và migration nâng cấp có dữ liệu cũ.
+  10 test Admin kiểm tra bootstrap, authorization, role tampering, session revocation,
+  auth-vs-lock, hai Admin khóa lẫn nhau, idempotency, rollback và audit metadata.
+  Test Attempt bổ sung xác nhận khóa/đổi role/mở khóa không thay đổi Result đã chấm.
+- `npm run lint`, `npm run typecheck`, `npm test`: pass, 105 frontend unit tests.
+- `npm run build`: pass với Next.js 16.3.6; ba route Admin được build.
+- `npm run test:admin`: 4 browser tests pass với API thật và credential bootstrap ngẫu nhiên;
+  search/role/lock/unlock/audit, URL reload, pagination, empty/offline/retry, keyboard
+  dialog/Escape/focus, date validation và chặn riêng PARTICIPANT/CREATOR.
+- Kiểm tra 375/768/1024/1440px, viewport thấp và reduced motion; đã review ảnh User list,
+  User detail và Audit ở 375/1440px. Chưa kiểm chứng screen reader thực hoặc CI remote.
+- OpenAPI parse không duplicate key, mọi local `$ref` resolve; AuditAction đồng nhất
+  backend/frontend/contract. Requirements, screen flow, README và kiến trúc đã đồng bộ.
+
+Giới hạn: search substring có thể scan User, chưa benchmark tải production; không thu
+thập lastLoginAt. Redis revoke không rollback cùng DB, có thể buộc login lại nếu DB
+rollback sau revoke. F20 dashboard chưa nằm trong phạm vi này.
+
+Kiến trúc, sơ đồ và hướng dẫn bootstrap:
+[F19 Admin User Management và Audit UI](../architecture/f19-admin-user-management-audit.md).
 
 ### F20 — Dashboard ba workspace
 

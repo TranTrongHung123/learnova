@@ -2538,6 +2538,12 @@ Admin không cấp `ADMIN` qua UI thông thường.
 
 Mọi role change quan trọng phải audit.
 
+F19: request chỉ nhận tập PARTICIPANT/CREATOR (không trùng, tối đa hai), ADMIN có sẵn
+được bảo toàn. Không cho tài khoản thường mất mọi role hoặc sửa role khi User chưa
+hoàn tất onboarding. Cùng tập role không ghi audit trùng; role change không xóa lịch sử.
+Lock/unlock cũng idempotent, không cho tự khóa Admin và không chuyển trạng thái DISABLED.
+Backend giữ row lock chung với local/Google login và refresh khi đổi trạng thái.
+
 ---
 
 ## UC-ADMIN-07 - Thống kê hệ thống
@@ -2558,6 +2564,10 @@ Active Users
 ## UC-ADMIN-08 - Xem Audit Log
 
 Audit các hành động business-critical.
+
+F19 dùng `/admin/audit-logs`: filter chính xác actorUserId/action/targetType/targetId,
+thời gian từ inclusive đến exclusive có timezone, pagination, mới nhất trước. Actor
+rỗng hiển thị Hệ thống. Metadata chỉ gồm key an toàn theo từng action; không có sửa/xóa.
 
 Ví dụ:
 

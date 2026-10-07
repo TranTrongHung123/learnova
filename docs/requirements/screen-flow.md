@@ -2786,6 +2786,10 @@ Open Audit Logs
 
 # 23.2. User Management
 
+F19 đã tích hợp API thật. Bộ lọc search email/displayName, role, status và page lưu trên
+URL; submit bộ lọc trở về trang đầu. Desktop có table, viewport hẹp có card đầy đủ action.
+Loading/empty/network error có trạng thái riêng và Thử lại; backend vẫn enforce ADMIN.
+
 **Route**
 
 ```text
@@ -2829,6 +2833,13 @@ Unlock
 ---
 
 # 23.3. User Detail
+
+F19 hiển thị email/tên/ID/createdAt/onboarding/status và vai trò hiện tại. Không giả
+lastLoginAt khi hệ thống chưa lưu. Sửa PARTICIPANT/CREATOR có xác nhận; ADMIN nếu đã có
+chỉ hiển thị đọc. Không cho bỏ mọi role của User thường; chặn sửa role đang onboarding.
+Lock/unlock có dialog xác nhận thu hồi refresh, giữ lịch sử và JWT TTL tối đa 15 phút;
+unlock yêu cầu login lại. Không tự khóa tài khoản quản trị, không đổi DISABLED tại đây.
+Thành công chỉ sau API xác nhận; có link nhật ký theo target và hoạt động theo actor.
 
 **Route**
 
@@ -2883,6 +2894,11 @@ Historical exam data will remain.
 ---
 
 # 23.4. Audit Log
+
+F19 chỉ đọc, phân trang mới nhất trước; filter action, actor ID, target type/ID và
+from/to lưu trên URL. Date input theo timezone trình duyệt, gửi ISO timestamp có timezone;
+mốc từ inclusive, mốc đến exclusive. Metadata an toàn mở bằng “Xem thay đổi”, actor
+null hiển thị Hệ thống. Có loading/empty/error/retry và card ở viewport hẹp.
 
 **Route**
 

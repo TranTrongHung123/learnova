@@ -1,6 +1,7 @@
 package com.learnova.audit.enums;
 
 public enum AuditAction {
+    ADMIN_BOOTSTRAPPED,
     EXAM_CREATED,
     EXAM_VERSION_CREATED,
     QUESTIONS_IMPORTED,

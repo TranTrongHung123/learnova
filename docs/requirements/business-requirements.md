@@ -1872,6 +1872,15 @@ View Critical Audit Logs
 
 Admin không cấp `ADMIN` qua UI thông thường.
 
+F19 triển khai list/search/filter/detail bằng API Admin riêng, phân trang ở backend.
+Chỉ Admin ACTIVE đã hoàn tất onboarding được truy cập. Sửa role thay thế tập
+PARTICIPANT/CREATOR và giữ nguyên ADMIN đã được cấp qua vận hành; reject ADMIN/role
+lạ/field lạ từ request. Tài khoản thường phải giữ ít nhất một role. User đang onboarding
+phải hoàn tất thiết lập trước khi Admin sửa role. Không chuyển quyền sở hữu dữ liệu.
+Bootstrap ADMIN mặc định tắt, chỉ khởi tạo tài khoản mới khi chưa có ADMIN, với email,
+tên và mật khẩu do vận hành cung cấp; không có mật khẩu mặc định hoặc nâng quyền User
+đăng ký sẵn. Chi tiết tại [kiến trúc F19](../architecture/f19-admin-user-management-audit.md).
+
 ---
 
 # 37. Account Lock Rule
@@ -1897,6 +1906,13 @@ LOCKED
 ```
 
 User phải login lại.
+
+F19 không cho Admin tự khóa chính mình; trạng thái DISABLED không chuyển qua lock/unlock.
+Retry cùng trạng thái không tạo audit trùng. Login local, cấp session Google và refresh
+giữ row lock User chung với thao tác quản trị. Access JWT đã cấp vẫn có TTL tối đa
+15 phút; Start Attempt và các endpoint cần quyền/account hiện tại tiếp tục kiểm tra DB.
+Revoke Redis phải thành công trước DB commit; DB/audit rollback không phục hồi session
+đã revoke, vì vậy User có thể cần login lại ngay cả khi trạng thái vẫn giữ nguyên.
 
 ---
 
@@ -1935,6 +1951,10 @@ Timestamp do server tạo. `actorUserId` lấy từ principal đã xác thực, 
 cho System. Metadata chỉ chứa trường an toàn cần cho hành động, không lưu
 password, token, secret, request body hay entity đầy đủ. Không xóa audit khi
 resource hoặc account thay đổi trạng thái.
+
+F19 cho Admin đọc audit theo actorUserId, action, targetType/targetId và khoảng thời gian
+`from <= timestamp < to`, mới nhất trước và có pagination. API chỉ trả metadata key
+được cho phép theo từng action. Không có mutation/delete audit qua UI/API.
 
 ---
 

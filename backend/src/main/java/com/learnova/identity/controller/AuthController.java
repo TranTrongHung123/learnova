@@ -55,11 +55,8 @@ public class AuthController {
     @PostMapping("/refresh")
     AuthDtos.TokenResponse refresh(@CookieValue(name = COOKIE, required = false) String token, HttpServletResponse response) {
         try {
-            var session = sessions.lookup(token);
-            AuthDtos.UserSummary user;
-            try { user = identity.activeUser(session.userId()); }
-            catch (AuthFailure failure) { sessions.revoke(session); throw failure; }
-            return respond(user, sessions.rotate(token, session), response);
+            var login = identity.refresh(token);
+            return respond(login.user(), login.issued(), response);
         } catch (AuthFailure failure) {
             clearCookie(response);
             throw failure;
@@ -89,11 +86,11 @@ public class AuthController {
         catch (AuthFailure ignored) { /* Logout lặp lại vẫn thành công khi token không còn hợp lệ. */ }
     }
     void googleSession(UUID userId, HttpServletRequest request, HttpServletResponse response) {
-        identity.activeUser(userId);
+        String previous = null;
         if (request.getCookies() != null)
             for (var cookie : request.getCookies())
-                if (COOKIE.equals(cookie.getName())) logoutSession(cookie.getValue());
-        var issued = sessions.create(userId);
+                if (COOKIE.equals(cookie.getName())) previous = cookie.getValue();
+        var issued = identity.googleLogin(userId, previous).issued();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie(issued.token(),
                 Duration.between(clock.instant(), issued.session().expiresAt())).toString());
     }

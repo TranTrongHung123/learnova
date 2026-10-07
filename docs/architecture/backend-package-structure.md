@@ -142,3 +142,8 @@ F18 thêm module `notification` (controller/dto/service/repository/config). Nh�
 ApplicationEvent từ Session/Classroom bằng listener đồng bộ trong transaction gốc;
 module nguồn không phụ thuộc notification service. Job JDBC đọc persisted projections
 cho assignment/reminder/result, unique key chống retry. Xem [F18](f18-in-app-notifications.md).
+
+F19 thêm AdminUserController/AdminUserService/AdminUserQueries và bootstrap trong
+`identity`, nơi sở hữu User/roles/credentials/sessions. Module `admin` điều phối read
+audit qua IdentityService và AuditQueryService; `audit` không phụ thuộc ngược identity.
+Không expose entity/repository xuyên module. Xem [F19](f19-admin-user-management-audit.md).
