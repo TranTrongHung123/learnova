@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button, LinkButton } from "@/components/ui/button";
 import { PageState, Skeleton } from "@/components/ui/page-state";
+import { NotificationBell } from "@/features/notification/notifications";
 import { WorkspaceShell } from "@/features/workspace/workspace-shell";
 import {
   availableWorkspaces,
@@ -122,6 +123,7 @@ export function ProtectedWorkspace({
   </main>;
   return (
     <WorkspaceShell
+      notificationBell={user.roles.some(role => role === "PARTICIPANT" || role === "CREATOR") ? <NotificationBell key={user.id} /> : undefined}
       workspace={selected}
       roles={user.roles}
       user={{ displayName: user.displayName, subtitle: user.email, avatarUrl: user.avatarUrl }}

@@ -29,6 +29,7 @@ public class ExamSession {
     @Enumerated(EnumType.STRING) @Column(nullable=false, length=24) private ResultReleasePolicy resultReleasePolicy;
     private Instant firstAttemptAt;
     private Instant resultsReleasedAt;
+    private Instant scheduledAt;
     @Column(nullable=false) private long revision;
     @Column(nullable=false) private Instant createdAt;
     @Column(nullable=false) private Instant updatedAt;
@@ -54,7 +55,7 @@ public class ExamSession {
         return now.isBefore(startTime) ? SessionStatus.SCHEDULED : SessionStatus.OPEN;
     }
     public void advance(Instant now) { var effective=effectiveStatus(now); if (status!=effective) { status=effective; touch(now); } }
-    public void schedule(Instant now) { status=SessionStatus.SCHEDULED; status=effectiveStatus(now); touch(now); }
+    public void schedule(Instant now) { scheduledAt=now; status=SessionStatus.SCHEDULED; status=effectiveStatus(now); touch(now); }
     public void cancel(Instant now) { status=SessionStatus.CANCELLED; touch(now); }
     public void rename(String value) { title=value.strip(); }
     public void extend(Instant value, Instant now) { endTime=value; touch(now); }
