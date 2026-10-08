@@ -5,5 +5,11 @@ import { DiscoveryDetail } from "@/features/discovery/discovery";
 
 export default async function Page({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await params;
-  return <ProtectedWorkspace workspace="PARTICIPANT" title="Chi tiết kỳ thi"><Suspense fallback={<Skeleton />}><DiscoveryDetail id={sessionId} /></Suspense></ProtectedWorkspace>;
+  return (
+    <ProtectedWorkspace workspace="PARTICIPANT" title="Chi tiết kỳ thi">
+      <Suspense fallback={<Skeleton />}>
+        <DiscoveryDetail id={sessionId} />
+      </Suspense>
+    </ProtectedWorkspace>
+  );
 }

@@ -22,6 +22,7 @@
   --sidebar-width: 16rem;
   --header-height: 5rem;
 }
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -39,43 +40,52 @@
   --color-ring: var(--ring);
   --font-sans: var(--font-learnova), Arial, sans-serif;
 }
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   line-height: 1.6;
 }
+
 button,
 a,
 select {
   -webkit-tap-highlight-color: transparent;
 }
+
 button:not(:disabled),
 select {
   cursor: pointer;
 }
+
 button,
 a {
   transition:
     background-color var(--motion-fast),
     color var(--motion-fast);
 }
+
 :focus-visible {
   outline: 3px solid var(--ring);
   outline-offset: 3px;
 }
+
 html {
   scroll-padding-top: calc(var(--header-height) + 1rem);
 }
+
 h1,
 h2 {
   text-wrap: balance;
 }
+
 p,
 h1,
 h2 {
   overflow-wrap: anywhere;
 }
+
 .skip-link {
   position: fixed;
   top: 1rem;
@@ -87,9 +97,11 @@ h2 {
   border: 1px solid var(--control-border);
   border-radius: 0.5rem;
 }
+
 .skip-link:focus {
   transform: translateY(0);
 }
+
 .drawer {
   position: fixed;
   inset: 0 auto 0 0;
@@ -103,9 +115,11 @@ h2 {
   padding: 1rem;
   overflow-y: auto;
 }
+
 .drawer::backdrop {
   background: var(--scrim);
 }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

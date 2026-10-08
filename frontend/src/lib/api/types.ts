@@ -1,4 +1,5 @@
 export type FieldError = { field: string; message: string };
+
 export type ApiProblem = {
   type: string;
   title: string;
@@ -9,6 +10,7 @@ export type ApiProblem = {
   fieldErrors: FieldError[];
   availability?: unknown;
 };
+
 export type PageResponse<T> = {
   content: T[];
   page: number;
@@ -16,4 +18,5 @@ export type PageResponse<T> = {
   totalElements: number;
   totalPages: number;
 };
+
 export type HealthResponse = { status: "UP" };

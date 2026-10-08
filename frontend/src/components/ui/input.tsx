@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from "react";
+
 export function Input({
   id,
   label,
@@ -11,11 +12,7 @@ export function Input({
   hint?: string;
   error?: string;
 }) {
-  const description = [
-    hint && `${id}-hint`,
-    error && `${id}-error`,
-    props["aria-describedby"],
-  ]
+  const description = [hint && `${id}-hint`, error && `${id}-error`, props["aria-describedby"]]
     .filter(Boolean)
     .join(" ");
   return (

@@ -10,11 +10,17 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class MonitoringController {
+
     private final MonitoringService service;
-    public MonitoringController(MonitoringService service) { this.service=service; }
+
+    public MonitoringController(MonitoringService service) {
+        this.service = service;
+    }
+
     @GetMapping("/api/v1/exam-sessions/{id}/monitor")
-    ResponseEntity<Snapshot> snapshot(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id) {
-        return ResponseEntity.ok().header("Cache-Control","no-store")
-            .body(service.snapshot(UUID.fromString(jwt.getSubject()),id));
+    ResponseEntity<Snapshot> snapshot(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return ResponseEntity.ok()
+            .header("Cache-Control", "no-store")
+            .body(service.snapshot(UUID.fromString(jwt.getSubject()), id));
     }
 }

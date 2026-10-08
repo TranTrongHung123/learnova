@@ -1,6 +1,8 @@
 "use client";
+
 import { Button, LinkButton } from "@/components/ui/button";
 import { PageState } from "@/components/ui/page-state";
+
 export default function ErrorPage({ reset }: { reset: () => void }) {
   return (
     <main id="main-content" className="mx-auto max-w-3xl px-4 py-16">

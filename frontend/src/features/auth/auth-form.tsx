@@ -30,10 +30,7 @@ export function AuthForm({
   useEffect(() => {
     if (status === "AUTHENTICATED" && user)
       router.replace(
-        resolveWorkspace(
-          user,
-          new URLSearchParams(window.location.search).get("returnTo"),
-        ),
+        resolveWorkspace(user, new URLSearchParams(window.location.search).get("returnTo")),
       );
   }, [router, status, user]);
   useEffect(() => {
@@ -47,8 +44,7 @@ export function AuthForm({
     const password = String(data.get("password") ?? "");
     const displayName = String(data.get("displayName") ?? "").trim();
     const errors: Record<string, string> = {};
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      errors.email = "Nhập email hợp lệ.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "Nhập email hợp lệ.";
     if (!password) errors.password = "Nhập mật khẩu.";
     if (register) {
       if (!displayName) errors.displayName = "Nhập tên hiển thị.";
@@ -95,10 +91,7 @@ export function AuthForm({
       id="main-content"
       className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-10 sm:px-6"
     >
-      <Link
-        href="/"
-        className="mb-8 flex items-center justify-center gap-2 text-xl font-bold"
-      >
+      <Link href="/" className="mb-8 flex items-center justify-center gap-2 text-xl font-bold">
         <GraduationCap aria-hidden="true" className="text-primary" />
         Learnova
       </Link>
@@ -122,10 +115,7 @@ export function AuthForm({
         {status === "ERROR" && (
           <div role="alert" className="mb-4 text-danger">
             <p>{bootstrapError}</p>
-            <Button
-              variant="secondary"
-              onClick={() => void session.bootstrap()}
-            >
+            <Button variant="secondary" onClick={() => void session.bootstrap()}>
               Thử khôi phục phiên lại
             </Button>
           </div>
@@ -143,22 +133,13 @@ export function AuthForm({
               >
                 <p>{error}</p>
                 {Object.entries(fields).map(([field, message]) => (
-                  <a
-                    className="mt-1 block underline"
-                    key={field}
-                    href={`#${field}`}
-                  >
+                  <a className="mt-1 block underline" key={field} href={`#${field}`}>
                     {message}
                   </a>
                 ))}
               </div>
             )}
-            <form
-              noValidate
-              onSubmit={submit}
-              className="space-y-5"
-              aria-busy={busy}
-            >
+            <form noValidate onSubmit={submit} className="space-y-5" aria-busy={busy}>
               {register && (
                 <Input
                   id="displayName"
@@ -189,17 +170,9 @@ export function AuthForm({
                 maxLength={256}
                 required
                 error={fields.password}
-                hint={
-                  register
-                    ? "12–128 ký tự. Có thể dùng dấu cách và tiếng Việt."
-                    : undefined
-                }
+                hint={register ? "12–128 ký tự. Có thể dùng dấu cách và tiếng Việt." : undefined}
               />
-              <Button
-                variant="ghost"
-                onClick={() => setVisible(!visible)}
-                aria-pressed={visible}
-              >
+              <Button variant="ghost" onClick={() => setVisible(!visible)} aria-pressed={visible}>
                 {visible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
               </Button>
               {register && (
@@ -236,18 +209,12 @@ export function AuthForm({
                         {label}
                       </label>
                     ))}
-                    {fields.roles && (
-                      <p className="text-danger">{fields.roles}</p>
-                    )}
+                    {fields.roles && <p className="text-danger">{fields.roles}</p>}
                   </fieldset>
                 </>
               )}
               <Button type="submit" disabled={busy} className="w-full">
-                {busy
-                  ? "Đang xử lý…"
-                  : register
-                    ? "Tạo tài khoản"
-                    : "Đăng nhập"}
+                {busy ? "Đang xử lý…" : register ? "Tạo tài khoản" : "Đăng nhập"}
               </Button>
             </form>
             <GoogleButton />

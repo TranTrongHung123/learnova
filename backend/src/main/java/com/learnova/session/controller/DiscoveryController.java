@@ -11,18 +11,33 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/participant/exam-sessions")
 public class DiscoveryController {
+
     private final DiscoveryService service;
-    public DiscoveryController(DiscoveryService service) { this.service=service; }
-    @GetMapping
-    PageResponse<Session> list(@AuthenticationPrincipal Jwt jwt, @RequestParam(defaultValue="AVAILABLE") Tab tab, PageQuery page) {
-        return service.list(UUID.fromString(jwt.getSubject()),tab,page);
+
+    public DiscoveryController(DiscoveryService service) {
+        this.service = service;
     }
+
+    @GetMapping
+    PageResponse<Session> list(
+        @AuthenticationPrincipal Jwt jwt,
+        @RequestParam(defaultValue = "AVAILABLE") Tab tab,
+        PageQuery page
+    ) {
+        return service.list(UUID.fromString(jwt.getSubject()), tab, page);
+    }
+
     @GetMapping("/{id}")
     Session detail(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
-        return service.detail(UUID.fromString(jwt.getSubject()),id);
+        return service.detail(UUID.fromString(jwt.getSubject()), id);
     }
+
     @GetMapping("/{id}/attempts")
-    PageResponse<Attempt> history(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, PageQuery page) {
-        return service.history(UUID.fromString(jwt.getSubject()),id,page);
+    PageResponse<Attempt> history(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable UUID id,
+        PageQuery page
+    ) {
+        return service.history(UUID.fromString(jwt.getSubject()), id, page);
     }
 }

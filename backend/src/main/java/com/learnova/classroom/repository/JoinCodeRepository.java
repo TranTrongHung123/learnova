@@ -10,5 +10,6 @@ public interface JoinCodeRepository extends JpaRepository<ClassroomJoinCode, UUI
     // Chỉ đọc ID trước khi khóa lớp; không giữ entity mã cũ trong persistence context.
     @Query("select j.classroomId from ClassroomJoinCode j where j.code = :code")
     Optional<UUID> findClassroomIdByCode(String code);
+
     boolean existsByCode(String code);
 }

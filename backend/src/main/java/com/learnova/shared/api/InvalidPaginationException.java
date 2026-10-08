@@ -1,6 +1,7 @@
 package com.learnova.shared.api;
 
 public class InvalidPaginationException extends RuntimeException {
+
     private final String field;
 
     public InvalidPaginationException(String field, String message) {

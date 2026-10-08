@@ -1,21 +1,22 @@
 package com.learnova.audit.entity;
 
 import com.learnova.audit.enums.AuditAction;
-import java.time.Instant;
-import java.util.Map;
-import java.util.UUID;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "audit_records")
 public class AuditRecord {
+
     @Id
     private UUID id;
 
@@ -41,8 +42,15 @@ public class AuditRecord {
 
     protected AuditRecord() {}
 
-    public AuditRecord(UUID id, String actorUserId, AuditAction action, String targetType,
-            String targetId, Map<String, String> metadata, Instant occurredAt) {
+    public AuditRecord(
+        UUID id,
+        String actorUserId,
+        AuditAction action,
+        String targetType,
+        String targetId,
+        Map<String, String> metadata,
+        Instant occurredAt
+    ) {
         this.id = id;
         this.actorUserId = actorUserId;
         this.action = action;

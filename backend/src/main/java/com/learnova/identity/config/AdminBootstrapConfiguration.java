@@ -10,10 +10,14 @@ import org.springframework.core.env.Environment;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "learnova.admin.bootstrap.enabled", havingValue = "true")
 public class AdminBootstrapConfiguration {
+
     @Bean
     ApplicationRunner bootstrapAdmin(AdminBootstrapService service, Environment environment) {
-        return args -> service.bootstrap(environment.getProperty("learnova.admin.bootstrap.email"),
+        return args ->
+            service.bootstrap(
+                environment.getProperty("learnova.admin.bootstrap.email"),
                 environment.getProperty("learnova.admin.bootstrap.password"),
-                environment.getProperty("learnova.admin.bootstrap.display-name"));
+                environment.getProperty("learnova.admin.bootstrap.display-name")
+            );
     }
 }

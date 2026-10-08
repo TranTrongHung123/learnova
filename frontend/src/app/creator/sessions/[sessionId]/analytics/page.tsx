@@ -3,5 +3,9 @@ import { AnalyticsScreen } from "@/features/reporting/analytics";
 
 export default async function Page({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await params;
-  return <ProtectedWorkspace workspace="CREATOR" title="Thống kê kỳ thi"><AnalyticsScreen id={sessionId} /></ProtectedWorkspace>;
+  return (
+    <ProtectedWorkspace workspace="CREATOR" title="Thống kê kỳ thi">
+      <AnalyticsScreen id={sessionId} />
+    </ProtectedWorkspace>
+  );
 }

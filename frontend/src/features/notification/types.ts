@@ -1,12 +1,28 @@
-export type NotificationType = "EXAM_ASSIGNED" | "EXAM_REMINDER" | "RESULT_RELEASED" | "CLASS_JOINED";
+export type NotificationType =
+  "EXAM_ASSIGNED" | "EXAM_REMINDER" | "RESULT_RELEASED" | "CLASS_JOINED";
+
 export type Notification = {
-  id: string; type: NotificationType; title: string; message: string;
-  targetPath: string; createdAt: string; readAt: string | null;
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  targetPath: string;
+  createdAt: string;
+  readAt: string | null;
 };
-export type NotificationPage = { content: Notification[]; page: number; size: number; totalElements: number; totalPages: number };
+
+export type NotificationPage = {
+  content: Notification[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
 export type UnreadCount = { unreadCount: number };
 
 const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+
 export function notificationTarget(item: Pick<Notification, "type" | "targetPath">): string | null {
   const patterns: Record<NotificationType, RegExp> = {
     EXAM_ASSIGNED: new RegExp(`^/participant/exams/${uuid}$`, "i"),

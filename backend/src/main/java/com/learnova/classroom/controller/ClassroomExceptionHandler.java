@@ -14,16 +14,33 @@ import org.springframework.web.bind.annotation.*;
 @Order(0)
 @RestControllerAdvice(assignableTypes = ClassroomController.class)
 class ClassroomExceptionHandler {
+
     private final ApiProblems problems;
-    ClassroomExceptionHandler(ApiProblems problems) { this.problems = problems; }
+
+    ClassroomExceptionHandler(ApiProblems problems) {
+        this.problems = problems;
+    }
+
     @ExceptionHandler(ClassroomFailure.class)
-    ResponseEntity<?> failure(ClassroomFailure ex, HttpServletRequest request) { return response(ex.status, ex.code, request); }
+    ResponseEntity<?> failure(ClassroomFailure ex, HttpServletRequest request) {
+        return response(ex.status, ex.code, request);
+    }
+
     @ExceptionHandler(AuthFailure.class)
-    ResponseEntity<?> authentication(AuthFailure ex, HttpServletRequest request) { return response(ex.status, ex.code, request); }
+    ResponseEntity<?> authentication(AuthFailure ex, HttpServletRequest request) {
+        return response(ex.status, ex.code, request);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
-    ResponseEntity<?> conflict(DataIntegrityViolationException ex, HttpServletRequest request) { return response(409, "CLASSROOM_CONFLICT", request); }
+    ResponseEntity<?> conflict(DataIntegrityViolationException ex, HttpServletRequest request) {
+        return response(409, "CLASSROOM_CONFLICT", request);
+    }
+
     @ExceptionHandler(DataAccessException.class)
-    ResponseEntity<?> unavailable(DataAccessException ex, HttpServletRequest request) { return response(503, "SERVICE_UNAVAILABLE", request); }
+    ResponseEntity<?> unavailable(DataAccessException ex, HttpServletRequest request) {
+        return response(503, "SERVICE_UNAVAILABLE", request);
+    }
+
     private ResponseEntity<?> response(int status, String code, HttpServletRequest request) {
         var problem = problems.create(HttpStatusCode.valueOf(status), request.getRequestURI());
         problem.setProperty("code", code);

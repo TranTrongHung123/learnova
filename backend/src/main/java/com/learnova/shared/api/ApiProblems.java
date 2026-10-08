@@ -1,11 +1,10 @@
 package com.learnova.shared.api;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
-
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -15,6 +14,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @Component
 public class ApiProblems {
+
     private final ObjectMapper mapper;
 
     public ApiProblems(ObjectMapper mapper) {
@@ -25,9 +25,13 @@ public class ApiProblems {
         var problem = ProblemDetail.forStatusAndDetail(status, detail(status.value()));
         problem.setType(URI.create("about:blank"));
         var knownStatus = HttpStatus.resolve(status.value());
-        problem.setTitle(knownStatus == null
-                ? (status.is5xxServerError() ? "Internal Server Error" : "Request Rejected")
-                : knownStatus.getReasonPhrase());
+        problem.setTitle(
+            knownStatus == null
+                ? status.is5xxServerError()
+                    ? "Internal Server Error"
+                    : "Request Rejected"
+                : knownStatus.getReasonPhrase()
+        );
         problem.setInstance(instance(path));
         problem.setProperty("code", code(status.value()));
         problem.setProperty("fieldErrors", List.of());
@@ -44,14 +48,18 @@ public class ApiProblems {
     }
 
     public void write(HttpServletRequest request, HttpServletResponse response, HttpStatus status)
-            throws IOException {
+        throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         mapper.writeValue(response.getOutputStream(), create(status, request.getRequestURI()));
     }
 
-    public void write(HttpServletRequest request, HttpServletResponse response, HttpStatus status, String code)
-            throws IOException {
+    public void write(
+        HttpServletRequest request,
+        HttpServletResponse response,
+        HttpStatus status,
+        String code
+    ) throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         var problem = create(status, request.getRequestURI());
@@ -87,7 +95,9 @@ public class ApiProblems {
             case 413 -> "The request is too large.";
             case 415 -> "The request media type is not supported.";
             case 503 -> "The service is temporarily unavailable.";
-            default -> status >= 500 ? "An unexpected error occurred." : "The request was rejected.";
+            default -> status >= 500
+                ? "An unexpected error occurred."
+                : "The request was rejected.";
         };
     }
 

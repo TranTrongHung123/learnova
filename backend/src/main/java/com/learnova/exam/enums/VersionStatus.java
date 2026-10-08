@@ -1,3 +1,6 @@
 package com.learnova.exam.enums;
 
-public enum VersionStatus { DRAFT, PUBLISHED }
+public enum VersionStatus {
+    DRAFT,
+    PUBLISHED,
+}

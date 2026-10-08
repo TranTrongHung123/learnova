@@ -13,11 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  PageState,
-  Skeleton,
-  type PageStateKind,
-} from "@/components/ui/page-state";
+import { PageState, Skeleton, type PageStateKind } from "@/components/ui/page-state";
 
 const fixtures: Record<string, Workspace[]> = {
   multi: ["PARTICIPANT", "CREATOR"],
@@ -26,6 +22,7 @@ const fixtures: Record<string, Workspace[]> = {
   admin: ["ADMIN"],
   all: ["PARTICIPANT", "CREATOR", "ADMIN"],
 };
+
 const stateOptions = {
   unavailable: "Chưa sẵn sàng",
   loading: "Đang tải",
@@ -36,15 +33,14 @@ const stateOptions = {
   network: "Lỗi mạng",
   error: "Lỗi hiển thị",
 };
+
 export function WorkspacePreview() {
   const search = useSearchParams();
   const router = useRouter();
   const [loggedOut, setLoggedOut] = useState(false);
   const [validationError, setValidationError] = useState("");
   const roleSet = search.get("roles") ?? "multi";
-  const roles = Object.hasOwn(fixtures, roleSet)
-    ? fixtures[roleSet]
-    : fixtures.multi;
+  const roles = Object.hasOwn(fixtures, roleSet) ? fixtures[roleSet] : fixtures.multi;
   const requested = search.get("workspace") ?? "CREATOR";
   const allowed = isWorkspace(requested) && canEnterWorkspace(requested, roles);
   const workspace = allowed ? requested : roles[0];
@@ -68,23 +64,15 @@ export function WorkspacePreview() {
         ? ""
         : "Vui lòng nhập tên để kiểm tra trạng thái validation.",
     );
-    if (!value || !String(value).trim())
-      event.currentTarget.querySelector("input")?.focus();
+    if (!value || !String(value).trim()) event.currentTarget.querySelector("input")?.focus();
   }
   if (loggedOut)
     return (
-      <main
-        id="main-content"
-        className="mx-auto max-w-3xl space-y-6 px-6 py-16"
-      >
+      <main id="main-content" className="mx-auto max-w-3xl space-y-6 px-6 py-16">
         <Badge>Bản xem trước</Badge>
         <h1 className="text-2xl font-bold">Đã thoát phiên minh họa</h1>
-        <p>
-          Không có phiên đăng nhập thật hoặc token nào được tạo hay thu hồi.
-        </p>
-        <Button onClick={() => setLoggedOut(false)}>
-          Quay lại bản xem trước
-        </Button>
+        <p>Không có phiên đăng nhập thật hoặc token nào được tạo hay thu hồi.</p>
+        <Button onClick={() => setLoggedOut(false)}>Quay lại bản xem trước</Button>
       </main>
     );
   return (
@@ -149,13 +137,9 @@ export function WorkspacePreview() {
         </div>
       </section>
       <div>
-        <p className="mb-2 text-sm font-semibold text-primary">
-          {workspaceInfo[workspace].label}
-        </p>
+        <p className="mb-2 text-sm font-semibold text-primary">{workspaceInfo[workspace].label}</p>
         <h1 className="text-3xl font-bold">Không gian của bạn</h1>
-        <p className="mt-3 text-muted-foreground">
-          {workspaceInfo[workspace].description}
-        </p>
+        <p className="mt-3 text-muted-foreground">{workspaceInfo[workspace].description}</p>
       </div>
       {!allowed ? (
         <PageState kind="forbidden" />
@@ -183,9 +167,7 @@ export function WorkspacePreview() {
           kind={knownState as PageStateKind}
           action={
             knownState === "network" || knownState === "error" ? (
-              <Button onClick={() => update({ state: "loading" })}>
-                Thử lại (minh họa)
-              </Button>
+              <Button onClick={() => update({ state: "loading" })}>Thử lại (minh họa)</Button>
             ) : (
               <LinkButton variant="secondary" href="/">
                 Về trang chủ <ArrowRight size={16} aria-hidden="true" />
@@ -195,14 +177,10 @@ export function WorkspacePreview() {
         />
       )}
       <div className="flex items-start gap-3 text-sm text-muted-foreground">
-        <LayoutTemplate
-          className="mt-1 shrink-0"
-          size={20}
-          aria-hidden="true"
-        />
+        <LayoutTemplate className="mt-1 shrink-0" size={20} aria-hidden="true" />
         <p>
-          Giao diện nền tảng cho việc soạn đề, tổ chức kỳ thi và theo dõi kết
-          quả. Nội dung nghiệp vụ sẽ được kết nối khi từng tính năng sẵn sàng.
+          Giao diện nền tảng cho việc soạn đề, tổ chức kỳ thi và theo dõi kết quả. Nội dung nghiệp
+          vụ sẽ được kết nối khi từng tính năng sẵn sàng.
         </p>
       </div>
     </WorkspaceShell>

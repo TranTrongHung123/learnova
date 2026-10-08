@@ -1,7 +1,6 @@
 package com.learnova.shared.api;
 
 import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -21,6 +20,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 @RestControllerAdvice
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
+
     private static final Logger LOG = LoggerFactory.getLogger(ApiExceptionHandler.class);
     private final ApiProblems problems;
 
@@ -29,20 +29,45 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
-    protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body,
-            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+    protected ResponseEntity<Object> handleExceptionInternal(
+        Exception ex,
+        Object body,
+        HttpHeaders headers,
+        HttpStatusCode status,
+        WebRequest request
+    ) {
         var problem = problem(status, request);
         if (ex instanceof MethodArgumentNotValidException validation) {
-            validation(problem, validation.getBindingResult().getFieldErrors().stream()
+            validation(
+                problem,
+                validation
+                    .getBindingResult()
+                    .getFieldErrors()
+                    .stream()
                     .map(error -> new ApiProblems.FieldError(error.getField(), "Invalid value."))
-                    .distinct().toList());
-        } else if (ex instanceof HandlerMethodValidationException validation && !validation.isForReturnValue()) {
-            validation(problem, validation.getParameterValidationResults().stream()
-                    .map(result -> new ApiProblems.FieldError(
+                    .distinct()
+                    .toList()
+            );
+        } else if (
+            ex instanceof HandlerMethodValidationException validation &&
+            !validation.isForReturnValue()
+        ) {
+            validation(
+                problem,
+                validation
+                    .getParameterValidationResults()
+                    .stream()
+                    .map(result ->
+                        new ApiProblems.FieldError(
                             result.getMethodParameter().getParameterName() == null
-                                    ? "request" : result.getMethodParameter().getParameterName(),
-                            "Invalid value."))
-                    .distinct().toList());
+                                ? "request"
+                                : result.getMethodParameter().getParameterName(),
+                            "Invalid value."
+                        )
+                    )
+                    .distinct()
+                    .toList()
+            );
         }
         return super.handleExceptionInternal(ex, problem, headers, status, request);
     }
@@ -68,7 +93,9 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     ResponseEntity<Object> unexpected(Exception ex, WebRequest request) {
         // Không ghi exception message/payload vì có thể chứa secret hoặc câu trả lời.
         LOG.error("Unhandled API exception: {}", ex.getClass().getName());
-        return ResponseEntity.internalServerError().body(problem(HttpStatus.INTERNAL_SERVER_ERROR, request));
+        return ResponseEntity.internalServerError().body(
+            problem(HttpStatus.INTERNAL_SERVER_ERROR, request)
+        );
     }
 
     private ProblemDetail problem(HttpStatusCode status, WebRequest request) {

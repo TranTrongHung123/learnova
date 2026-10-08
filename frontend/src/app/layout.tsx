@@ -8,10 +8,12 @@ const sans = Plus_Jakarta_Sans({
   subsets: ["latin", "vietnamese"],
   display: "swap",
 });
+
 export const metadata: Metadata = {
   title: { default: "Learnova", template: "%s | Learnova" },
   description: "Nền tảng tổ chức và tham gia kiểm tra trực tuyến.",
 };
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="vi" className={`${sans.variable} h-full antialiased`}>

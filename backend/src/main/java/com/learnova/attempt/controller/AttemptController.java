@@ -12,28 +12,50 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1")
 public class AttemptController {
+
     private final AttemptService service;
-    public AttemptController(AttemptService service) { this.service=service; }
+
+    public AttemptController(AttemptService service) {
+        this.service = service;
+    }
+
     @PostMapping("/exam-sessions/{id}/attempts")
     ResponseEntity<View> start(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
-        var result=service.start(UUID.fromString(jwt.getSubject()),id);
-        return ResponseEntity.status(result.created()?201:200).header("Cache-Control","no-store").body(result.attempt());
+        var result = service.start(UUID.fromString(jwt.getSubject()), id);
+        return ResponseEntity.status(result.created() ? 201 : 200)
+            .header("Cache-Control", "no-store")
+            .body(result.attempt());
     }
+
     @GetMapping("/attempts/{id}")
     ResponseEntity<View> read(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
-        return ResponseEntity.ok().header("Cache-Control","no-store").body(service.read(UUID.fromString(jwt.getSubject()),id));
+        return ResponseEntity.ok()
+            .header("Cache-Control", "no-store")
+            .body(service.read(UUID.fromString(jwt.getSubject()), id));
     }
+
     @PutMapping("/attempts/{id}/answers/{questionId}")
-    ResponseEntity<Saved> save(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @PathVariable UUID questionId, @Valid @RequestBody Save input) {
-        return ResponseEntity.ok().header("Cache-Control","no-store").body(service.save(UUID.fromString(jwt.getSubject()),id,questionId,input));
+    ResponseEntity<Saved> save(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable UUID id,
+        @PathVariable UUID questionId,
+        @Valid @RequestBody Save input
+    ) {
+        return ResponseEntity.ok()
+            .header("Cache-Control", "no-store")
+            .body(service.save(UUID.fromString(jwt.getSubject()), id, questionId, input));
     }
+
     @PostMapping("/attempts/{id}/submit")
     ResponseEntity<View> submit(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
-        return ResponseEntity.ok().header("Cache-Control","no-store").body(service.submit(UUID.fromString(jwt.getSubject()),id));
+        return ResponseEntity.ok()
+            .header("Cache-Control", "no-store")
+            .body(service.submit(UUID.fromString(jwt.getSubject()), id));
     }
+
     @PostMapping("/attempts/{id}/heartbeat")
-    ResponseEntity<Void> heartbeat(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id) {
-        service.heartbeat(UUID.fromString(jwt.getSubject()),id);
-        return ResponseEntity.noContent().header("Cache-Control","no-store").build();
+    ResponseEntity<Void> heartbeat(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        service.heartbeat(UUID.fromString(jwt.getSubject()), id);
+        return ResponseEntity.noContent().header("Cache-Control", "no-store").build();
     }
 }

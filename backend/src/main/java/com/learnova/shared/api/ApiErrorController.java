@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class ApiErrorController implements ErrorController {
+
     private final ApiProblems problems;
 
     public ApiErrorController(ApiProblems problems) {
@@ -23,6 +24,8 @@ public class ApiErrorController implements ErrorController {
         int status = code instanceof Integer value && value >= 400 && value <= 599 ? value : 500;
         Object originalPath = request.getAttribute(RequestDispatcher.ERROR_REQUEST_URI);
         String path = originalPath instanceof String value ? value : request.getRequestURI();
-        return ResponseEntity.status(status).body(problems.create(HttpStatusCode.valueOf(status), path));
+        return ResponseEntity.status(status).body(
+            problems.create(HttpStatusCode.valueOf(status), path)
+        );
     }
 }

@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 
 const password = "Profile password test 123";
+
 const newPassword = "Changed password test 456";
 
 async function login(page: Page, email: string, value = password) {
@@ -25,7 +26,9 @@ async function account(page: Page) {
   return email;
 }
 
-test("profile persists, validates, recovers from network failure and fits all viewports", async ({ page }) => {
+test("profile persists, validates, recovers from network failure and fits all viewports", async ({
+  page,
+}) => {
   await account(page);
   await page.goto("/profile");
   await expect(page.getByRole("heading", { name: "Hồ sơ", exact: true })).toBeVisible();
@@ -56,20 +59,33 @@ test("profile persists, validates, recovers from network failure and fits all vi
   await page.getByRole("button", { name: "Lưu hồ sơ" }).click();
   await expect(page.getByRole("status")).toContainText("Đã lưu hồ sơ");
   await page.emulateMedia({ reducedMotion: "reduce" });
-  for (const [width, height] of [[375, 812], [768, 1024], [1024, 768], [1440, 900], [640, 450]]) {
+  for (const [width, height] of [
+    [375, 812],
+    [768, 1024],
+    [1024, 768],
+    [1440, 900],
+    [640, 450],
+  ]) {
     await page.setViewportSize({ width, height });
     await page.evaluate(() => window.scrollTo(0, 0));
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
     await page.screenshot({ path: `test-results/auth/profile-${width}.png`, fullPage: true });
   }
   await page.getByRole("button", { name: "Đăng xuất tất cả thiết bị", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Đăng xuất tất cả thiết bị", exact: true })).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Đăng xuất tất cả thiết bị", exact: true }),
+  ).toBeFocused();
 });
 
-test("password change keeps current session, revokes other devices and logout-all clears current session", async ({ page, browser }) => {
+test("password change keeps current session, revokes other devices and logout-all clears current session", async ({
+  page,
+  browser,
+}) => {
   const email = await account(page);
   const other = await browser.newContext();
   try {
@@ -80,9 +96,13 @@ test("password change keeps current session, revokes other devices and logout-al
     await page.locator("#password-newPassword").fill(newPassword);
     await page.locator("#password-confirm").fill(newPassword);
     await page.getByRole("button", { name: "Đổi mật khẩu", exact: true }).click();
-    await expect(page.getByRole("main").getByRole("alert")).toContainText("Mật khẩu hiện tại chưa đúng");
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
+      "Mật khẩu hiện tại chưa đúng",
+    );
     await device.reload();
-    await expect(device.getByRole("heading", { name: "Tổng quan người tham gia", exact: true })).toBeVisible();
+    await expect(
+      device.getByRole("heading", { name: "Tổng quan người tham gia", exact: true }),
+    ).toBeVisible();
     await page.locator("#password-currentPassword").fill(password);
     await page.getByRole("button", { name: "Đổi mật khẩu", exact: true }).click();
     await expect(page.getByRole("status")).toContainText("Đã đổi mật khẩu");
@@ -93,7 +113,10 @@ test("password change keeps current session, revokes other devices and logout-al
     await expect(device).toHaveURL(/\/login/);
     await login(device, email, newPassword);
     await page.getByRole("button", { name: "Đăng xuất tất cả thiết bị", exact: true }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Đăng xuất tất cả", exact: true }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Đăng xuất tất cả", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/login/);
     await device.reload();
     await expect(device).toHaveURL(/\/login/);

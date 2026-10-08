@@ -12,9 +12,7 @@ export default function Home() {
         Learnova
       </div>
       <div>
-        <p className="mb-4 text-sm font-semibold text-primary">
-          KHÔNG GIAN KIỂM TRA TRỰC TUYẾN
-        </p>
+        <p className="mb-4 text-sm font-semibold text-primary">KHÔNG GIAN KIỂM TRA TRỰC TUYẾN</p>
         <h1 className="text-4xl leading-tight font-bold sm:text-5xl">
           Một nơi để tổ chức thi.
           <br />
@@ -22,8 +20,8 @@ export default function Home() {
         </h1>
       </div>
       <p className="max-w-xl text-lg text-muted-foreground">
-        Tạo tài khoản hoặc đăng nhập để vào không gian của bạn.
-        Các tính năng tạo đề và tham gia kỳ thi đang được hoàn thiện.
+        Tạo tài khoản hoặc đăng nhập để vào không gian của bạn. Các tính năng tạo đề và tham gia kỳ
+        thi đang được hoàn thiện.
       </p>
       <div className="flex flex-wrap gap-3">
         <LinkButton href="/login">

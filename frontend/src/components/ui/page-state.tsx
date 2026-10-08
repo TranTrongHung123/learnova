@@ -1,14 +1,9 @@
-import {
-  CircleAlert,
-  FileQuestion,
-  LockKeyhole,
-  Inbox,
-  WifiOff,
-  Construction,
-} from "lucide-react";
+import { CircleAlert, FileQuestion, LockKeyhole, Inbox, WifiOff, Construction } from "lucide-react";
 import type { ReactNode } from "react";
+
 export type PageStateKind =
   "empty" | "forbidden" | "not-found" | "network" | "unavailable" | "error";
+
 const states = {
   empty: {
     icon: Inbox,
@@ -28,14 +23,12 @@ const states = {
   network: {
     icon: WifiOff,
     title: "Chưa thể kết nối",
-    description:
-      "Kiểm tra kết nối mạng rồi thử lại. Chưa có dữ liệu mới được tải.",
+    description: "Kiểm tra kết nối mạng rồi thử lại. Chưa có dữ liệu mới được tải.",
   },
   unavailable: {
     icon: Construction,
     title: "Tính năng đang được hoàn thiện",
-    description:
-      "Bạn có thể quay lại trang chủ trong khi chờ tính năng sẵn sàng.",
+    description: "Bạn có thể quay lại trang chủ trong khi chờ tính năng sẵn sàng.",
   },
   error: {
     icon: CircleAlert,
@@ -43,6 +36,7 @@ const states = {
     description: "Vui lòng thử lại hoặc quay về trang chủ.",
   },
 };
+
 export function PageState({
   kind,
   title,
@@ -62,19 +56,15 @@ export function PageState({
         <Icon size={28} aria-hidden="true" className="text-primary" />
       </div>
       <h2 className="text-xl font-bold">{title ?? state.title}</h2>
-      <p className="mt-3 max-w-md text-muted-foreground">
-        {description ?? state.description}
-      </p>
+      <p className="mt-3 max-w-md text-muted-foreground">{description ?? state.description}</p>
       {action && <div className="mt-6">{action}</div>}
     </section>
   );
 }
+
 export function Skeleton() {
   return (
-    <div
-      role="status"
-      className="space-y-6 rounded-xl border border-border bg-surface p-8"
-    >
+    <div role="status" className="space-y-6 rounded-xl border border-border bg-surface p-8">
       <span className="sr-only">Đang tải nội dung</span>
       <div className="h-6 w-2/3 rounded bg-muted" />
       <div className="h-4 w-full rounded bg-muted" />

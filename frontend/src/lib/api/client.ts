@@ -10,20 +10,18 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
+
 function errorMessage(kind: ApiError["kind"], status: number, code?: string) {
-  if (kind === "network")
-    return "Chưa thể kết nối. Vui lòng kiểm tra mạng và thử lại.";
-  if (kind === "invalid-response")
-    return "Phản hồi không hợp lệ. Vui lòng thử lại sau.";
-  if (code === "VALIDATION_FAILED")
-    return "Vui lòng kiểm tra thông tin đã nhập.";
+  if (kind === "network") return "Chưa thể kết nối. Vui lòng kiểm tra mạng và thử lại.";
+  if (kind === "invalid-response") return "Phản hồi không hợp lệ. Vui lòng thử lại sau.";
+  if (code === "VALIDATION_FAILED") return "Vui lòng kiểm tra thông tin đã nhập.";
   if (status === 401) return "Bạn cần đăng nhập để tiếp tục.";
   if (status === 403) return "Bạn không có quyền thực hiện thao tác này.";
   if (status === 404) return "Không tìm thấy nội dung yêu cầu.";
-  if (status === 409)
-    return "Dữ liệu đã thay đổi. Vui lòng tải lại trước khi tiếp tục.";
+  if (status === 409) return "Dữ liệu đã thay đổi. Vui lòng tải lại trước khi tiếp tục.";
   return "Không thể hoàn tất yêu cầu. Vui lòng thử lại sau.";
 }
+
 function isProblem(value: unknown): value is ApiProblem {
   if (!value || typeof value !== "object") return false;
   const problem = value as Record<string, unknown>;
@@ -44,12 +42,14 @@ function isProblem(value: unknown): value is ApiProblem {
     )
   );
 }
+
 type RequestOptions = Omit<RequestInit, "body" | "cache" | "redirect"> & {
   json?: unknown;
   formData?: FormData;
   responseType?: "json" | "blob";
   authenticated?: boolean;
 };
+
 type ClientOptions = {
   baseUrl: string;
   getAccessToken?: () => string | null;
@@ -78,7 +78,13 @@ export function createApiClient({
   return {
     async request<T>(
       path: string,
-      { json, formData, responseType = "json", authenticated = true, ...options }: RequestOptions = {},
+      {
+        json,
+        formData,
+        responseType = "json",
+        authenticated = true,
+        ...options
+      }: RequestOptions = {},
     ): Promise<T> {
       const url = new URL(path, origin);
       // Chỉ gửi credential đến API origin và namespace đã cấu hình.
@@ -92,7 +98,12 @@ export function createApiClient({
       )
         throw new Error("Invalid API path.");
       const headers = new Headers(options.headers);
-      headers.set("Accept", responseType === "blob" ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/problem+json" : "application/json, application/problem+json");
+      headers.set(
+        "Accept",
+        responseType === "blob"
+          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/problem+json"
+          : "application/json, application/problem+json",
+      );
       const token = authenticated ? getAccessToken() : null;
       const generation = getAuthGeneration();
       const assertCurrentSession = () => {
@@ -115,12 +126,15 @@ export function createApiClient({
             cache: "no-store",
             redirect: "error",
           });
-          return { response, raw: response.ok && responseType === "blob" ? await response.blob() : await response.text() };
+          return {
+            response,
+            raw:
+              response.ok && responseType === "blob"
+                ? await response.blob()
+                : await response.text(),
+          };
         } catch (error) {
-          if (
-            options.signal?.aborted ||
-            (error instanceof Error && error.name === "AbortError")
-          )
+          if (options.signal?.aborted || (error instanceof Error && error.name === "AbortError"))
             throw error;
           throw new ApiError("network", 0);
         }
@@ -140,7 +154,12 @@ export function createApiClient({
       }
       if (response.status === 204 && response.ok) return undefined as T;
       if (typeof raw !== "string") {
-        if (!response.headers.get("content-type")?.toLowerCase().includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        if (
+          !response.headers
+            .get("content-type")
+            ?.toLowerCase()
+            .includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        )
           throw new ApiError("invalid-response", response.status);
         return raw as T;
       }
@@ -148,10 +167,7 @@ export function createApiClient({
       try {
         data = JSON.parse(raw);
       } catch {
-        throw new ApiError(
-          response.ok ? "invalid-response" : "http",
-          response.status,
-        );
+        throw new ApiError(response.ok ? "invalid-response" : "http", response.status);
       }
       if (!response.ok)
         throw new ApiError(
@@ -159,12 +175,7 @@ export function createApiClient({
           response.status,
           isProblem(data) && data.status === response.status ? data : undefined,
         );
-      if (
-        !response.headers
-          .get("content-type")
-          ?.toLowerCase()
-          .includes("application/json")
-      )
+      if (!response.headers.get("content-type")?.toLowerCase().includes("application/json"))
         throw new ApiError("invalid-response", response.status);
       return data as T;
     },
