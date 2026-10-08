@@ -113,3 +113,10 @@ Thumbs.db
 # AI Agent local instructions
 # ==================================================
 AGENTS.md
+
+# Local agent resources and project documentation
+/.agents/
+/design-system/
+/docs/architecture/
+/docs/plans/
+/docs/requirements/

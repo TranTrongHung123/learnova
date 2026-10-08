@@ -2,7 +2,7 @@
 
 Nền tảng kiểm tra và thi trực tuyến: quản lý câu hỏi, tạo và version hóa đề thi,
 tổ chức kỳ thi, làm bài với autosave, chấm điểm, công bố kết quả và thống kê.
-Hỗ trợ ba workspace **PARTICIPANT**, **CREATOR**, **ADMIN**; một user có thể có nhiều role.
+Hỗ trợ ba workspace **PARTICIPANT**, **CREATOR**, **ADMIN**
 
 ## Features
 
@@ -28,8 +28,7 @@ Hỗ trợ ba workspace **PARTICIPANT**, **CREATOR**, **ADMIN**; một user có 
 ```text
 backend/        Backend modular monolith, package theo feature
 frontend/       Next.js App Router, UI theo feature
-docs/           Requirements, API, kiến trúc và kế hoạch V1
-design-system/  Design tokens và hướng dẫn giao diện
+docs/api/       API contract
 .github/        CI workflows
 ```
 
@@ -57,7 +56,6 @@ finally { $jwtSecretGenerator.Dispose() }
 
 Lưu kết quả vào `JWT_SECRET`. Giữ `AUTH_COOKIE_SECURE=false` cho HTTP local.
 Frontend mặc định gọi `http://localhost:8080` qua `NEXT_PUBLIC_API_URL`.
-Không commit file môi trường hoặc secret; không đặt secret trong `NEXT_PUBLIC_*`.
 
 ### 2. Khởi động PostgreSQL và Redis
 
@@ -66,8 +64,6 @@ docker compose up -d --wait
 ```
 
 ### 3. Khởi động backend
-
-Compose tự đọc `.env`, nhưng Maven/Java không tự đọc. Nạp biến vào terminal backend:
 
 ```powershell
 Get-Content .env | ForEach-Object {
@@ -86,13 +82,7 @@ Set-Location backend
 .\mvnw.cmd spring-boot:run
 ```
 
-File `.env` dùng mỗi dòng `KEY=value`, không có inline comment.
-Nếu chạy bằng IDE, cấu hình các biến tương ứng trong Run Configuration.
-Flyway tự chạy migration khi khởi động; Hibernate chỉ validate schema.
-
 ### 4. Khởi động frontend
-
-Trong terminal khác, từ root repository:
 
 ```powershell
 Set-Location frontend
@@ -107,12 +97,7 @@ phản hồi `{"status":"UP"}` là liveness HTTP.
 Google Login mặc định tắt. Để bật, cấu hình `GOOGLE_*` trong [.env.example](.env.example)
 và OAuth client loại Web application với redirect URI
 `http://localhost:8080/api/v1/auth/google/callback`.
-Chi tiết: [Google Authentication](docs/architecture/f04-google-authentication.md).
-Khởi tạo ADMIN theo [hướng dẫn bootstrap](docs/architecture/f19-admin-user-management-audit.md);
-không có tài khoản hoặc mật khẩu mặc định.
 
-Dừng dependency bằng `docker compose stop`. `docker compose down` giữ volume;
-`docker compose down -v` xóa dữ liệu local.
 
 ## Kiểm tra
 
@@ -130,24 +115,8 @@ npm run build
 Backend integration tests cần Docker để chạy PostgreSQL/Redis qua Testcontainers.
 Các browser suite nằm trong [frontend/package.json](frontend/package.json),
 cấu hình CI tại [.github/workflows/ci.yml](.github/workflows/ci.yml).
-Chạy các suite tích hợp tuần tự vì có dùng chung cổng; local mặc định dùng Microsoft Edge.
-Linux/macOS dùng `./mvnw` thay `mvnw.cmd`.
 
-## Đóng góp
-
-- Kiểm tra working tree; giữ nguyên thay đổi đang có. Fetch `origin`, tạo nhánh
-  `feat/<feature-id>-<slug>` từ `origin/main` đã cập nhật, hoặc tiếp tục trên đúng nhánh feature.
-- Không triển khai/commit feature trực tiếp trên `main`. Chạy kiểm tra phù hợp và tạo Conventional Commit local.
-- Người dùng tự push nhánh, mở pull request và merge; agent chỉ thực hiện khi được yêu cầu rõ ràng.
-- Thay đổi behavior phải đồng bộ requirements, API và screen flow. Thay schema bằng migration mới,
-  không sửa migration đã áp dụng. Tuân thủ [quy ước package backend](docs/architecture/backend-package-structure.md)
-  và [workflow UI/UX](docs/architecture/ui-ux-workflow.md).
 
 ## Tài liệu
 
-- [Business Requirements](docs/requirements/business-requirements.md)
-- [Use Cases](docs/requirements/use-cases.md) và [Screen Flow](docs/requirements/screen-flow.md)
 - [OpenAPI](docs/api/openapi.yaml)
-- [Kế hoạch và tiến độ V1](docs/plans/v1-feature-implementation-plan.md)
-- [Kiến trúc từng feature](docs/architecture/)
-- [Design system](design-system/learnova/MASTER.md)
