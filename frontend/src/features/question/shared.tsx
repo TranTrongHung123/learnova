@@ -1,5 +1,3 @@
-"use client";
-
 import { type ReactNode } from "react";
 
 export { useApiQuery as useQuestion } from "@/lib/api/use-query";

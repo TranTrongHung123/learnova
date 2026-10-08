@@ -32,6 +32,12 @@ docs/api/       API contract
 .github/        CI workflows
 ```
 
+Frontend đặt `"use client"` tại entrypoint được Server Component import trực tiếp.
+Component con dùng hook/callback kế thừa client graph qua import, không cần khai
+báo directive riêng. Callback trong trình duyệt giữ tên event handler; hậu tố
+`Action` chỉ dành cho Server Action thật. Page/layout vẫn là Server Component và
+khai báo `metadata` với kiểu `Metadata` import từ `next`.
+
 ## Chạy local
 
 Cần **Java 21**, **Node.js 22 + npm** và **Docker Desktop** chạy Linux containers.

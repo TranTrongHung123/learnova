@@ -1,10 +1,10 @@
 import { ProtectedWorkspace } from "@/features/auth/protected-workspace";
-import { ClassroomForm } from "@/features/classroom/classroom-form";
+import { ClassroomCreate } from "@/features/classroom/classroom-create";
 
 export default function Page() {
   return (
     <ProtectedWorkspace workspace="CREATOR" title="Tạo lớp học">
-      <ClassroomForm />
+      <ClassroomCreate />
     </ProtectedWorkspace>
   );
 }

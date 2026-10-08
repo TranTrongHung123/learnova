@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useRef, type ReactNode } from "react";
 import { ApiError } from "@/lib/api/client";
 import { PageState, Skeleton } from "@/components/ui/page-state";
