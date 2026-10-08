@@ -1,16 +1,13 @@
 import { defineConfig } from "@playwright/test";
+import { browserUse, frontendRoot, testPaths } from "./playwright.shared";
 
 export default defineConfig({
-  testDir: "./tests/production",
-  outputDir: "test-results/production",
+  ...testPaths("production"),
   workers: 1,
-  use: {
-    baseURL: "http://localhost:3103",
-    browserName: "chromium",
-    channel: process.env.CI ? undefined : "msedge",
-  },
+  use: browserUse("http://localhost:3103"),
   webServer: {
     command: "npm run start -- --port 3103",
+    cwd: frontendRoot,
     url: "http://localhost:3103",
     reuseExistingServer: false,
   },

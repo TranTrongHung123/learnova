@@ -116,6 +116,28 @@ Backend integration tests cần Docker để chạy PostgreSQL/Redis qua Testcon
 Các browser suite nằm trong [frontend/package.json](frontend/package.json),
 cấu hình CI tại [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
+Giữ cấu hình Next.js, TypeScript, ESLint, PostCSS và các entrypoint test mặc định ở
+root `frontend/`. Cấu hình test theo môi trường nằm trong `frontend/tests/config/`;
+11 suite dùng chung backend/frontend được gom thành Playwright projects.
+
+```powershell
+# Chạy toàn bộ 11 project integration trên cùng môi trường test
+npm run test:integration
+
+# Chạy riêng một suite; các script test:<feature> hiện có vẫn sử dụng được
+npm run test:auth
+npm run test:integration -- --project=question --project=discovery
+
+# Kiểm tra danh sách test mà không khởi động server
+npm run test:integration -- --list
+```
+
+Mỗi lần chạy integration khởi động backend test và frontend riêng, không dùng lại
+server có sẵn. Discovery fixture chỉ được bật trên test classpath. Trong CI, các
+project integration dùng chung một bản build frontend; Google, Admin, Dashboard
+và production có cấu hình môi trường riêng. Các bài test đăng nhập không ghi trace
+để tránh lưu password/token trong artifact.
+
 
 ## Tài liệu
 
