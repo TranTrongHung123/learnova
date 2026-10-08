@@ -12,20 +12,36 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/auth")
 public class ProfileController {
+
     private final ProfileService profiles;
-    ProfileController(ProfileService profiles) { this.profiles = profiles; }
+
+    ProfileController(ProfileService profiles) {
+        this.profiles = profiles;
+    }
 
     @GetMapping("/profile")
-    ProfileDtos.Profile get(@AuthenticationPrincipal Jwt jwt) { return profiles.get(UUID.fromString(jwt.getSubject())); }
+    ProfileDtos.Profile get(@AuthenticationPrincipal Jwt jwt) {
+        return profiles.get(UUID.fromString(jwt.getSubject()));
+    }
 
     @PutMapping("/profile")
-    ProfileDtos.Profile update(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ProfileDtos.UpdateProfile input) {
+    ProfileDtos.Profile update(
+        @AuthenticationPrincipal Jwt jwt,
+        @Valid @RequestBody ProfileDtos.UpdateProfile input
+    ) {
         return profiles.update(UUID.fromString(jwt.getSubject()), input);
     }
 
     @PostMapping("/change-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void password(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ProfileDtos.ChangePassword input) {
-        profiles.changePassword(UUID.fromString(jwt.getSubject()), jwt.getClaimAsString("sid"), input);
+    void password(
+        @AuthenticationPrincipal Jwt jwt,
+        @Valid @RequestBody ProfileDtos.ChangePassword input
+    ) {
+        profiles.changePassword(
+            UUID.fromString(jwt.getSubject()),
+            jwt.getClaimAsString("sid"),
+            input
+        );
     }
 }

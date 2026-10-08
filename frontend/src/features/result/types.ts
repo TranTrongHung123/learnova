@@ -1,10 +1,74 @@
 import type { Answer } from "@/features/attempt/types";
+
 export type Score = { score: string; totalScore: string; passed: boolean };
+
 export type Availability = "AVAILABLE" | "HIDDEN" | "PENDING_RELEASE" | "PENDING_GRADING";
-export const availabilityLabels: Record<Availability, string> = { AVAILABLE: "Có thể xem kết quả", HIDDEN: "Kết quả đang được ẩn", PENDING_RELEASE: "Chờ công bố", PENDING_GRADING: "Chưa có kết quả đã chấm" };
-export type ResultDetail = { id: string; sessionId: string; title: string; attemptNumber: number; status: string; submittedAt?: string; displayMode: string; availability: Availability;
-  result?: Score; summary?: { correctCount: number; incorrectCount: number; unansweredCount: number; durationSeconds: number };
-  questions?: { id: string; type: string; content: string; options: { id: string; content: string; correct: boolean }[]; answer: Answer; correctBoolean: boolean | null; correctValue: string | null; tolerance: string | null; explanation: string | null; correct: boolean; points: string; awardedScore: string }[] };
-export type History = { sessionId: string; title: string; examName: string; participantId: string; participantName: string; attemptCount: number; completedAt?: string; bestAttemptId?: string; availability: Availability; bestResult?: Score };
-export type PageResult<T> = { content: T[]; page: number; size: number; totalElements: number; totalPages: number };
-export type SessionResults = { title: string; displayMode: string; releasePolicy: string; releasedAt: string | null; canRelease: boolean; participants: PageResult<History> };
+
+export const availabilityLabels: Record<Availability, string> = {
+  AVAILABLE: "Có thể xem kết quả",
+  HIDDEN: "Kết quả đang được ẩn",
+  PENDING_RELEASE: "Chờ công bố",
+  PENDING_GRADING: "Chưa có kết quả đã chấm",
+};
+
+export type ResultDetail = {
+  id: string;
+  sessionId: string;
+  title: string;
+  attemptNumber: number;
+  status: string;
+  submittedAt?: string;
+  displayMode: string;
+  availability: Availability;
+  result?: Score;
+  summary?: {
+    correctCount: number;
+    incorrectCount: number;
+    unansweredCount: number;
+    durationSeconds: number;
+  };
+  questions?: {
+    id: string;
+    type: string;
+    content: string;
+    options: { id: string; content: string; correct: boolean }[];
+    answer: Answer;
+    correctBoolean: boolean | null;
+    correctValue: string | null;
+    tolerance: string | null;
+    explanation: string | null;
+    correct: boolean;
+    points: string;
+    awardedScore: string;
+  }[];
+};
+
+export type History = {
+  sessionId: string;
+  title: string;
+  examName: string;
+  participantId: string;
+  participantName: string;
+  attemptCount: number;
+  completedAt?: string;
+  bestAttemptId?: string;
+  availability: Availability;
+  bestResult?: Score;
+};
+
+export type PageResult<T> = {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
+export type SessionResults = {
+  title: string;
+  displayMode: string;
+  releasePolicy: string;
+  releasedAt: string | null;
+  canRelease: boolean;
+  participants: PageResult<History>;
+};

@@ -1,5 +1,7 @@
 import { defineConfig } from "@playwright/test";
+
 const api = "http://localhost:8081";
+
 export default defineConfig({
   testDir: "./tests/auth",
   outputDir: "test-results/auth",

@@ -9,11 +9,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SessionLifecycle {
+
     private final SessionRepository sessions;
     private final Clock clock;
-    public SessionLifecycle(SessionRepository sessions, Clock clock) { this.sessions=sessions; this.clock=clock; }
-    @Transactional(readOnly=true)
-    public List<UUID> due() { return sessions.due(clock.instant(),PageRequest.of(0,100)); }
+
+    public SessionLifecycle(SessionRepository sessions, Clock clock) {
+        this.sessions = sessions;
+        this.clock = clock;
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> due() {
+        return sessions.due(clock.instant(), PageRequest.of(0, 100));
+    }
+
     @Transactional
-    public void advance(UUID id) { sessions.lockById(id).ifPresent(s->s.advance(clock.instant())); }
+    public void advance(UUID id) {
+        sessions.lockById(id).ifPresent(s -> s.advance(clock.instant()));
+    }
 }

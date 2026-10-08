@@ -10,18 +10,31 @@ export function useApiQuery<T>(path: string, refetchOnFocus = false) {
   const [result, setResult] = useState<{ key: string; data?: T; error?: unknown }>({ key: "" });
   useEffect(() => {
     if (!refetchOnFocus) return;
-    const refresh = () => { if (document.visibilityState === "visible") setRevision(n => n + 1); };
+    const refresh = () => {
+      if (document.visibilityState === "visible") setRevision((n) => n + 1);
+    };
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
-    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [refetchOnFocus]);
   useEffect(() => {
     const controller = new AbortController();
     session.api.request<T>(path, { signal: controller.signal }).then(
-      data => { if (!controller.signal.aborted) setResult({ key, data }); },
-      error => { if (!controller.signal.aborted) setResult({ key, error }); },
+      (data) => {
+        if (!controller.signal.aborted) setResult({ key, data });
+      },
+      (error) => {
+        if (!controller.signal.aborted) setResult({ key, error });
+      },
     );
     return () => controller.abort();
   }, [session, path, key]);
-  return { data: result.key === key ? result.data : undefined, error: result.key === key ? result.error : undefined, reload: () => setRevision(n => n + 1) };
+  return {
+    data: result.key === key ? result.data : undefined,
+    error: result.key === key ? result.error : undefined,
+    reload: () => setRevision((n) => n + 1),
+  };
 }

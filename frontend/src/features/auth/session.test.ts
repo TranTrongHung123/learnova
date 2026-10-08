@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { AuthSession } from "./session";
-import {
-  safeReturnTo,
-  resolveWorkspace,
-  rememberWorkspace,
-} from "./workspace-resolution";
+import { safeReturnTo, resolveWorkspace, rememberWorkspace } from "./workspace-resolution";
 
 const user = {
   id: "u1",
@@ -14,6 +10,7 @@ const user = {
   status: "ACTIVE" as const,
   roles: ["PARTICIPANT" as const],
 };
+
 const tokens = (token: string) => ({
   accessToken: token,
   tokenType: "Bearer",
@@ -21,12 +18,15 @@ const tokens = (token: string) => ({
   expiresAt: "2026-09-28T00:00:00Z",
   user,
 });
+
 const response = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json" },
   });
+
 const csrf = () => response({ headerName: "X-XSRF-TOKEN", token: "csrf" });
+
 const problem = (status: number, code: string) =>
   response(
     {
@@ -43,7 +43,13 @@ const problem = (status: number, code: string) =>
 
 describe("auth session reliability", () => {
   it("profile save publishes only the server-confirmed name and avatar with fresh auth and CSRF", async () => {
-    const profile = { ...user, displayName: "Server name", avatarUrl: "https://example.com/a.png", createdAt: "2026-09-29T00:00:00Z", hasLocalIdentity: true };
+    const profile = {
+      ...user,
+      displayName: "Server name",
+      avatarUrl: "https://example.com/a.png",
+      createdAt: "2026-09-29T00:00:00Z",
+      hasLocalIdentity: true,
+    };
     const fetcher = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
       if (String(input).endsWith("/csrf")) return csrf();
       if (String(input).endsWith("/refresh")) return response(tokens("fresh"));
@@ -54,7 +60,11 @@ describe("auth session reliability", () => {
     });
     const session = new AuthSession("http://localhost:8080", fetcher);
     await session.saveProfile({ displayName: "Client name", avatarUrl: null });
-    expect(session.getSnapshot().user).toEqual({ ...user, displayName: profile.displayName, avatarUrl: profile.avatarUrl });
+    expect(session.getSnapshot().user).toEqual({
+      ...user,
+      displayName: profile.displayName,
+      avatarUrl: profile.avatarUrl,
+    });
   });
   it.each([400, 401, 503])("does not replay a password command after HTTP %s", async (status) => {
     let commands = 0;
@@ -65,7 +75,9 @@ describe("auth session reliability", () => {
       return problem(status, "CHANGE_FAILED");
     });
     const session = new AuthSession("http://localhost:8080", fetcher);
-    await expect(session.changePassword({ currentPassword: "old", newPassword: "new" })).rejects.toMatchObject({ status });
+    await expect(
+      session.changePassword({ currentPassword: "old", newPassword: "new" }),
+    ).rejects.toMatchObject({ status });
     expect(commands).toBe(1);
   });
   it("failed profile save leaves the confirmed profile in memory", async () => {
@@ -75,7 +87,9 @@ describe("auth session reliability", () => {
       return problem(400, "VALIDATION_FAILED");
     });
     const session = new AuthSession("http://localhost:8080", fetcher);
-    await expect(session.saveProfile({ displayName: "Rejected", avatarUrl: null })).rejects.toMatchObject({ status: 400 });
+    await expect(
+      session.saveProfile({ displayName: "Rejected", avatarUrl: null }),
+    ).rejects.toMatchObject({ status: 400 });
     expect(session.getSnapshot().user).toEqual(user);
   });
   it("Google completion serializes mutation and refresh, keeps credentials out of the mutation response", async () => {
@@ -95,13 +109,21 @@ describe("auth session reliability", () => {
     });
     const session = new AuthSession("http://localhost:8080", fetcher);
     await session.googleAction("onboarding", { roles: ["PARTICIPANT"] });
-    expect(paths).toEqual(["/api/v1/auth/csrf", "/api/v1/auth/google/onboarding", "/api/v1/auth/csrf", "/api/v1/auth/refresh"]);
+    expect(paths).toEqual([
+      "/api/v1/auth/csrf",
+      "/api/v1/auth/google/onboarding",
+      "/api/v1/auth/csrf",
+      "/api/v1/auth/refresh",
+    ]);
     expect(session.getSnapshot().user).toEqual(user);
   });
   it("shares Google callback resolution and does not issue a refresh for pending onboarding", async () => {
     const fetcher = vi.fn(async () => response({ state: "ONBOARDING", email: user.email }));
     const session = new AuthSession("http://localhost:8080", fetcher);
-    const values = await Promise.all([session.resolveGoogleCallback(), session.resolveGoogleCallback()]);
+    const values = await Promise.all([
+      session.resolveGoogleCallback(),
+      session.resolveGoogleCallback(),
+    ]);
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(values[0]?.state).toBe("ONBOARDING");
     expect(session.getSnapshot().user).toBeNull();
@@ -115,19 +137,15 @@ describe("auth session reliability", () => {
   it("bootstrap shares one refresh and concurrent 401 retries only once", async () => {
     let refreshes = 0;
     let calls = 0;
-    const fetcher = vi.fn(
-      async (input: URL | RequestInfo, init?: RequestInit) => {
-        const path = new URL(String(input)).pathname;
-        if (path.endsWith("/csrf")) return csrf();
-        if (path.endsWith("/refresh"))
-          return response(tokens(`token-${++refreshes}`));
-        calls++;
-        return new Headers(init?.headers).get("Authorization") ===
-          "Bearer token-2"
-          ? response({ ok: true })
-          : problem(401, "AUTHENTICATION_REQUIRED");
-      },
-    );
+    const fetcher = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith("/csrf")) return csrf();
+      if (path.endsWith("/refresh")) return response(tokens(`token-${++refreshes}`));
+      calls++;
+      return new Headers(init?.headers).get("Authorization") === "Bearer token-2"
+        ? response({ ok: true })
+        : problem(401, "AUTHENTICATION_REQUIRED");
+    });
     const session = new AuthSession("http://localhost:8080", fetcher);
     await Promise.all([session.bootstrap(), session.bootstrap()]);
     expect(refreshes).toBe(1);
@@ -144,8 +162,7 @@ describe("auth session reliability", () => {
     const fetcher = vi.fn(async (input: URL | RequestInfo) => {
       const path = String(input);
       if (path.endsWith("/csrf")) return csrf();
-      if (path.endsWith("/refresh"))
-        return response(tokens(`token-${++refreshes}`));
+      if (path.endsWith("/refresh")) return response(tokens(`token-${++refreshes}`));
       return problem(path.endsWith("/forbidden") ? 403 : 401, "DENIED");
     });
     const session = new AuthSession("http://localhost:8080", fetcher);
@@ -154,9 +171,7 @@ describe("auth session reliability", () => {
       status: 401,
     });
     expect(refreshes).toBe(2);
-    await expect(
-      session.api.request("/api/v1/forbidden"),
-    ).rejects.toMatchObject({ status: 403 });
+    await expect(session.api.request("/api/v1/forbidden")).rejects.toMatchObject({ status: 403 });
     expect(refreshes).toBe(2);
   });
   it("distinguishes expired authentication from an unavailable service", async () => {
@@ -164,16 +179,11 @@ describe("auth session reliability", () => {
       const fetcher = vi.fn(async (input: URL | RequestInfo) =>
         String(input).endsWith("/csrf")
           ? csrf()
-          : problem(
-              status,
-              status === 401 ? "INVALID_REFRESH_TOKEN" : "SERVICE_UNAVAILABLE",
-            ),
+          : problem(status, status === 401 ? "INVALID_REFRESH_TOKEN" : "SERVICE_UNAVAILABLE"),
       );
       const session = new AuthSession("http://localhost:8080", fetcher);
       await session.bootstrap();
-      expect(session.getSnapshot().status).toBe(
-        status === 401 ? "UNAUTHENTICATED" : "ERROR",
-      );
+      expect(session.getSnapshot().status).toBe(status === 401 ? "UNAUTHENTICATED" : "ERROR");
     }
   });
   it("late refresh cannot restore authentication after logout", async () => {
@@ -225,8 +235,7 @@ describe("auth session reliability", () => {
     let complete!: (response: Response) => void;
     const fetcher = vi.fn(async (input: URL | RequestInfo) => {
       if (String(input).endsWith("/csrf")) return csrf();
-      if (String(input).endsWith("/login"))
-        return response(tokens("other-user"));
+      if (String(input).endsWith("/login")) return response(tokens("other-user"));
       return new Promise<Response>((resolve) => {
         complete = resolve;
       });
@@ -278,9 +287,7 @@ describe("workspace resolution", () => {
     expect(safeReturnTo(value, ["PARTICIPANT"])).toBeNull();
   });
   it("preserves an authorized internal destination", () => {
-    expect(safeReturnTo("/participant/exams?q=1", ["PARTICIPANT"])).toBe(
-      "/participant/exams?q=1",
-    );
+    expect(safeReturnTo("/participant/exams?q=1", ["PARTICIPANT"])).toBe("/participant/exams?q=1");
   });
   it("isolates preferences by user and revalidates roles", () => {
     const values = new Map<string, string>();
@@ -296,9 +303,7 @@ describe("workspace resolution", () => {
         roles: ["CREATOR" as const, "PARTICIPANT" as const],
       };
       expect(resolveWorkspace(multi)).toBe("/creator");
-      expect(resolveWorkspace({ ...multi, id: "another-user" })).toBe(
-        "/workspaces",
-      );
+      expect(resolveWorkspace({ ...multi, id: "another-user" })).toBe("/workspaces");
       expect(resolveWorkspace({ ...user, roles: ["ADMIN"] })).toBe("/admin");
     } finally {
       vi.unstubAllGlobals();

@@ -45,6 +45,7 @@ const icons = {
   notifications: Bell,
   profile: UserRound,
 };
+
 type ShellProps = {
   workspace: Workspace;
   roles: readonly string[];
@@ -108,15 +109,12 @@ export function WorkspaceShell({
       <nav aria-label={`Điều hướng ${info.label}`} className="space-y-1">
         {navigationFor(workspace).map((item) => {
           const Icon = icons[item.icon];
-          const active =
-            !!item.href && isActiveNavigation(pathname, item.href, workspace);
+          const active = !!item.href && isActiveNavigation(pathname, item.href, workspace);
           const content = (
             <>
               <Icon size={19} aria-hidden="true" className="shrink-0" />
               <span className="min-w-0 flex-1">{item.label}</span>
-              {!item.available && (
-                <span className="text-[11px] font-normal">Sắp có</span>
-              )}
+              {!item.available && <span className="text-[11px] font-normal">Sắp có</span>}
             </>
           );
           const className = `flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm ${active ? "bg-muted font-semibold text-primary" : "text-muted-foreground"}`;
@@ -148,10 +146,7 @@ export function WorkspaceShell({
     );
   }
   const brand = (
-    <Link
-      href="/"
-      className="flex min-h-11 items-center gap-3 text-xl font-extrabold"
-    >
+    <Link href="/" className="flex min-h-11 items-center gap-3 text-xl font-extrabold">
       <span className="rounded-lg bg-primary p-2 text-on-primary">
         <GraduationCap aria-hidden="true" size={25} />
       </span>
@@ -168,11 +163,7 @@ export function WorkspaceShell({
         {navigation()}
         <div className="mt-auto pt-8">
           <div className="rounded-xl border border-border p-4">
-            <ShieldCheck
-              size={20}
-              className="mb-2 text-primary"
-              aria-hidden="true"
-            />
+            <ShieldCheck size={20} className="mb-2 text-primary" aria-hidden="true" />
             <p className="text-sm font-semibold">Tập trung vào đánh giá</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Rõ ràng trong từng bước, từ đề thi đến kết quả.
@@ -227,10 +218,7 @@ export function WorkspaceShell({
           </button>
           {allowed.length > 1 ? (
             <div>
-              <label
-                htmlFor="workspace-switcher"
-                className="block text-xs text-muted-foreground"
-              >
+              <label htmlFor="workspace-switcher" className="block text-xs text-muted-foreground">
                 Không gian làm việc
               </label>
               <select
@@ -238,9 +226,7 @@ export function WorkspaceShell({
                 value={workspace}
                 className="min-h-11 max-w-full rounded-lg border border-control-border bg-surface px-3 text-sm font-semibold"
                 onChange={(event) => {
-                  const target = allowed.find(
-                    (value) => value === event.target.value,
-                  );
+                  const target = allowed.find((value) => value === event.target.value);
                   if (target) {
                     drawer.current?.close();
                     setMenuOpen(false);
@@ -257,93 +243,86 @@ export function WorkspaceShell({
             </div>
           ) : (
             <div>
-              <p className="text-xs text-muted-foreground">
-                Không gian làm việc
-              </p>
+              <p className="text-xs text-muted-foreground">Không gian làm việc</p>
               <p className="font-semibold">{info.label}</p>
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">{notificationBell}<div
-          ref={menuRoot}
-          className="relative"
-          onBlur={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget))
-              setMenuOpen(false);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && menuOpen) {
-              setMenuOpen(false);
-              menuTrigger.current?.focus();
-              event.stopPropagation();
-            }
-          }}
-        >
-          <button
-            ref={menuTrigger}
-            type="button"
-            aria-expanded={menuOpen}
-            aria-controls="user-menu"
-            className="flex min-h-11 max-w-full items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted"
-            onClick={() => setMenuOpen((value) => !value)}
+        <div className="flex items-center gap-2">
+          {notificationBell}
+          <div
+            ref={menuRoot}
+            className="relative"
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setMenuOpen(false);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && menuOpen) {
+                setMenuOpen(false);
+                menuTrigger.current?.focus();
+                event.stopPropagation();
+              }
+            }}
           >
-            <Avatar name={user.displayName} url={user.avatarUrl} />
-            <span className="hidden max-w-48 text-left sm:block">
-              <span className="block break-words text-sm font-semibold">
-                {user.displayName}
-              </span>
-              {user.subtitle && (
-                <span className="block text-xs text-muted-foreground">
-                  {user.subtitle}
-                </span>
-              )}
-            </span>
-            <span className="sr-only">Menu người dùng</span>
-            <ChevronDown size={16} aria-hidden="true" />
-          </button>
-          {menuOpen && (
-            <div
-              id="user-menu"
-              className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border bg-surface p-2 shadow-lg"
+            <button
+              ref={menuTrigger}
+              type="button"
+              aria-expanded={menuOpen}
+              aria-controls="user-menu"
+              className="flex min-h-11 max-w-full items-center gap-3 rounded-lg px-2 py-2 hover:bg-muted"
+              onClick={() => setMenuOpen((value) => !value)}
             >
-              <p className="break-words px-3 py-2 text-sm font-semibold">
-                {user.displayName}
-              </p>
-              <Link
-                href={hrefFor("/profile")}
-                onClick={() => setMenuOpen(false)}
-                className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-muted-foreground"
+              <Avatar name={user.displayName} url={user.avatarUrl} />
+              <span className="hidden max-w-48 text-left sm:block">
+                <span className="block break-words text-sm font-semibold">{user.displayName}</span>
+                {user.subtitle && (
+                  <span className="block text-xs text-muted-foreground">{user.subtitle}</span>
+                )}
+              </span>
+              <span className="sr-only">Menu người dùng</span>
+              <ChevronDown size={16} aria-hidden="true" />
+            </button>
+            {menuOpen && (
+              <div
+                id="user-menu"
+                className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border bg-surface p-2 shadow-lg"
               >
-                <Settings2 size={16} aria-hidden="true" />
-                Hồ sơ
-              </Link>
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onLogout();
-                }}
-              >
-                <LogOut size={16} aria-hidden="true" />
-                Đăng xuất
-              </Button>
-              {onLogoutAll && (
+                <p className="break-words px-3 py-2 text-sm font-semibold">{user.displayName}</p>
+                <Link
+                  href={hrefFor("/profile")}
+                  onClick={() => setMenuOpen(false)}
+                  className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-muted-foreground"
+                >
+                  <Settings2 size={16} aria-hidden="true" />
+                  Hồ sơ
+                </Link>
                 <Button
                   variant="ghost"
                   className="w-full justify-start"
                   onClick={() => {
                     setMenuOpen(false);
-                    menuTrigger.current?.focus();
-                    onLogoutAll();
+                    onLogout();
                   }}
                 >
-                  Đăng xuất tất cả thiết bị
+                  <LogOut size={16} aria-hidden="true" />
+                  Đăng xuất
                 </Button>
-              )}
-            </div>
-          )}
-        </div>
+                {onLogoutAll && (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      menuTrigger.current?.focus();
+                      onLogoutAll();
+                    }}
+                  >
+                    Đăng xuất tất cả thiết bị
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
       <main

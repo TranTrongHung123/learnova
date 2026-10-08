@@ -43,8 +43,7 @@ export function ProtectedWorkspace({
   useEffect(() => {
     if (status === "UNAUTHENTICATED" && !busy && !logoutError)
       router.replace(`/login?returnTo=${encodeURIComponent(pathname)}`);
-    if (user && workspace && user.roles.includes(workspace))
-      rememberWorkspace(user.id, workspace);
+    if (user && workspace && user.roles.includes(workspace)) rememberWorkspace(user.id, workspace);
   }, [status, user, workspace, pathname, router, busy, logoutError]);
 
   async function logout(all = false) {
@@ -71,9 +70,7 @@ export function ProtectedWorkspace({
           description={logoutError}
           action={
             <div className="flex flex-wrap gap-3">
-              <Button onClick={() => void logout(retryAll)}>
-                Thử đăng xuất lại
-              </Button>
+              <Button onClick={() => void logout(retryAll)}>Thử đăng xuất lại</Button>
               <LinkButton variant="secondary" href="/login">
                 Đến đăng nhập
               </LinkButton>
@@ -88,9 +85,7 @@ export function ProtectedWorkspace({
         <PageState
           kind="network"
           description={error}
-          action={
-            <Button onClick={() => void session.bootstrap()}>Thử lại</Button>
-          }
+          action={<Button onClick={() => void session.bootstrap()}>Thử lại</Button>}
         />
       </main>
     );
@@ -103,27 +98,32 @@ export function ProtectedWorkspace({
   const allowed = availableWorkspaces(user.roles);
   const selected =
     workspace ??
-    allowed.find(
-      (role) => workspaceInfo[role].href === resolveWorkspace(user),
-    ) ??
+    allowed.find((role) => workspaceInfo[role].href === resolveWorkspace(user)) ??
     allowed[0];
   if (!selected || (workspace && !allowed.includes(workspace)))
     return (
       <main id="main-content" className="p-6">
         <PageState
           kind="forbidden"
-          action={
-            <LinkButton href="/workspaces">Chọn không gian làm việc</LinkButton>
-          }
+          action={<LinkButton href="/workspaces">Chọn không gian làm việc</LinkButton>}
         />
       </main>
     );
-  if (focused) return <main id="main-content" className="mx-auto min-h-dvh max-w-7xl p-4 sm:p-6" key={user.id}>
-    {typeof children === "function" ? children({ logoutAll: () => setConfirmingLogout(true) }) : children}
-  </main>;
+  if (focused)
+    return (
+      <main id="main-content" className="mx-auto min-h-dvh max-w-7xl p-4 sm:p-6" key={user.id}>
+        {typeof children === "function"
+          ? children({ logoutAll: () => setConfirmingLogout(true) })
+          : children}
+      </main>
+    );
   return (
     <WorkspaceShell
-      notificationBell={user.roles.some(role => role === "PARTICIPANT" || role === "CREATOR") ? <NotificationBell key={user.id} /> : undefined}
+      notificationBell={
+        user.roles.some((role) => role === "PARTICIPANT" || role === "CREATOR") ? (
+          <NotificationBell key={user.id} />
+        ) : undefined
+      }
       workspace={selected}
       roles={user.roles}
       user={{ displayName: user.displayName, subtitle: user.email, avatarUrl: user.avatarUrl }}
@@ -136,20 +136,18 @@ export function ProtectedWorkspace({
       onLogoutAll={() => setConfirmingLogout(true)}
     >
       <h1 className="text-3xl font-bold">{title}</h1>
-      {children ? <div key={user.id}>{typeof children === "function" ? children({ logoutAll: () => setConfirmingLogout(true) }) : children}</div> : selection ? (
-        <section
-          className="grid gap-4 sm:grid-cols-2"
-          aria-label="Không gian làm việc"
-        >
+      {children ? (
+        <div key={user.id}>
+          {typeof children === "function"
+            ? children({ logoutAll: () => setConfirmingLogout(true) })
+            : children}
+        </div>
+      ) : selection ? (
+        <section className="grid gap-4 sm:grid-cols-2" aria-label="Không gian làm việc">
           {allowed.map((role) => (
-            <div
-              className="rounded-xl border border-border bg-surface p-6"
-              key={role}
-            >
+            <div className="rounded-xl border border-border bg-surface p-6" key={role}>
               <h2 className="text-xl font-bold">{workspaceInfo[role].label}</h2>
-              <p className="my-4 text-muted-foreground">
-                {workspaceInfo[role].description}
-              </p>
+              <p className="my-4 text-muted-foreground">{workspaceInfo[role].description}</p>
               <Button
                 onClick={() => {
                   rememberWorkspace(user.id, role);
@@ -177,14 +175,11 @@ export function ProtectedWorkspace({
           Đăng xuất tất cả thiết bị?
         </h2>
         <p className="my-4">
-          Mọi phiên sẽ không thể gia hạn đăng nhập. Phiên truy cập đã cấp có thể
-          còn hiệu lực tối đa 15 phút.
+          Mọi phiên sẽ không thể gia hạn đăng nhập. Phiên truy cập đã cấp có thể còn hiệu lực tối đa
+          15 phút.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Button
-            variant="secondary"
-            onClick={() => confirmation.current?.close()}
-          >
+          <Button variant="secondary" onClick={() => confirmation.current?.close()}>
             Hủy
           </Button>
           <Button disabled={busy} onClick={() => void logout(true)}>

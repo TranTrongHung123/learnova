@@ -4,5 +4,11 @@ import { Skeleton } from "@/components/ui/page-state";
 import { DiscoveryList } from "@/features/discovery/discovery";
 
 export default function Page() {
-  return <ProtectedWorkspace workspace="PARTICIPANT" title="Kỳ thi của tôi"><Suspense fallback={<Skeleton />}><DiscoveryList /></Suspense></ProtectedWorkspace>;
+  return (
+    <ProtectedWorkspace workspace="PARTICIPANT" title="Kỳ thi của tôi">
+      <Suspense fallback={<Skeleton />}>
+        <DiscoveryList />
+      </Suspense>
+    </ProtectedWorkspace>
+  );
 }

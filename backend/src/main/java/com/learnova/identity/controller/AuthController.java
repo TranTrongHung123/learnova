@@ -14,8 +14,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -24,15 +24,26 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
+
     public static final String COOKIE = "learnova_refresh";
     private final IdentityService identity;
     private final RefreshSessions sessions;
     private final AccessTokens tokens;
     private final Clock clock;
     private final boolean secure;
-    AuthController(IdentityService identity, RefreshSessions sessions, AccessTokens tokens, Clock clock,
-            @Value("${learnova.auth.cookie-secure:true}") boolean secure) {
-        this.identity = identity; this.sessions = sessions; this.tokens = tokens; this.clock = clock; this.secure = secure;
+
+    AuthController(
+        IdentityService identity,
+        RefreshSessions sessions,
+        AccessTokens tokens,
+        Clock clock,
+        @Value("${learnova.auth.cookie-secure:true}") boolean secure
+    ) {
+        this.identity = identity;
+        this.sessions = sessions;
+        this.tokens = tokens;
+        this.clock = clock;
+        this.secure = secure;
     }
 
     @GetMapping("/csrf")
@@ -43,17 +54,25 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    AuthDtos.UserSummary register(@Valid @RequestBody AuthDtos.RegisterRequest request) { return identity.register(request); }
+    AuthDtos.UserSummary register(@Valid @RequestBody AuthDtos.RegisterRequest request) {
+        return identity.register(request);
+    }
 
     @PostMapping("/login")
-    AuthDtos.TokenResponse login(@Valid @RequestBody AuthDtos.LoginRequest request,
-            @CookieValue(name = COOKIE, required = false) String previous, HttpServletResponse response) {
+    AuthDtos.TokenResponse login(
+        @Valid @RequestBody AuthDtos.LoginRequest request,
+        @CookieValue(name = COOKIE, required = false) String previous,
+        HttpServletResponse response
+    ) {
         var login = identity.login(request, previous);
         return respond(login.user(), login.issued(), response);
     }
 
     @PostMapping("/refresh")
-    AuthDtos.TokenResponse refresh(@CookieValue(name = COOKIE, required = false) String token, HttpServletResponse response) {
+    AuthDtos.TokenResponse refresh(
+        @CookieValue(name = COOKIE, required = false) String token,
+        HttpServletResponse response
+    ) {
         try {
             var login = identity.refresh(token);
             return respond(login.user(), login.issued(), response);
@@ -64,11 +83,16 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    AuthDtos.UserSummary me(@AuthenticationPrincipal Jwt jwt) { return identity.activeUser(userId(jwt)); }
+    AuthDtos.UserSummary me(@AuthenticationPrincipal Jwt jwt) {
+        return identity.activeUser(userId(jwt));
+    }
 
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    void logout(@CookieValue(name = COOKIE, required = false) String token, HttpServletResponse response) {
+    void logout(
+        @CookieValue(name = COOKIE, required = false) String token,
+        HttpServletResponse response
+    ) {
         logoutSession(token);
         clearCookie(response);
     }
@@ -82,33 +106,61 @@ public class AuthController {
 
     private void logoutSession(String token) {
         if (token == null) return;
-        try { sessions.revoke(sessions.lookup(token)); }
-        catch (AuthFailure ignored) { /* Logout lặp lại vẫn thành công khi token không còn hợp lệ. */ }
+        try {
+            sessions.revoke(sessions.lookup(token));
+        } catch (AuthFailure ignored) {
+            /* Logout lặp lại vẫn thành công khi token không còn hợp lệ. */
+        }
     }
+
     void googleSession(UUID userId, HttpServletRequest request, HttpServletResponse response) {
         String previous = null;
-        if (request.getCookies() != null)
-            for (var cookie : request.getCookies())
-                if (COOKIE.equals(cookie.getName())) previous = cookie.getValue();
+        if (request.getCookies() != null) for (var cookie : request.getCookies())
+            if (COOKIE.equals(cookie.getName())) previous = cookie.getValue();
         var issued = identity.googleLogin(userId, previous).issued();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie(issued.token(),
-                Duration.between(clock.instant(), issued.session().expiresAt())).toString());
+        response.addHeader(
+            HttpHeaders.SET_COOKIE,
+            cookie(
+                issued.token(),
+                Duration.between(clock.instant(), issued.session().expiresAt())
+            ).toString()
+        );
     }
-    private AuthDtos.TokenResponse respond(AuthDtos.UserSummary user, RefreshSessions.Issued issued,
-            HttpServletResponse response) {
+
+    private AuthDtos.TokenResponse respond(
+        AuthDtos.UserSummary user,
+        RefreshSessions.Issued issued,
+        HttpServletResponse response
+    ) {
         var result = tokens.issue(user, issued.session().sessionId());
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie(issued.token(),
-                Duration.between(clock.instant(), issued.session().expiresAt())).toString());
+        response.addHeader(
+            HttpHeaders.SET_COOKIE,
+            cookie(
+                issued.token(),
+                Duration.between(clock.instant(), issued.session().expiresAt())
+            ).toString()
+        );
         return result;
     }
+
     private UUID userId(Jwt jwt) {
-        try { return UUID.fromString(jwt.getSubject()); }
-        catch (IllegalArgumentException ex) { throw new AuthFailure(401, "AUTHENTICATION_REQUIRED"); }
+        try {
+            return UUID.fromString(jwt.getSubject());
+        } catch (IllegalArgumentException ex) {
+            throw new AuthFailure(401, "AUTHENTICATION_REQUIRED");
+        }
     }
+
     private ResponseCookie cookie(String value, Duration age) {
-        return ResponseCookie.from(COOKIE, value).httpOnly(true).secure(secure).sameSite("Lax")
-                .path("/api/v1/auth").maxAge(age).build();
+        return ResponseCookie.from(COOKIE, value)
+            .httpOnly(true)
+            .secure(secure)
+            .sameSite("Lax")
+            .path("/api/v1/auth")
+            .maxAge(age)
+            .build();
     }
+
     private void clearCookie(HttpServletResponse response) {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie("", Duration.ZERO).toString());
     }

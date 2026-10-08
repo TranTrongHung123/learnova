@@ -2,17 +2,20 @@ import { expect, test, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 
 const password = "Local password for test 123";
+
 async function google(page: Page, email: string) {
   await page.goto("/login");
   await page.getByRole("button", { name: "Tiếp tục với Google", exact: true }).click();
   await page.getByLabel("Email Google").fill(email);
   await page.getByRole("button", { name: "Tiếp tục test", exact: true }).click();
 }
+
 async function logout(page: Page) {
   await page.getByRole("button", { name: /Menu người dùng/ }).click();
   await page.getByRole("button", { name: "Đăng xuất", exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
 }
+
 async function localUser(page: Page, email: string) {
   await page.goto("/register");
   await page.getByLabel("Tên hiển thị", { exact: false }).fill("Local User");
@@ -23,7 +26,10 @@ async function localUser(page: Page, email: string) {
   await expect(page).toHaveURL(/\/login\?registered=1/);
 }
 
-test("new Google user resumes onboarding, selects both roles, reloads and signs in again", async ({ page, context }) => {
+test("new Google user resumes onboarding, selects both roles, reloads and signs in again", async ({
+  page,
+  context,
+}) => {
   const email = `${randomUUID()}@example.com`;
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -39,7 +45,9 @@ test("new Google user resumes onboarding, selects both roles, reloads and signs 
   await page.getByRole("button", { name: "Vào không gian người tạo" }).click();
   await expect(page).toHaveURL(/\/creator$/);
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Tổng quan người tạo", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Tổng quan người tạo", exact: true }),
+  ).toBeVisible();
   await page.goto("/profile");
   await expect(page.getByText("Bạn đăng nhập bằng Google.", { exact: false })).toBeVisible();
   await expect(page.getByRole("button", { name: "Đổi mật khẩu", exact: true })).toHaveCount(0);
@@ -50,22 +58,30 @@ test("new Google user resumes onboarding, selects both roles, reloads and signs 
   await google(page, email);
   await expect(page).toHaveURL(/\/creator$/);
   expect(new URL(page.url()).search).toBe("");
-  expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => /token/i.test(key)))).toEqual([]);
+  expect(
+    await page.evaluate(() => Object.keys(localStorage).filter((key) => /token/i.test(key))),
+  ).toEqual([]);
   expect(errors).toEqual([]);
 });
 
-test("local collision requires password and explicit confirmation; both logins keep the same account", async ({ page }) => {
+test("local collision requires password and explicit confirmation; both logins keep the same account", async ({
+  page,
+}) => {
   const email = `${randomUUID()}@example.com`;
   await localUser(page, email);
   await google(page, email);
   await expect(page).toHaveURL(/\/auth\/link-account$/);
   await page.getByLabel("Mật khẩu tài khoản Local", { exact: false }).fill("wrong");
   await page.getByRole("button", { name: "Xác minh tài khoản", exact: true }).click();
-  await expect(page.getByRole("main").getByRole("alert")).toContainText("Email hoặc mật khẩu chưa đúng");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Email hoặc mật khẩu chưa đúng",
+  );
   await expect(page.getByRole("main").getByRole("alert")).toBeFocused();
   await page.getByLabel("Mật khẩu tài khoản Local", { exact: false }).fill(password);
   await page.getByRole("button", { name: "Xác minh tài khoản", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Xác nhận liên kết Google", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Xác nhận liên kết Google", exact: true }),
+  ).toBeVisible();
   await page.screenshot({ path: "test-results/google/link-confirmation.png" });
   await page.reload();
   await page.getByRole("button", { name: "Xác nhận liên kết Google", exact: true }).click();
@@ -90,20 +106,34 @@ test("cancel, expired flow and provider denial have a route back to login", asyn
   await expect(page.getByRole("main").getByRole("alert")).toContainText("bị hủy");
 });
 
-test("onboarding handles network failure, keyboard and mobile layout", async ({ page, context }) => {
+test("onboarding handles network failure, keyboard and mobile layout", async ({
+  page,
+  context,
+}) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await google(page, `${randomUUID()}@example.com`);
   await expect(page.getByRole("heading", { name: /Bạn muốn dùng Learnova/ })).toBeFocused();
   await page.getByRole("radio", { name: "Làm bài kiểm tra", exact: true }).focus();
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("radio", { name: "Tạo và tổ chức bài kiểm tra", exact: true })).toBeChecked();
+  await expect(
+    page.getByRole("radio", { name: "Tạo và tổ chức bài kiểm tra", exact: true }),
+  ).toBeChecked();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: "test-results/google/onboarding-375.png" });
-  for (const viewport of [{ width: 768, height: 1024 }, { width: 1024, height: 768 }, { width: 1440, height: 900 }, { width: 640, height: 450 }]) {
+  for (const viewport of [
+    { width: 768, height: 1024 },
+    { width: 1024, height: 768 },
+    { width: 1440, height: 900 },
+    { width: 640, height: 450 },
+  ]) {
     await page.setViewportSize(viewport);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await expect(page.getByRole("button", { name: "Hoàn tất và tiếp tục", exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await expect(
+      page.getByRole("button", { name: "Hoàn tất và tiếp tục", exact: true }),
+    ).toBeVisible();
   }
   await page.screenshot({ path: "test-results/google/onboarding-640.png" });
   await context.setOffline(true);
@@ -114,7 +144,10 @@ test("onboarding handles network failure, keyboard and mobile layout", async ({ 
   await expect(page).toHaveURL(/\/creator$/);
 });
 
-test("two tabs finishing the same onboarding recover the authoritative session", async ({ page, context }) => {
+test("two tabs finishing the same onboarding recover the authoritative session", async ({
+  page,
+  context,
+}) => {
   await google(page, `${randomUUID()}@example.com`);
   await expect(page).toHaveURL(/\/onboarding\/roles$/);
   const second = await context.newPage();

@@ -11,17 +11,33 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/exam-sessions/{id}")
 public class ReportingController {
+
     private final ReportingService service;
-    public ReportingController(ReportingService service) { this.service=service; }
-    @GetMapping("/analytics")
-    ResponseEntity<Analytics> analytics(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.analytics(UUID.fromString(jwt.getSubject()),id));
+
+    public ReportingController(ReportingService service) {
+        this.service = service;
     }
+
+    @GetMapping("/analytics")
+    ResponseEntity<Analytics> analytics(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return ResponseEntity.ok()
+            .cacheControl(CacheControl.noStore())
+            .body(service.analytics(UUID.fromString(jwt.getSubject()), id));
+    }
+
     @GetMapping("/export")
-    ResponseEntity<byte[]> export(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=\"session-"+id+".xlsx\"")
-                .body(service.export(UUID.fromString(jwt.getSubject()),id));
+    ResponseEntity<byte[]> export(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return ResponseEntity.ok()
+            .cacheControl(CacheControl.noStore())
+            .contentType(
+                MediaType.parseMediaType(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            )
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"session-" + id + ".xlsx\""
+            )
+            .body(service.export(UUID.fromString(jwt.getSubject()), id));
     }
 }

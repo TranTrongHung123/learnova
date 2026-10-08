@@ -9,17 +9,26 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 @Order(0)
-@RestControllerAdvice(assignableTypes=NotificationController.class)
+@RestControllerAdvice(assignableTypes = NotificationController.class)
 class NotificationExceptionHandler {
+
     private final ApiProblems problems;
-    NotificationExceptionHandler(ApiProblems problems) { this.problems=problems; }
+
+    NotificationExceptionHandler(ApiProblems problems) {
+        this.problems = problems;
+    }
+
     @ExceptionHandler(AuthFailure.class)
     ResponseEntity<?> auth(AuthFailure ex, HttpServletRequest request) {
-        var p=problems.create(HttpStatusCode.valueOf(ex.status),request.getRequestURI());
-        p.setProperty("code",ex.code); return ResponseEntity.status(ex.status).body(p);
+        var p = problems.create(HttpStatusCode.valueOf(ex.status), request.getRequestURI());
+        p.setProperty("code", ex.code);
+        return ResponseEntity.status(ex.status).body(p);
     }
+
     @ExceptionHandler(DataAccessException.class)
     ResponseEntity<?> database(DataAccessException ex, HttpServletRequest request) {
-        return ResponseEntity.status(503).body(problems.create(HttpStatus.SERVICE_UNAVAILABLE,request.getRequestURI()));
+        return ResponseEntity.status(503).body(
+            problems.create(HttpStatus.SERVICE_UNAVAILABLE, request.getRequestURI())
+        );
     }
 }

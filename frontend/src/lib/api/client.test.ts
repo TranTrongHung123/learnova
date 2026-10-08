@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, createApiClient } from "./client";
+
 const problem = {
   type: "about:blank",
   title: "Bad Request",
@@ -12,14 +13,15 @@ const problem = {
     { field: "title", message: "Too short" },
   ],
 };
+
 const response = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
     headers: {
-      "content-type":
-        status >= 400 ? "application/problem+json" : "application/json",
+      "content-type": status >= 400 ? "application/problem+json" : "application/json",
     },
   });
+
 function setup(res: Response = response({ status: "UP" })) {
   const fetcher = vi.fn<typeof fetch>().mockResolvedValue(res);
   return {
@@ -27,13 +29,31 @@ function setup(res: Response = response({ status: "UP" })) {
     client: createApiClient({ baseUrl: "https://api.example.test", fetcher }),
   };
 }
+
 describe("API transport", () => {
   it("multipart retry dùng lại file, boundary do browser tạo", async () => {
     let token = "old";
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(response({}, 401)).mockResolvedValueOnce(response({ importId: "id" }, 201));
-    const client = createApiClient({ baseUrl: "https://api.example.test", fetcher, getAccessToken: () => token, refreshAccessToken: async () => { token = "new"; } });
-    const formData = new FormData(); formData.append("file", new Blob(["file"]), "questions.xlsx");
-    expect(await client.request("/api/v1/question-imports", { method: "POST", formData, headers: { "Content-Type": "multipart/form-data" } })).toEqual({ importId: "id" });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(response({}, 401))
+      .mockResolvedValueOnce(response({ importId: "id" }, 201));
+    const client = createApiClient({
+      baseUrl: "https://api.example.test",
+      fetcher,
+      getAccessToken: () => token,
+      refreshAccessToken: async () => {
+        token = "new";
+      },
+    });
+    const formData = new FormData();
+    formData.append("file", new Blob(["file"]), "questions.xlsx");
+    expect(
+      await client.request("/api/v1/question-imports", {
+        method: "POST",
+        formData,
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
+    ).toEqual({ importId: "id" });
     expect(fetcher).toHaveBeenCalledTimes(2);
     for (const [, options] of fetcher.mock.calls) {
       expect(options?.body).toBe(formData);
@@ -43,32 +63,56 @@ describe("API transport", () => {
   });
   it("download binary vẫn refresh và đọc ProblemDetail khi thất bại", async () => {
     const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(response({}, 401)).mockResolvedValueOnce(new Response("xlsx", { headers: { "Content-Type": mime } }));
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(response({}, 401))
+      .mockResolvedValueOnce(new Response("xlsx", { headers: { "Content-Type": mime } }));
     const refresh = vi.fn(async () => {});
-    const client = createApiClient({ baseUrl: "https://api.example.test", fetcher, getAccessToken: () => "token", refreshAccessToken: refresh });
-    const blob = await client.request<Blob>("/api/v1/question-imports/template", { responseType: "blob" });
-    expect(await blob.text()).toBe("xlsx"); expect(refresh).toHaveBeenCalledOnce();
+    const client = createApiClient({
+      baseUrl: "https://api.example.test",
+      fetcher,
+      getAccessToken: () => "token",
+      refreshAccessToken: refresh,
+    });
+    const blob = await client.request<Blob>("/api/v1/question-imports/template", {
+      responseType: "blob",
+    });
+    expect(await blob.text()).toBe("xlsx");
+    expect(refresh).toHaveBeenCalledOnce();
     const failed = setup(response(problem, 400));
-    await expect(failed.client.request("/api/v1/question-imports/template", { responseType: "blob" })).rejects.toMatchObject({ status: 400, problem });
+    await expect(
+      failed.client.request("/api/v1/question-imports/template", { responseType: "blob" }),
+    ).rejects.toMatchObject({ status: 400, problem });
   });
   it("không giao file của session cũ khi account đã đổi", async () => {
     let generation = 0;
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => {
-      generation++; return new Response("xlsx", { headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
+      generation++;
+      return new Response("xlsx", {
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+      });
     });
-    const client = createApiClient({ baseUrl: "https://api.example.test", fetcher, getAuthGeneration: () => generation });
-    await expect(client.request("/api/v1/question-imports/template", { responseType: "blob" })).rejects.toMatchObject({ name: "AbortError" });
+    const client = createApiClient({
+      baseUrl: "https://api.example.test",
+      fetcher,
+      getAuthGeneration: () => generation,
+    });
+    await expect(
+      client.request("/api/v1/question-imports/template", { responseType: "blob" }),
+    ).rejects.toMatchObject({ name: "AbortError" });
   });
   it("cho phép query chứa URL đã encode mà không nới origin", async () => {
     const { client, fetcher } = setup();
     await client.request("/api/v1/questions?search=https%3A%2F%2Fexample.test");
-    expect(String(fetcher.mock.calls[0][0])).toBe("https://api.example.test/api/v1/questions?search=https%3A%2F%2Fexample.test");
+    expect(String(fetcher.mock.calls[0][0])).toBe(
+      "https://api.example.test/api/v1/questions?search=https%3A%2F%2Fexample.test",
+    );
   });
   it("đọc token mới ở mỗi request, gửi credentials và JSON", async () => {
     let token = "first";
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockImplementation(async () => response({ ok: true }));
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => response({ ok: true }));
     const client = createApiClient({
       baseUrl: "https://api.example.test",
       fetcher,
@@ -87,12 +131,10 @@ describe("API transport", () => {
       redirect: "error",
       body: JSON.stringify({ title: "Đề thi" }),
     });
-    expect(new Headers(first.headers).get("Authorization")).toBe(
-      "Bearer first",
+    expect(new Headers(first.headers).get("Authorization")).toBe("Bearer first");
+    expect(new Headers(fetcher.mock.calls[1][1]!.headers).get("Authorization")).toBe(
+      "Bearer second",
     );
-    expect(
-      new Headers(fetcher.mock.calls[1][1]!.headers).get("Authorization"),
-    ).toBe("Bearer second");
   });
   it("request công khai không gửi bearer và có thể bỏ cookie", async () => {
     const { fetcher } = setup();
@@ -106,18 +148,14 @@ describe("API transport", () => {
       credentials: "omit",
     });
     expect(fetcher.mock.calls[0][1]!.credentials).toBe("omit");
-    expect(
-      new Headers(fetcher.mock.calls[0][1]!.headers).has("Authorization"),
-    ).toBe(false);
+    expect(new Headers(fetcher.mock.calls[0][1]!.headers).has("Authorization")).toBe(false);
   });
   it("đọc JSON và xử lý 204", async () => {
     expect(await setup().client.request("/api/v1/health")).toEqual({
       status: "UP",
     });
     expect(
-      await setup(new Response(null, { status: 204 })).client.request(
-        "/api/v1/test",
-      ),
+      await setup(new Response(null, { status: 204 })).client.request("/api/v1/test"),
     ).toBeUndefined();
   });
   it("giữ nhiều fieldErrors cùng field theo contract", async () => {
@@ -131,15 +169,14 @@ describe("API transport", () => {
   });
   it.each([401, 403, 409, 500])("không tự retry HTTP %s", async (status) => {
     const { fetcher, client } = setup(response({ ...problem, status }, status));
-    await expect(
-      client.request("/api/v1/test", { method: "POST" }),
-    ).rejects.toMatchObject({ kind: "http", status });
+    await expect(client.request("/api/v1/test", { method: "POST" })).rejects.toMatchObject({
+      kind: "http",
+      status,
+    });
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
   it("không hiển thị raw HTML hay lỗi nội bộ", async () => {
-    const { client } = setup(
-      new Response("<html>SQL secret</html>", { status: 502 }),
-    );
+    const { client } = setup(new Response("<html>SQL secret</html>", { status: 502 }));
     await expect(client.request("/api/v1/test")).rejects.toMatchObject({
       kind: "http",
       status: 502,
@@ -150,23 +187,19 @@ describe("API transport", () => {
     new Response("not json"),
     new Response("{}", { headers: { "content-type": "text/html" } }),
   ])("phân biệt response thành công sai định dạng", async (res) => {
-    await expect(
-      setup(res).client.request("/api/v1/test"),
-    ).rejects.toMatchObject({ kind: "invalid-response" });
+    await expect(setup(res).client.request("/api/v1/test")).rejects.toMatchObject({
+      kind: "invalid-response",
+    });
   });
   it("không tin ProblemDetail sai schema", async () => {
     await expect(
-      setup(response({ ...problem, fieldErrors: {} }, 400)).client.request(
-        "/api/v1/test",
-      ),
+      setup(response({ ...problem, fieldErrors: {} }, 400)).client.request("/api/v1/test"),
     ).rejects.toMatchObject({ problem: undefined });
   });
   it("chuẩn hóa lỗi mạng", async () => {
     const { client, fetcher } = setup();
     fetcher.mockRejectedValue(new TypeError("fetch failed"));
-    await expect(client.request("/api/v1/test")).rejects.toBeInstanceOf(
-      ApiError,
-    );
+    await expect(client.request("/api/v1/test")).rejects.toBeInstanceOf(ApiError);
     await expect(client.request("/api/v1/test")).rejects.toMatchObject({
       kind: "network",
       status: 0,
@@ -178,9 +211,9 @@ describe("API transport", () => {
     const { client, fetcher } = setup();
     fetcher.mockRejectedValue(aborted);
     controller.abort();
-    await expect(
-      client.request("/api/v1/test", { signal: controller.signal }),
-    ).rejects.toBe(aborted);
+    await expect(client.request("/api/v1/test", { signal: controller.signal })).rejects.toBe(
+      aborted,
+    );
     expect(fetcher.mock.calls[0][1]!.signal).toBe(controller.signal);
   });
   it.each([
