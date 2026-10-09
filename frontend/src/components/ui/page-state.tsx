@@ -1,8 +1,13 @@
-import { CircleAlert, FileQuestion, LockKeyhole, Inbox, WifiOff, Construction } from "lucide-react";
+import { CircleAlert, Clock, FileQuestion, LockKeyhole, Inbox, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
 
 export type PageStateKind =
-  "empty" | "forbidden" | "not-found" | "network" | "unavailable" | "error";
+  | "empty"
+  | "forbidden"
+  | "not-found"
+  | "network"
+  | "pending"
+  | "error";
 
 const states = {
   empty: {
@@ -25,15 +30,15 @@ const states = {
     title: "Chưa thể kết nối",
     description: "Kiểm tra kết nối mạng rồi thử lại. Chưa có dữ liệu mới được tải.",
   },
-  unavailable: {
-    icon: Construction,
-    title: "Tính năng đang được hoàn thiện",
-    description: "Bạn có thể quay lại trang chủ trong khi chờ tính năng sẵn sàng.",
-  },
   error: {
     icon: CircleAlert,
     title: "Không thể hiển thị nội dung",
     description: "Vui lòng thử lại hoặc quay về trang chủ.",
+  },
+  pending: {
+    icon: Clock,
+    title: "Đang chờ xác nhận",
+    description: "Vui lòng chờ máy chủ xác nhận trạng thái mới nhất.",
   },
 };
 

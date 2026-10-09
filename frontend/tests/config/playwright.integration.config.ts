@@ -3,6 +3,7 @@ import path from "node:path";
 import { applicationConfig, frontendRoot, testPaths } from "./playwright.shared";
 
 const suiteTimeouts = {
+  acceptance: 120000,
   auth: 45000,
   classroom: 60000,
   question: 60000,

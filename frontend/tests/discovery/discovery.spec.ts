@@ -149,6 +149,8 @@ test("real list/detail, filters, reload, safe metadata and responsive keyboard n
   await expect(page).toHaveURL(/tab=UPCOMING/);
   await page.getByRole("link", { name: "Có thể làm", exact: true }).click();
   await page.getByRole("link", { name: `Xem chi tiết ${s.title}` }).click();
+  await expect(page).toHaveURL(new RegExp(`/participant/exams/${s.id}(\\?|$)`));
+  await expect(page.getByRole("heading", { name: "Chi tiết kỳ thi", level: 1, exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Bắt đầu làm bài", exact: true })).toBeEnabled();
   await expect(page.getByText("Bạn chưa có bài làm trong kỳ thi này.")).toBeVisible();
   await page.emulateMedia({ reducedMotion: "reduce" });

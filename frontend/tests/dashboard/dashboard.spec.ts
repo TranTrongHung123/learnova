@@ -24,7 +24,11 @@ async function account(request: APIRequestContext, role: string) {
   const login = await (
     await request.post(`${api}/auth/login`, { headers, data: { email, password } })
   ).json();
-  return { email, id: login.user.id, headers: { Authorization: `Bearer ${login.accessToken}` } };
+  return {
+    email,
+    id: login.user.id,
+    headers: { Authorization: `Bearer ${login.accessToken}` },
+  };
 }
 
 async function fixture(request: APIRequestContext, mode = "DETAILED", graded = true) {
@@ -91,7 +95,9 @@ async function fixture(request: APIRequestContext, mode = "DETAILED", graded = t
     ).status(),
   ).toBe(200);
   const started = await (
-    await request.post(`${api}/exam-sessions/${s.id}/attempts`, { headers: participant.headers })
+    await request.post(`${api}/exam-sessions/${s.id}/attempts`, {
+      headers: participant.headers,
+    })
   ).json();
   const a = started.attempt ?? started;
   expect(
@@ -145,7 +151,9 @@ test("participant dashboard keeps scores private until release, resumes and swit
   await expect(
     results.getByRole("link", { name: "Xem kết quả : Dashboard session", exact: true }),
   ).toBeVisible();
-  await results.getByRole("link", { name: "Xem kết quả : Dashboard session", exact: true }).click();
+  await results
+    .getByRole("link", { name: "Xem kết quả : Dashboard session", exact: true })
+    .click();
   await expect(page).toHaveURL(new RegExp(`/participant/results/${f.a.id}$`));
   await page.goto("/participant");
   const second = await request.post(`${api}/exam-sessions/${f.s.id}/attempts`, {
@@ -240,7 +248,9 @@ test("admin dashboard labels account status and role counts with safe navigation
   await page.locator("#password").fill(process.env.LEARNOVA_TEST_ADMIN_PASSWORD!);
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("paragraph").filter({ hasText: /^Tài khoản ACTIVE$/ })).toBeVisible();
+  await expect(
+    page.getByRole("paragraph").filter({ hasText: /^Tài khoản ACTIVE$/ }),
+  ).toBeVisible();
   await expect(page.getByText(/không phải số người đang online/)).toBeVisible();
   await checkLayout(page, "admin");
   await page.getByRole("link", { name: "Xem chi tiết Tài khoản ACTIVE", exact: true }).click();
@@ -258,6 +268,19 @@ async function checkLayout(page: Page, role: string) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     ).toBeTruthy();
+    if (width < 1024) {
+      const trigger = page.getByRole("button", { name: "Mở điều hướng", exact: true });
+      await trigger.click();
+      await expect(page.getByRole("dialog", { name: "Điều hướng", exact: true })).toBeVisible();
+      await page.keyboard.press("Tab");
+      expect(
+        await page.evaluate(() =>
+          document.querySelector("dialog[open]")?.contains(document.activeElement),
+        ),
+      ).toBe(true);
+      await page.keyboard.press("Escape");
+      await expect(trigger).toBeFocused();
+    }
     if (width === 375 || width === 1440)
       await page.screenshot({
         path: `test-results/dashboard/${role}-${width}.png`,

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { GraduationCap } from "lucide-react";
+import { ArrowRight, BookOpen, GraduationCap, ShieldCheck, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/client";
@@ -89,14 +89,57 @@ export function AuthForm({
   return (
     <main
       id="main-content"
-      className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-10 sm:px-6"
+      tabIndex={-1}
+      className="mx-auto grid min-h-dvh w-full max-w-6xl content-center items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-2 lg:gap-20 lg:py-12"
     >
-      <Link href="/" className="mb-8 flex items-center justify-center gap-2 text-xl font-bold">
-        <GraduationCap aria-hidden="true" className="text-primary" />
-        Learnova
-      </Link>
+      <div className="min-w-0">
+        <Link
+          href="/"
+          className="flex min-h-11 items-center justify-center gap-3 text-2xl font-extrabold tracking-tight lg:justify-start"
+        >
+          <span className="rounded-xl bg-primary p-2 text-on-primary">
+            <GraduationCap size={28} aria-hidden="true" />
+          </span>
+          <span>
+            Learnova<span className="text-primary">.</span>
+          </span>
+        </Link>
+        <div className="mt-12 hidden lg:block">
+          <p className="text-xs font-bold tracking-wider text-primary">
+            MỖI BÀI KIỂM TRA, MỘT BƯỚC TIẾN
+          </p>
+          <p className="mt-5 text-4xl leading-tight font-extrabold tracking-tight">
+            Không gian của bạn.
+            <br />
+            <span className="text-primary">Sẵn sàng cho điều tiếp theo.</span>
+          </p>
+          <p className="mt-5 max-w-md text-lg leading-8 text-muted-foreground">
+            Tạo bài kiểm tra, tham gia kỳ thi và theo dõi kết quả — tất cả bắt đầu từ đây.
+          </p>
+          <ul className="mt-9 space-y-5">
+            {[
+              { icon: BookOpen, text: "Soạn câu hỏi và tổ chức kỳ thi" },
+              { icon: ShieldCheck, text: "Lưu bài tự động, tiếp tục sau khi tải lại" },
+              { icon: Users, text: "Linh hoạt chuyển giữa tạo đề và làm bài" },
+            ].map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-center gap-3 text-sm font-medium">
+                <span className="rounded-lg border border-border bg-surface p-2 text-primary">
+                  <Icon size={19} aria-hidden="true" />
+                </span>
+                {text}
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/"
+            className="mt-9 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary"
+          >
+            Khám phá Learnova <ArrowRight size={16} aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
       <section
-        className="rounded-xl border border-border bg-surface p-6 sm:p-8"
+        className="mx-auto w-full max-w-lg rounded-2xl border border-border bg-surface p-6 shadow-sm sm:p-9"
         aria-labelledby="auth-title"
       >
         <h1 id="auth-title" className="text-3xl font-bold">
@@ -170,9 +213,15 @@ export function AuthForm({
                 maxLength={256}
                 required
                 error={fields.password}
-                hint={register ? "12–128 ký tự. Có thể dùng dấu cách và tiếng Việt." : undefined}
+                hint={
+                  register ? "12–128 ký tự. Có thể dùng dấu cách và tiếng Việt." : undefined
+                }
               />
-              <Button variant="ghost" onClick={() => setVisible(!visible)} aria-pressed={visible}>
+              <Button
+                variant="ghost"
+                onClick={() => setVisible(!visible)}
+                aria-pressed={visible}
+              >
                 {visible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
               </Button>
               {register && (

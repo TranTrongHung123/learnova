@@ -8,7 +8,7 @@ import { PageState, Skeleton } from "@/components/ui/page-state";
 
 export const apiRoot = "/api/v1/questions";
 
-export const panel = "rounded-xl border border-border bg-surface p-4 sm:p-6";
+export const panel = "rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-6";
 
 export const control =
   "min-h-11 w-full rounded-lg border border-control-border bg-surface px-3 py-2";

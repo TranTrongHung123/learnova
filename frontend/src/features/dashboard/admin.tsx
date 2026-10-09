@@ -2,7 +2,7 @@
 
 import { LinkButton } from "@/components/ui/button";
 import { useApiQuery } from "@/lib/api/use-query";
-import { DashboardState, Metric, Updated } from "./shared";
+import { DashboardIntro, DashboardState, Metric, Updated } from "./shared";
 import type { AdminDashboard } from "./types";
 
 export function AdminOverview() {
@@ -11,15 +11,15 @@ export function AdminOverview() {
   const d = query.data;
   return (
     <div className="space-y-6">
-      <p className="text-muted-foreground">
-        Theo dõi quy mô hệ thống và truy cập các công cụ quản trị.
-      </p>
-      <div className="flex flex-wrap gap-3">
+      <DashboardIntro
+        label="KHÔNG GIAN QUẢN TRỊ"
+        description="Theo dõi quy mô hệ thống, quản lý tài khoản và tra cứu hoạt động tại cùng một nơi."
+      >
         <LinkButton href="/admin/users">Quản lý người dùng</LinkButton>
         <LinkButton variant="secondary" href="/admin/audit-logs">
           Mở nhật ký hoạt động
         </LinkButton>
-      </div>
+      </DashboardIntro>
       <Updated time={d.serverTime} reload={query.reload} />
       <section aria-label="Tài khoản và vai trò">
         <h2 className="mb-4 text-xl font-bold">Tài khoản và vai trò</h2>
@@ -40,8 +40,8 @@ export function AdminOverview() {
           <Metric label="Vai trò ADMIN" value={d.admins} href="/admin/users?role=ADMIN" />
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Một tài khoản có thể có nhiều vai trò. Các nhóm vai trò được đếm độc lập, gồm cả tài khoản
-          đã khóa.
+          Một tài khoản có thể có nhiều vai trò. Các nhóm vai trò được đếm độc lập, gồm cả tài
+          khoản đã khóa.
         </p>
       </section>
       <section aria-label="Đề thi và kỳ thi">

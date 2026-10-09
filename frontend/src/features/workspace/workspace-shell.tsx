@@ -53,7 +53,6 @@ type ShellProps = {
   onWorkspaceChange: (workspace: Workspace) => void;
   onLogout: () => void;
   onLogoutAll?: () => void;
-  hrefFor?: (href: string) => string;
   notificationBell?: ReactNode;
 };
 
@@ -66,7 +65,6 @@ export function WorkspaceShell({
   onWorkspaceChange,
   onLogout,
   onLogoutAll,
-  hrefFor = (href) => href,
   notificationBell,
 }: ShellProps) {
   const drawer = useRef<HTMLDialogElement>(null);
@@ -106,22 +104,22 @@ export function WorkspaceShell({
     return (
       <nav aria-label={`Điều hướng ${info.label}`} className="space-y-1">
         {navigationFor(workspace).map((item) => {
+          if (!item.available || !item.href) return null;
           const Icon = icons[item.icon];
           const active = !!item.href && isActiveNavigation(pathname, item.href, workspace);
           const content = (
             <>
               <Icon size={19} aria-hidden="true" className="shrink-0" />
               <span className="min-w-0 flex-1">{item.label}</span>
-              {!item.available && <span className="text-[11px] font-normal">Sắp có</span>}
             </>
           );
-          const className = `flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm ${active ? "bg-muted font-semibold text-primary" : "text-muted-foreground"}`;
-          return item.available && item.href ? (
+          const className = `flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active ? "bg-muted font-bold text-primary ring-1 ring-primary/15" : "font-medium text-muted-foreground"}`;
+          return (
             <Link
               key={item.icon}
-              href={hrefFor(item.href)}
+              href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`${className} hover:bg-muted`}
+              className={`${className} hover:bg-muted hover:text-primary`}
               onClick={() => {
                 drawer.current?.close();
                 setMenuOpen(false);
@@ -129,15 +127,6 @@ export function WorkspaceShell({
             >
               {content}
             </Link>
-          ) : (
-            <button
-              key={item.icon}
-              type="button"
-              disabled
-              className={`${className} cursor-not-allowed`}
-            >
-              {content}
-            </button>
           );
         })}
       </nav>
@@ -145,10 +134,16 @@ export function WorkspaceShell({
   }
   const brand = (
     <Link href="/" className="flex min-h-11 items-center gap-3 text-xl font-extrabold">
-      <span className="rounded-lg bg-primary p-2 text-on-primary">
+      <span className="rounded-xl bg-primary p-2 text-on-primary shadow-sm">
         <GraduationCap aria-hidden="true" size={25} />
       </span>
-      Learnova<span className="sr-only"> — Trang chủ</span>
+      <span>
+        Learnova
+        <span className="text-primary" aria-hidden="true">
+          .
+        </span>
+        <span className="sr-only"> — Trang chủ</span>
+      </span>
     </Link>
   );
   return (
@@ -160,7 +155,7 @@ export function WorkspaceShell({
         </p>
         {navigation()}
         <div className="mt-auto pt-8">
-          <div className="rounded-xl border border-border p-4">
+          <div className="rounded-2xl border border-border bg-background p-4">
             <ShieldCheck size={20} className="mb-2 text-primary" aria-hidden="true" />
             <p className="text-sm font-semibold">Tập trung vào đánh giá</p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -200,7 +195,7 @@ export function WorkspaceShell({
         {navigation()}
       </dialog>
       <header className="relative z-20 flex min-h-[var(--header-height)] flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 max-w-full items-center gap-3">
           <button
             ref={trigger}
             type="button"
@@ -215,14 +210,17 @@ export function WorkspaceShell({
             <Menu aria-hidden="true" />
           </button>
           {allowed.length > 1 ? (
-            <div>
-              <label htmlFor="workspace-switcher" className="block text-xs text-muted-foreground">
+            <div className="min-w-0">
+              <label
+                htmlFor="workspace-switcher"
+                className="block text-xs text-muted-foreground"
+              >
                 Không gian làm việc
               </label>
               <select
                 id="workspace-switcher"
                 value={workspace}
-                className="min-h-11 max-w-full rounded-lg border border-control-border bg-surface px-3 text-sm font-semibold"
+                className="min-h-11 max-w-full rounded-xl border border-control-border bg-surface px-3 text-base font-semibold"
                 onChange={(event) => {
                   const target = allowed.find((value) => value === event.target.value);
                   if (target) {
@@ -272,22 +270,26 @@ export function WorkspaceShell({
             >
               <Avatar name={user.displayName} url={user.avatarUrl} />
               <span className="hidden max-w-48 text-left sm:block">
-                <span className="block break-words text-sm font-semibold">{user.displayName}</span>
+                <span className="block break-words text-sm font-semibold">
+                  {user.displayName}
+                </span>
                 {user.subtitle && (
                   <span className="block text-xs text-muted-foreground">{user.subtitle}</span>
                 )}
               </span>
               <span className="sr-only">Menu người dùng</span>
-              <ChevronDown size={16} aria-hidden="true" />
+              <ChevronDown size={16} className="hidden sm:block" aria-hidden="true" />
             </button>
             {menuOpen && (
               <div
                 id="user-menu"
                 className="absolute right-0 top-full mt-2 w-60 rounded-xl border border-border bg-surface p-2 shadow-lg"
               >
-                <p className="break-words px-3 py-2 text-sm font-semibold">{user.displayName}</p>
+                <p className="break-words px-3 py-2 text-sm font-semibold">
+                  {user.displayName}
+                </p>
                 <Link
-                  href={hrefFor("/profile")}
+                  href="/profile"
                   onClick={() => setMenuOpen(false)}
                   className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm text-muted-foreground"
                 >
@@ -326,7 +328,7 @@ export function WorkspaceShell({
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10"
+        className="mx-auto min-w-0 max-w-7xl space-y-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10"
       >
         {children}
       </main>

@@ -34,6 +34,31 @@ async function logout(page: Page) {
   await expect(page.locator("#email")).toBeVisible();
 }
 
+test("auth forms use available login methods and fit mobile and desktop", async ({
+  page,
+}, testInfo) => {
+  for (const width of [375, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const route of ["/login", "/register"]) {
+      await page.goto(route);
+      await expect(page.locator("#email")).toBeVisible();
+      await expect(page.getByText("Đang kiểm tra Google Login…", { exact: true })).toHaveCount(
+        0,
+      );
+      await expect(
+        page.getByRole("button", { name: "Tiếp tục với Google", exact: true }),
+      ).toHaveCount(0);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      ).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath(`${route.slice(1)}-${width}.png`),
+        fullPage: true,
+      });
+    }
+  }
+});
+
 test("register, multi-role, preference, real cookie, reload and logout", async ({
   page,
   context,
@@ -86,7 +111,9 @@ test("register, multi-role, preference, real cookie, reload and logout", async (
   ]);
   expect(await page.evaluate(() => sessionStorage.length)).toBe(0);
   await page.goto("/admin");
-  await expect(page.getByRole("heading", { name: "Bạn không có quyền truy cập" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Bạn không có quyền truy cập" }),
+  ).toBeVisible();
   await page.goto("/participant");
   await logout(page);
   await login(page, email);
@@ -164,7 +191,9 @@ test("single role cannot enter creator, validation and network failure stay acti
   await login(page, email);
   await expect(page.getByLabel("Không gian làm việc", { exact: true })).toHaveCount(0);
   await page.goto("/creator");
-  await expect(page.getByRole("heading", { name: "Bạn không có quyền truy cập" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Bạn không có quyền truy cập" }),
+  ).toBeVisible();
   await page.goto("/participant");
   await expect(
     page.getByRole("heading", {
@@ -182,7 +211,9 @@ test("single role cannot enter creator, validation and network failure stay acti
 });
 
 for (const width of [375, 768, 1024, 1440, 640]) {
-  test(`auth forms responsive ${width}px, keyboard and reduced motion`, async ({ page }, info) => {
+  test(`auth forms responsive ${width}px, keyboard and reduced motion`, async ({
+    page,
+  }, info) => {
     await page.setViewportSize({ width, height: width === 640 ? 450 : 900 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/register");

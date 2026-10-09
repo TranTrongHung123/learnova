@@ -43,7 +43,8 @@ export function ProtectedWorkspace({
   useEffect(() => {
     if (status === "UNAUTHENTICATED" && !busy && !logoutError)
       router.replace(`/login?returnTo=${encodeURIComponent(pathname)}`);
-    if (user && workspace && user.roles.includes(workspace)) rememberWorkspace(user.id, workspace);
+    if (user && workspace && user.roles.includes(workspace))
+      rememberWorkspace(user.id, workspace);
   }, [status, user, workspace, pathname, router, busy, logoutError]);
 
   async function logout(all = false) {
@@ -161,8 +162,8 @@ export function ProtectedWorkspace({
         </section>
       ) : (
         <PageState
-          kind="unavailable"
-          description="Tài khoản của bạn đã sẵn sàng. Các tính năng trong không gian này đang được hoàn thiện."
+          kind="error"
+          action={<LinkButton href="/workspaces">Chọn không gian làm việc</LinkButton>}
         />
       )}
       <dialog
@@ -175,8 +176,8 @@ export function ProtectedWorkspace({
           Đăng xuất tất cả thiết bị?
         </h2>
         <p className="my-4">
-          Mọi phiên sẽ không thể gia hạn đăng nhập. Phiên truy cập đã cấp có thể còn hiệu lực tối đa
-          15 phút.
+          Mọi phiên sẽ không thể gia hạn đăng nhập. Phiên truy cập đã cấp có thể còn hiệu lực
+          tối đa 15 phút.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button variant="secondary" onClick={() => confirmation.current?.close()}>

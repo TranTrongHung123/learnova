@@ -201,8 +201,8 @@ export function ExamTaking({ id }: { id: string }) {
         <p>Máy chủ đã hoàn tất bài làm từ các câu trả lời đã lưu.</p>
         {unsaved > 0 && (
           <p className="text-warning">
-            Trình duyệt chưa xác nhận lưu được một số thay đổi. Bài được chấm theo dữ liệu máy chủ
-            đã nhận trước khi kết thúc.
+            Trình duyệt chưa xác nhận lưu được một số thay đổi. Bài được chấm theo dữ liệu máy
+            chủ đã nhận trước khi kết thúc.
           </p>
         )}
         {a.submittedAt && (
@@ -266,7 +266,7 @@ export function ExamTaking({ id }: { id: string }) {
         ))}
       {!editable && !busy && !inaccessible && (
         <PageState
-          kind="unavailable"
+          kind="pending"
           title={
             data.submission === "unknown"
               ? "Chưa xác nhận trạng thái nộp bài"
@@ -523,7 +523,11 @@ export function ExamTaking({ id }: { id: string }) {
           </p>
         )}
         <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" disabled={busy} onClick={() => submitDialog.current?.close()}>
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => submitDialog.current?.close()}
+          >
             Tiếp tục làm bài
           </Button>
           {data.submission === "unknown" ? (

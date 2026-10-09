@@ -5,7 +5,15 @@ import { useApiQuery } from "@/lib/api/use-query";
 import { date } from "@/features/session/shared";
 import type { DiscoveredSession, PageResult } from "@/features/discovery/types";
 import { notificationTarget } from "@/features/notification/types";
-import { DashboardState, Metric, Results, Row, Section, Updated } from "./shared";
+import {
+  DashboardIntro,
+  DashboardState,
+  Metric,
+  Results,
+  Row,
+  Section,
+  Updated,
+} from "./shared";
 import type { ParticipantDashboard } from "./types";
 
 export function ParticipantOverview() {
@@ -14,15 +22,15 @@ export function ParticipantOverview() {
   const d = query.data;
   return (
     <div className="space-y-6">
-      <p className="text-muted-foreground">
-        Tiếp tục bài đang làm, chuẩn bị cho kỳ thi tiếp theo và theo dõi kết quả của bạn.
-      </p>
-      <div className="flex flex-wrap gap-3">
+      <DashboardIntro
+        label="KHÔNG GIAN NGƯỜI THAM GIA"
+        description="Tiếp tục bài đang làm, chuẩn bị cho kỳ thi tiếp theo và theo dõi kết quả của bạn."
+      >
         <LinkButton href="/participant/exams">Khám phá kỳ thi</LinkButton>
         <LinkButton variant="secondary" href="/participant/classes/join">
           Tham gia lớp
         </LinkButton>
-      </div>
+      </DashboardIntro>
       <Updated time={d.serverTime} reload={query.reload} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric

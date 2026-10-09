@@ -3,7 +3,15 @@
 import { LinkButton } from "@/components/ui/button";
 import { useApiQuery } from "@/lib/api/use-query";
 import { date } from "@/features/session/shared";
-import { DashboardState, Metric, Results, Row, Section, Updated } from "./shared";
+import {
+  DashboardIntro,
+  DashboardState,
+  Metric,
+  Results,
+  Row,
+  Section,
+  Updated,
+} from "./shared";
 import type { CreatorDashboard } from "./types";
 
 export function CreatorOverview() {
@@ -12,10 +20,10 @@ export function CreatorOverview() {
   const d = query.data;
   return (
     <div className="space-y-6">
-      <p className="text-muted-foreground">
-        Tổng quan ngân hàng câu hỏi, đề thi và các kỳ thi do bạn tổ chức.
-      </p>
-      <div className="flex flex-wrap gap-3" aria-label="Thao tác nhanh">
+      <DashboardIntro
+        label="KHÔNG GIAN NGƯỜI TẠO"
+        description="Từ ý tưởng đến một kỳ thi hoàn chỉnh. Quản lý nội dung và theo dõi các kỳ thi bạn tổ chức."
+      >
         <LinkButton href="/creator/questions/new">Tạo câu hỏi</LinkButton>
         <LinkButton variant="secondary" href="/creator/questions/import">
           Nhập Excel
@@ -29,12 +37,16 @@ export function CreatorOverview() {
         <LinkButton variant="secondary" href="/creator/monitor">
           Mở giám sát
         </LinkButton>
-      </div>
+      </DashboardIntro>
       <Updated time={d.serverTime} reload={query.reload} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Tổng câu hỏi" value={d.counts.questions} href="/creator/questions" />
         <Metric label="Tổng đề thi" value={d.counts.exams} href="/creator/exams" />
-        <Metric label="Kỳ thi đang mở" value={d.counts.activeSessions} href="/creator/monitor" />
+        <Metric
+          label="Kỳ thi đang mở"
+          value={d.counts.activeSessions}
+          href="/creator/monitor"
+        />
         <Metric
           label="Người tham gia"
           value={d.counts.participants}
@@ -99,8 +111,8 @@ export function CreatorOverview() {
         </div>
       </section>
       <p className="text-sm text-muted-foreground">
-        Tổng số gồm cả dữ liệu đã lưu trữ. Mỗi danh sách hiển thị tối đa 5 mục mới nhất hoặc gần đến
-        hạn nhất.
+        Tổng số gồm cả dữ liệu đã lưu trữ. Mỗi danh sách hiển thị tối đa 5 mục mới nhất hoặc gần
+        đến hạn nhất.
       </p>
     </div>
   );

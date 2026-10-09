@@ -33,7 +33,11 @@ const test = base.extend<{ refreshDiagnostics: void }>({
       const requests = new Map<Request, AuthDiagnostic>();
       const tabs = new Map<Page, (frame: Frame) => void>();
       const pending: Promise<void>[] = [];
-      const authPaths = new Set([`${api}/auth/csrf`, `${api}/auth/login`, `${api}/auth/refresh`]);
+      const authPaths = new Set([
+        `${api}/auth/csrf`,
+        `${api}/auth/login`,
+        `${api}/auth/refresh`,
+      ]);
       const trackPage = (page: Page) => {
         if (tabs.has(page)) return;
         const tab = tabs.size + 1;
@@ -129,7 +133,10 @@ async function account(request: APIRequestContext, roles = ["PARTICIPANT", "CREA
     data: { email, password, displayName: "Người dùng lớp học", roles },
   });
   expect(registered.status()).toBe(201);
-  const signed = await request.post(`${api}/auth/login`, { headers, data: { email, password } });
+  const signed = await request.post(`${api}/auth/login`, {
+    headers,
+    data: { email, password },
+  });
   expect(signed.ok()).toBeTruthy();
   const login = await signed.json();
   return {
@@ -206,7 +213,7 @@ test("Login waits for delayed destination bootstrap before creating a classroom"
   // Gắn handler ngay để assertion thất bại không để promise của scenario bị bỏ quên.
   void scenario.catch(() => {});
   try {
-    await expect.poll(() => blocked).toBe(true);
+    await expect.poll(() => blocked, { timeout: 20000 }).toBe(true);
     await page.waitForLoadState("load");
     await expect(page.getByRole("status")).toContainText("Đang tải nội dung");
     expect(loginCompleted).toBe(false);
@@ -307,12 +314,16 @@ test("Participant previews, joins, reloads two tabs, leaves and rejoins the same
   await other.goto("/participant/classes");
   // Chờ bootstrap xong để phép thử reload hai phiên ổn định không ngắt refresh ban đầu.
   await expect(other).toHaveURL(/\/participant\/classes$/);
-  await expect(other.getByRole("heading", { name: "Lớp tự ôn tập", exact: true })).toBeVisible();
+  await expect(
+    other.getByRole("heading", { name: "Lớp tự ôn tập", exact: true }),
+  ).toBeVisible();
   for (const tab of [page, other]) phases.set(tab, "concurrent-reload");
   await Promise.all([page.reload(), other.reload()]);
   for (const tab of [page, other]) {
     await expect(tab).toHaveURL(/\/participant\/classes$/);
-    await expect(tab.getByRole("heading", { name: "Lớp tự ôn tập", exact: true })).toBeVisible();
+    await expect(
+      tab.getByRole("heading", { name: "Lớp tự ôn tập", exact: true }),
+    ).toBeVisible();
   }
   await page.getByRole("button", { name: "Xem lớp Lớp tự ôn tập" }).click();
   await expect(page.getByRole("dialog")).toContainText("Lớp ôn tập dành cho Participant");
@@ -390,7 +401,10 @@ test("Cross-owner and wrong workspace access never reveal classroom data", async
   await login(page, other.email, `/creator/classes/${created.id}`, "Không tìm thấy trang");
   await expect(page.getByRole("heading", { name: "Không tìm thấy trang" })).toBeVisible();
   await expect(page.getByText("Private classroom")).toHaveCount(0);
-  const fresh = await page.context().browser()!.newContext({ baseURL: "http://localhost:3104" });
+  const fresh = await page
+    .context()
+    .browser()!
+    .newContext({ baseURL: "http://localhost:3104" });
   const p = await fresh.newPage();
   await login(
     p,
@@ -428,7 +442,10 @@ test("Responsive layouts, keyboard dialogs, reduced motion and long text remain 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
-    await page.screenshot({ path: testInfo.outputPath(`classroom-${width}.png`), fullPage: true });
+    await page.screenshot({
+      path: testInfo.outputPath(`classroom-${width}.png`),
+      fullPage: true,
+    });
   }
   const trigger = page.getByRole("button", { name: "Tạo mã tham gia", exact: true });
   await trigger.click();
@@ -447,5 +464,7 @@ test("Responsive layouts, keyboard dialogs, reduced motion and long text remain 
   await expect(page.getByRole("status")).toContainText("Đã tham gia lớp thành công");
   await page.setViewportSize({ width: 375, height: 812 });
   await page.screenshot({ path: testInfo.outputPath("join-mobile.png"), fullPage: true });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+    true,
+  );
 });

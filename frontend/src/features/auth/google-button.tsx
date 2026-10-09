@@ -18,6 +18,7 @@ export function GoogleButton() {
       });
     return () => controller.abort();
   }, [session, retry]);
+  if (state === "disabled") return null;
   return (
     <div className="mt-5 space-y-2">
       <Button
@@ -33,13 +34,16 @@ export function GoogleButton() {
           Đang kiểm tra Google Login…
         </p>
       )}
-      {state === "disabled" && (
-        <p className="text-sm text-muted-foreground">Đăng nhập Google chưa được cấu hình.</p>
-      )}
       {state === "error" && (
         <div role="status" className="text-sm text-muted-foreground">
           Chưa thể kiểm tra kết nối Google.
-          <Button variant="ghost" onClick={() => setRetry(retry + 1)}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setState("loading");
+              setRetry(retry + 1);
+            }}
+          >
             Thử lại
           </Button>
         </div>
