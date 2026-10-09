@@ -24,7 +24,7 @@ export function AuditLog() {
   function page(value: number) {
     const next = new URLSearchParams(params);
     next.set("page", String(value));
-    router.push(`/admin/audit-logs?${next}`);
+    router.push(`/admin/audit-logs?${next}`, { scroll: false });
   }
   return (
     <section aria-label="Nhật ký hoạt động" className="space-y-6">
@@ -54,7 +54,7 @@ export function AuditLog() {
             return;
           }
           setValidation("");
-          router.push(`/admin/audit-logs?${next}`);
+          router.push(`/admin/audit-logs?${next}`, { scroll: false });
         }}
       >
         <Field id="action" label="Hành động">

@@ -27,7 +27,7 @@ export function QuestionList() {
   function page(number: number) {
     const next = new URLSearchParams(params);
     next.set("page", String(number));
-    router.push(`/creator/questions?${next}`);
+    router.push(`/creator/questions?${next}`, { scroll: false });
   }
   return (
     <div className="space-y-6">
@@ -51,7 +51,7 @@ export function QuestionList() {
           new FormData(event.currentTarget).forEach((value, key) => {
             if (String(value).trim()) next.set(key, String(value).trim());
           });
-          router.push(`/creator/questions?${next}`);
+          router.push(`/creator/questions?${next}`, { scroll: false });
         }}
       >
         <Field name="keyword" label="Tìm nội dung">

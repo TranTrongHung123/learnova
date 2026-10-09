@@ -14,7 +14,7 @@ export function ExamList() {
   function page(value: number) {
     const next = new URLSearchParams(params);
     next.set("page", String(value));
-    router.push(`/creator/exams?${next}`);
+    router.push(`/creator/exams?${next}`, { scroll: false });
   }
   return (
     <div className="space-y-6">
@@ -34,7 +34,7 @@ export function ExamList() {
           new FormData(e.currentTarget).forEach((v, k) => {
             if (String(v).trim()) next.set(k, String(v).trim());
           });
-          router.push(`/creator/exams?${next}`);
+          router.push(`/creator/exams?${next}`, { scroll: false });
         }}
       >
         <Field name="keyword" label="Tìm tên đề">

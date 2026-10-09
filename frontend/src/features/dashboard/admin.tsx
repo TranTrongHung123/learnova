@@ -6,7 +6,7 @@ import { DashboardIntro, DashboardState, Metric, Updated } from "./shared";
 import type { AdminDashboard } from "./types";
 
 export function AdminOverview() {
-  const query = useApiQuery<AdminDashboard>("/api/v1/admin/dashboard", true);
+  const query = useApiQuery<AdminDashboard>("/api/v1/admin/dashboard", true, true);
   if (!query.data) return <DashboardState error={query.error} retry={query.reload} />;
   const d = query.data;
   return (
@@ -20,7 +20,7 @@ export function AdminOverview() {
           Mở nhật ký hoạt động
         </LinkButton>
       </DashboardIntro>
-      <Updated time={d.serverTime} reload={query.reload} />
+      <Updated time={d.serverTime} reload={query.reload} refreshing={query.refreshing} />
       <section aria-label="Tài khoản và vai trò">
         <h2 className="mb-4 text-xl font-bold">Tài khoản và vai trò</h2>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

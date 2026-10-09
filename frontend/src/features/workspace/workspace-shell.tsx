@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
+import { NavigationFeedback } from "@/components/ui/loading-feedback";
 import {
   availableWorkspaces,
   isActiveNavigation,
@@ -119,13 +120,14 @@ export function WorkspaceShell({
               key={item.icon}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`${className} hover:bg-muted hover:text-primary`}
+              className={`relative ${className} hover:bg-muted hover:text-primary`}
               onClick={() => {
                 drawer.current?.close();
                 setMenuOpen(false);
               }}
             >
               {content}
+              <NavigationFeedback />
             </Link>
           );
         })}

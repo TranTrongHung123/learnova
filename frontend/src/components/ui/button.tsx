@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ComponentProps } from "react";
+import { NavigationFeedback } from "./loading-feedback";
 
 type Variant = "primary" | "secondary" | "ghost";
 
@@ -25,7 +26,13 @@ export function Button({
 export function LinkButton({
   variant = "primary",
   className,
+  children,
   ...props
 }: ComponentProps<typeof Link> & { variant?: Variant }) {
-  return <Link className={classes(variant, className)} {...props} />;
+  return (
+    <Link className={`relative ${classes(variant, className)}`} {...props}>
+      {children}
+      <NavigationFeedback />
+    </Link>
+  );
 }

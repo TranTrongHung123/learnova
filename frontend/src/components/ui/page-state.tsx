@@ -1,5 +1,6 @@
 import { CircleAlert, Clock, FileQuestion, LockKeyhole, Inbox, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
+import { DelayedLoading } from "./loading-feedback";
 
 export type PageStateKind =
   | "empty"
@@ -69,12 +70,16 @@ export function PageState({
 
 export function Skeleton() {
   return (
-    <div role="status" className="space-y-6 rounded-xl border border-border bg-surface p-8">
+    <div role="status" aria-busy="true" className="min-h-80">
       <span className="sr-only">Đang tải nội dung</span>
-      <div className="h-6 w-2/3 rounded bg-muted" />
-      <div className="h-4 w-full rounded bg-muted" />
-      <div className="h-4 w-4/5 rounded bg-muted" />
-      <div className="h-40 rounded bg-muted" />
+      <DelayedLoading>
+        <div aria-hidden="true" className="space-y-6 rounded-xl border border-border bg-surface p-8">
+          <div className="h-6 w-2/3 rounded bg-muted" />
+          <div className="h-4 w-full rounded bg-muted" />
+          <div className="h-4 w-4/5 rounded bg-muted" />
+          <div className="h-40 rounded bg-muted" />
+        </div>
+      </DelayedLoading>
     </div>
   );
 }

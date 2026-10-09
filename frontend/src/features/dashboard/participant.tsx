@@ -17,7 +17,7 @@ import {
 import type { ParticipantDashboard } from "./types";
 
 export function ParticipantOverview() {
-  const query = useApiQuery<ParticipantDashboard>("/api/v1/participant/dashboard", true);
+  const query = useApiQuery<ParticipantDashboard>("/api/v1/participant/dashboard", true, true);
   if (!query.data) return <DashboardState error={query.error} retry={query.reload} />;
   const d = query.data;
   return (
@@ -31,7 +31,7 @@ export function ParticipantOverview() {
           Tham gia lớp
         </LinkButton>
       </DashboardIntro>
-      <Updated time={d.serverTime} reload={query.reload} />
+      <Updated time={d.serverTime} reload={query.reload} refreshing={query.refreshing} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
           label="Kỳ thi có thể làm"

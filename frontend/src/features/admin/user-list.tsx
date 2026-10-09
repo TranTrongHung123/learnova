@@ -30,7 +30,7 @@ export function UserList() {
   function page(value: number) {
     const next = new URLSearchParams(params);
     next.set("page", String(value));
-    router.push(`/admin/users?${next}`);
+    router.push(`/admin/users?${next}`, { scroll: false });
   }
   return (
     <section aria-label="Danh sách người dùng" className="space-y-6">
@@ -53,7 +53,7 @@ export function UserList() {
             if (String(value).trim()) next.set(key, String(value).trim());
           });
           setNotice("");
-          router.push(`/admin/users?${next}`);
+          router.push(`/admin/users?${next}`, { scroll: false });
         }}
       >
         <Field id="search" label="Tìm email hoặc tên">

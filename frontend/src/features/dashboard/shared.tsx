@@ -31,13 +31,21 @@ export function DashboardIntro({
   );
 }
 
-export function Updated({ time, reload }: { time: string; reload: () => void }) {
+export function Updated({
+  time,
+  reload,
+  refreshing = false,
+}: {
+  time: string;
+  reload: () => void;
+  refreshing?: boolean;
+}) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-muted-foreground">Cập nhật lúc {date(time)}</p>
-      <Button variant="secondary" onClick={reload}>
+      <Button variant="secondary" onClick={reload} disabled={refreshing} aria-busy={refreshing}>
         <RefreshCw size={16} aria-hidden="true" />
-        Làm mới
+        {refreshing ? "Đang cập nhật…" : "Làm mới"}
       </Button>
     </div>
   );

@@ -15,7 +15,7 @@ import {
 import type { CreatorDashboard } from "./types";
 
 export function CreatorOverview() {
-  const query = useApiQuery<CreatorDashboard>("/api/v1/creator/dashboard", true);
+  const query = useApiQuery<CreatorDashboard>("/api/v1/creator/dashboard", true, true);
   if (!query.data) return <DashboardState error={query.error} retry={query.reload} />;
   const d = query.data;
   return (
@@ -38,7 +38,7 @@ export function CreatorOverview() {
           Mở giám sát
         </LinkButton>
       </DashboardIntro>
-      <Updated time={d.serverTime} reload={query.reload} />
+      <Updated time={d.serverTime} reload={query.reload} refreshing={query.refreshing} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Tổng câu hỏi" value={d.counts.questions} href="/creator/questions" />
         <Metric label="Tổng đề thi" value={d.counts.exams} href="/creator/exams" />

@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/page-state";
 import { Suspense } from "react";
 import { ProtectedWorkspace } from "@/features/auth/protected-workspace";
 import { SessionScreen } from "@/features/session/session-detail";
@@ -6,7 +7,7 @@ export default async function Page({ params }: { params: Promise<{ sessionId: st
   const { sessionId } = await params;
   return (
     <ProtectedWorkspace workspace="CREATOR" title="Chi tiết kỳ thi">
-      <Suspense>
+      <Suspense fallback={<Skeleton />}>
         <SessionScreen id={sessionId} />
       </Suspense>
     </ProtectedWorkspace>
