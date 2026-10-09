@@ -133,7 +133,14 @@ export function WorkspaceShell({
     );
   }
   const brand = (
-    <Link href="/" className="flex min-h-11 items-center gap-3 text-xl font-extrabold">
+    <Link
+      href={info.href}
+      onClick={() => {
+        drawer.current?.close();
+        setMenuOpen(false);
+      }}
+      className="flex min-h-11 items-center gap-3 text-xl font-extrabold"
+    >
       <span className="rounded-xl bg-primary p-2 text-on-primary shadow-sm">
         <GraduationCap aria-hidden="true" size={25} />
       </span>
@@ -142,7 +149,7 @@ export function WorkspaceShell({
         <span className="text-primary" aria-hidden="true">
           .
         </span>
-        <span className="sr-only"> — Trang chủ</span>
+        <span className="sr-only"> — Tổng quan {info.label}</span>
       </span>
     </Link>
   );
@@ -192,6 +199,7 @@ export function WorkspaceShell({
             <X aria-hidden="true" />
           </Button>
         </div>
+        <div className="mb-6">{brand}</div>
         {navigation()}
       </dialog>
       <header className="relative z-20 flex min-h-[var(--header-height)] flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-4 sm:px-6 lg:px-8">

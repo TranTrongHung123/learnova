@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button, LinkButton } from "@/components/ui/button";
 import { PageState, Skeleton } from "@/components/ui/page-state";
@@ -15,6 +15,21 @@ import { useAuth } from "./auth-provider";
 import { authMessage } from "./session";
 import { rememberWorkspace, resolveWorkspace } from "./workspace-resolution";
 
+const WorkspaceActions = createContext<{ logoutAll: () => void } | null>(null);
+
+export function WorkspaceLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const workspace = (["PARTICIPANT", "CREATOR", "ADMIN"] as const).find((role) => {
+    const base = workspaceInfo[role].href;
+    return pathname === base || pathname.startsWith(`${base}/`);
+  });
+  // Bài thi giữ layout tập trung và guard riêng, không gắn sidebar.
+  const focused = /^\/participant\/attempts\/[^/]+$/.test(pathname);
+  const shared = ["/profile", "/notifications", "/workspaces"].includes(pathname);
+  if (focused || (!workspace && !shared)) return children;
+  return <ProtectedWorkspace workspace={workspace}>{children}</ProtectedWorkspace>;
+}
+
 export function ProtectedWorkspace({
   workspace,
   title,
@@ -23,11 +38,12 @@ export function ProtectedWorkspace({
   children,
 }: {
   workspace?: Workspace;
-  title: string;
+  title?: string;
   selection?: boolean;
   focused?: boolean;
   children?: React.ReactNode | ((actions: { logoutAll: () => void }) => React.ReactNode);
 }) {
+  const parentActions = useContext(WorkspaceActions);
   const { status, user, error, session } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -41,11 +57,12 @@ export function ProtectedWorkspace({
     else confirmation.current?.close();
   }, [confirmingLogout]);
   useEffect(() => {
+    if (parentActions) return;
     if (status === "UNAUTHENTICATED" && !busy && !logoutError)
       router.replace(`/login?returnTo=${encodeURIComponent(pathname)}`);
     if (user && workspace && user.roles.includes(workspace))
       rememberWorkspace(user.id, workspace);
-  }, [status, user, workspace, pathname, router, busy, logoutError]);
+  }, [status, user, workspace, pathname, router, busy, logoutError, parentActions]);
 
   async function logout(all = false) {
     confirmation.current?.close();
@@ -110,6 +127,41 @@ export function ProtectedWorkspace({
         />
       </main>
     );
+  const content = (
+    <div className="space-y-8">
+      {title && <h1 className="text-3xl font-bold">{title}</h1>}
+      {children ? (
+        <div key={user.id}>
+          {typeof children === "function"
+            ? children(parentActions ?? { logoutAll: () => setConfirmingLogout(true) })
+            : children}
+        </div>
+      ) : selection ? (
+        <section className="grid gap-4 sm:grid-cols-2" aria-label="Không gian làm việc">
+          {allowed.map((role) => (
+            <div className="rounded-xl border border-border bg-surface p-6" key={role}>
+              <h2 className="text-xl font-bold">{workspaceInfo[role].label}</h2>
+              <p className="my-4 text-muted-foreground">{workspaceInfo[role].description}</p>
+              <Button
+                onClick={() => {
+                  rememberWorkspace(user.id, role);
+                  router.push(workspaceInfo[role].href);
+                }}
+              >
+                Vào không gian {workspaceInfo[role].label.toLowerCase()}
+              </Button>
+            </div>
+          ))}
+        </section>
+      ) : (
+        <PageState
+          kind="error"
+          action={<LinkButton href="/workspaces">Chọn không gian làm việc</LinkButton>}
+        />
+      )}
+    </div>
+  );
+  if (parentActions) return content;
   if (focused)
     return (
       <main id="main-content" className="mx-auto min-h-dvh max-w-7xl p-4 sm:p-6" key={user.id}>
@@ -136,36 +188,9 @@ export function ProtectedWorkspace({
       onLogout={() => void logout()}
       onLogoutAll={() => setConfirmingLogout(true)}
     >
-      <h1 className="text-3xl font-bold">{title}</h1>
-      {children ? (
-        <div key={user.id}>
-          {typeof children === "function"
-            ? children({ logoutAll: () => setConfirmingLogout(true) })
-            : children}
-        </div>
-      ) : selection ? (
-        <section className="grid gap-4 sm:grid-cols-2" aria-label="Không gian làm việc">
-          {allowed.map((role) => (
-            <div className="rounded-xl border border-border bg-surface p-6" key={role}>
-              <h2 className="text-xl font-bold">{workspaceInfo[role].label}</h2>
-              <p className="my-4 text-muted-foreground">{workspaceInfo[role].description}</p>
-              <Button
-                onClick={() => {
-                  rememberWorkspace(user.id, role);
-                  router.push(workspaceInfo[role].href);
-                }}
-              >
-                Vào không gian {workspaceInfo[role].label.toLowerCase()}
-              </Button>
-            </div>
-          ))}
-        </section>
-      ) : (
-        <PageState
-          kind="error"
-          action={<LinkButton href="/workspaces">Chọn không gian làm việc</LinkButton>}
-        />
-      )}
+      <WorkspaceActions.Provider value={{ logoutAll: () => setConfirmingLogout(true) }}>
+        {content}
+      </WorkspaceActions.Provider>
       <dialog
         ref={confirmation}
         onClose={() => setConfirmingLogout(false)}
