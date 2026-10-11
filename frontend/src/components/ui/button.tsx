@@ -11,7 +11,7 @@ const styles: Record<Variant, string> = {
 };
 
 function classes(variant: Variant, className = "") {
-  return `inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-center text-sm font-semibold [&>svg]:shrink-0 disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]} ${className}`;
+  return `inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-center text-sm leading-5 font-semibold [overflow-wrap:anywhere] [&>svg]:shrink-0 disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]} ${className}`;
 }
 
 export function Button({

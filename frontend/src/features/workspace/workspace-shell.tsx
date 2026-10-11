@@ -14,7 +14,6 @@ import {
   Monitor,
   ScrollText,
   Settings2,
-  ShieldCheck,
   Users,
   UserRound,
   X,
@@ -163,15 +162,6 @@ export function WorkspaceShell({
           KHÔNG GIAN LÀM VIỆC
         </p>
         {navigation()}
-        <div className="mt-auto pt-8">
-          <div className="rounded-2xl border border-border bg-background p-4">
-            <ShieldCheck size={20} className="mb-2 text-primary" aria-hidden="true" />
-            <p className="text-sm font-semibold">Tập trung vào đánh giá</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Rõ ràng trong từng bước, từ đề thi đến kết quả.
-            </p>
-          </div>
-        </div>
       </aside>
       <dialog
         ref={drawer}
@@ -205,7 +195,7 @@ export function WorkspaceShell({
         {navigation()}
       </dialog>
       <header className="relative z-20 flex min-h-[var(--header-height)] flex-wrap items-center justify-between gap-3 border-b border-border bg-surface px-4 py-4 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 max-w-full items-center gap-3">
+        <div className="flex min-w-0 max-w-full items-center gap-2 sm:gap-3">
           <button
             ref={trigger}
             type="button"
@@ -220,7 +210,7 @@ export function WorkspaceShell({
             <Menu aria-hidden="true" />
           </button>
           {allowed.length > 1 ? (
-            <div className="min-w-0">
+            <div className="min-w-0 max-w-[8.5rem] sm:max-w-none">
               <label
                 htmlFor="workspace-switcher"
                 className="block text-xs text-muted-foreground"
@@ -230,7 +220,7 @@ export function WorkspaceShell({
               <select
                 id="workspace-switcher"
                 value={workspace}
-                className="min-h-11 max-w-full rounded-xl border border-control-border bg-surface px-3 text-base font-semibold"
+                className="min-h-11 max-w-full rounded-xl border border-control-border bg-surface px-2 text-sm font-semibold sm:px-3 sm:text-base"
                 onChange={(event) => {
                   const target = allowed.find((value) => value === event.target.value);
                   if (target) {

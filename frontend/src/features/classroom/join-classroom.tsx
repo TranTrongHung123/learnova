@@ -47,7 +47,7 @@ export function JoinClassroom() {
   }
   return (
     <div className="max-w-2xl space-y-6">
-      <p className="text-muted-foreground">Kiểm tra thông tin lớp trước khi xác nhận tham gia.</p>
+      <p className="text-muted-foreground">Kiểm tra thông tin lớp trước khi xác nhận tham gia</p>
       <form
         className={`${panel} space-y-4`}
         onSubmit={(e) => {
@@ -58,7 +58,7 @@ export function JoinClassroom() {
         <Input
           id="join-code"
           label="Mã tham gia"
-          hint="Nhập mã do người tạo lớp cung cấp."
+          hint="Nhập mã do người tạo lớp cung cấp"
           required
           maxLength={64}
           autoComplete="off"

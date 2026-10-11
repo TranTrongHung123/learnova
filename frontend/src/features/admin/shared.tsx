@@ -132,7 +132,7 @@ export function StatusAction({ target, onDone }: { target: AdminUser; onDone: ()
         {label}
       </Button>
       {locking && self && (
-        <p className="text-sm text-muted-foreground">Không thể tự khóa tài khoản.</p>
+        <p className="text-sm text-muted-foreground">Không thể tự khóa tài khoản</p>
       )}
       {open && (
         <ConfirmMutation
@@ -151,7 +151,7 @@ export function StatusAction({ target, onDone }: { target: AdminUser; onDone: ()
           </p>
           <p>
             {locking
-              ? "Các phiên refresh hiện tại sẽ bị thu hồi; người dùng không thể đăng nhập hoặc refresh. Access token cũ có thể còn hiệu lực tối đa 15 phút, nhưng không được bắt đầu bài làm mới."
+              ? "Người dùng không thể đăng nhập hoặc bắt đầu bài làm mới. Phiên đang mở có thể còn hiệu lực tối đa 15 phút."
               : "Tài khoản sẽ hoạt động trở lại. Người dùng phải đăng nhập lại; các phiên cũ không được khôi phục."}
           </p>
           <p>

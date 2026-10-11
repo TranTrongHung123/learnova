@@ -13,7 +13,7 @@ const sans = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: { default: "Learnova", template: "%s | Learnova" },
-  description: "Nền tảng tổ chức và tham gia kiểm tra trực tuyến.",
+  description: "Nền tảng tổ chức và tham gia kiểm tra trực tuyến",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

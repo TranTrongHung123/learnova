@@ -127,7 +127,7 @@ function NotificationList() {
     <section className="space-y-5" aria-label="Danh sách thông báo">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground">
-          Kỳ thi được giao, lịch nhắc thi, kết quả và lớp học của bạn.
+          Kỳ thi được giao, lịch nhắc thi, kết quả và lớp học của bạn
         </p>
         <Button variant="secondary" disabled={busy} onClick={reload}>
           Làm mới
@@ -181,7 +181,7 @@ function NotificationList() {
             <PageState
               kind="empty"
               title={unreadOnly ? "Không có thông báo chưa đọc" : "Chưa có thông báo"}
-              description="Thông báo mới sẽ xuất hiện khi có hoạt động liên quan đến bạn."
+              description="Thông báo mới sẽ xuất hiện khi có hoạt động liên quan đến bạn"
             />
           )}
           <ul className="space-y-3">

@@ -176,8 +176,8 @@ test("open immediately, rename only, offline feedback and stale editor reconcili
   await expect(page.locator("form [role=alert]")).toContainText("Kỳ thi đã thay đổi");
   await page.getByRole("button", { name: "1. Chọn đề", exact: true }).click();
   await expect(page.getByLabel("Tên kỳ thi", { exact: true })).toHaveValue("Tên đang nhập");
-  await page.getByRole("button", { name: "Tải bản máy chủ để đối chiếu" }).click();
-  await page.getByRole("button", { name: "Dùng bản máy chủ" }).click();
+  await page.getByRole("button", { name: "Tải bản đã lưu để đối chiếu" }).click();
+  await page.getByRole("button", { name: "Dùng bản đã lưu" }).click();
   await expect(page.getByText("Cấu hình đã khóa. Bạn chỉ có thể sửa tên kỳ thi.")).toBeVisible();
   await expect(page.getByLabel("Giờ bắt đầu", { exact: true })).toHaveCount(0);
   await page.getByLabel("Tên kỳ thi", { exact: true }).fill("Đổi tên đang mở");

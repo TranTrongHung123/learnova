@@ -34,7 +34,7 @@ export function ResultHistory() {
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap justify-between gap-3">
-        <p>Điểm cao nhất trong các lượt đã chấm của từng kỳ thi.</p>
+        <p>Điểm cao nhất trong các lượt đã chấm của từng kỳ thi</p>
         <Button variant="secondary" onClick={query.reload}>
           Làm mới
         </Button>
@@ -144,7 +144,7 @@ function ResultContent({ value: r }: { value: ResultDetail }) {
             </>
           )}
           {q.options.length > 0 && q.answer.optionIds.length === 0 && (
-            <p>Bạn chưa trả lời câu này.</p>
+            <p>Bạn chưa trả lời câu này</p>
           )}
           {q.explanation && (
             <div>
@@ -208,7 +208,7 @@ export function ResultAttempts({
         <QueryState error={query.error} retry={query.reload} />
       ) : (
         <>
-          {!query.data.content.length && <p>Chưa có lượt làm.</p>}
+          {!query.data.content.length && <p>Chưa có lượt làm</p>}
           {query.data.content.map((a) => (
             <article key={a.id} className="space-y-2 rounded-lg border border-border p-4">
               <h4 className="font-bold">
@@ -307,7 +307,7 @@ export function CreatorResults({ id }: { id: string }) {
             <article key={h.participantId} className={`${panel} space-y-3`}>
               <h3 className="text-lg font-bold">{h.participantName}</h3>
               <p>{h.attemptCount} lượt làm</p>
-              {h.bestResult ? <ScoreValue value={h.bestResult} /> : <p>Chưa có kết quả đã chấm.</p>}
+              {h.bestResult ? <ScoreValue value={h.bestResult} /> : <p>Chưa có kết quả đã chấm</p>}
               {h.completedAt && <p>Hoàn tất gần nhất: {date(h.completedAt)}</p>}
               <Button
                 variant="secondary"

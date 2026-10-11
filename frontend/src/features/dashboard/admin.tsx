@@ -13,7 +13,7 @@ export function AdminOverview() {
     <div className="space-y-6">
       <DashboardIntro
         label="KHÔNG GIAN QUẢN TRỊ"
-        description="Theo dõi quy mô hệ thống, quản lý tài khoản và tra cứu hoạt động tại cùng một nơi."
+        description="Quản lý tài khoản và theo dõi hoạt động hệ thống"
       >
         <LinkButton href="/admin/users">Quản lý người dùng</LinkButton>
         <LinkButton variant="secondary" href="/admin/audit-logs">
@@ -26,9 +26,9 @@ export function AdminOverview() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Metric label="Tổng tài khoản" value={d.users} href="/admin/users" />
           <Metric
-            label="Tài khoản ACTIVE"
+            label="Tài khoản hoạt động"
             value={d.activeUsers}
-            hint="Tài khoản có trạng thái ACTIVE; không phải số người đang online."
+            hint="Tài khoản được phép đăng nhập"
             href="/admin/users?status=ACTIVE"
           />
           <Metric
@@ -47,11 +47,11 @@ export function AdminOverview() {
       <section aria-label="Đề thi và kỳ thi">
         <h2 className="mb-4 text-xl font-bold">Đề thi và kỳ thi</h2>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Metric label="Tổng đề thi" value={d.exams} hint="Bao gồm đề đã lưu trữ." />
+          <Metric label="Tổng đề thi" value={d.exams} hint="Bao gồm đề đã lưu trữ" />
           <Metric
             label="Tổng kỳ thi"
             value={d.sessions}
-            hint="Bao gồm bản nháp, đã đóng và đã hủy."
+            hint="Bao gồm bản nháp, đã đóng và đã hủy"
           />
           <Metric label="Kỳ thi đang mở" value={d.activeSessions} />
           <Metric label="Kỳ thi sắp diễn ra" value={d.upcomingSessions} />

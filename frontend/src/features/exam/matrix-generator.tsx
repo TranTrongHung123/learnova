@@ -160,7 +160,7 @@ export function MatrixGenerator({
         setPreview(null);
         if (uncertain)
           setError(
-            "Chưa xác nhận được kết quả sinh đề. Đọc bản máy chủ để đối chiếu trước khi tiếp tục; không tự gửi lại.",
+            "Chưa xác nhận được kết quả sinh đề. Đọc bản đã lưu để đối chiếu trước khi tiếp tục; không tự gửi lại.",
           );
         try {
           setRemote(await session.api.request<VersionDetail>(endpoint));
@@ -335,24 +335,24 @@ export function MatrixGenerator({
       </form>
       {blocked && (
         <section className="mt-4 space-y-3 rounded-lg border border-border p-3">
-          <h3 className="font-semibold">Đối chiếu bản máy chủ</h3>
+          <h3 className="font-semibold">Đối chiếu bản đã lưu</h3>
           {remote ? (
             <>
               <p>
-                Revision {remote.revision} · {remote.status} · {remote.questions.length} câu ·{" "}
+                {remote.questions.length} câu hỏi ·{" "}
                 {remote.totalScore} điểm
               </p>
               <p>
-                Bản đã mở trước đó có {version.questions.length} câu, revision {version.revision}.
-                Kiểm tra nội dung trong Builder trước khi sinh thêm.
+                Bản đang mở có {version.questions.length} câu hỏi.
+                Kiểm tra lại nội dung đề trước khi thêm câu hỏi.
               </p>
               <Button disabled={busy} onClick={() => accept(remote)}>
-                Dùng bản máy chủ và quay lại Builder
+                Dùng bản đã lưu
               </Button>
             </>
           ) : (
             <Button disabled={busy} onClick={() => void run("reload")}>
-              Đọc lại bản máy chủ
+              Tải bản đã lưu
             </Button>
           )}
         </section>

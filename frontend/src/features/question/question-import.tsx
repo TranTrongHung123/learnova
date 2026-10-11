@@ -361,7 +361,7 @@ function ImportPreview({ id }: { id: string }) {
             </li>
           ))}
         </ul>
-        {data.content.length === 0 && <p>Không có dòng phù hợp bộ lọc.</p>}
+        {data.content.length === 0 && <p>Không có dòng phù hợp bộ lọc</p>}
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="secondary"
@@ -433,7 +433,7 @@ function ImportPreview({ id }: { id: string }) {
             </>
           )}
         </div>
-        {busy && <p role="status">Đang chờ xác nhận từ server…</p>}
+        {busy && <p role="status">Đang xác nhận nhập câu hỏi…</p>}
       </section>
     </div>
   );

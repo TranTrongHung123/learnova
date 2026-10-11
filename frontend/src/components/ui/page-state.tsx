@@ -14,17 +14,17 @@ const states = {
   empty: {
     icon: Inbox,
     title: "Chưa có nội dung",
-    description: "Nội dung sẽ xuất hiện tại đây khi có dữ liệu.",
+    description: "Nội dung sẽ xuất hiện tại đây khi có dữ liệu",
   },
   forbidden: {
     icon: LockKeyhole,
     title: "Bạn không có quyền truy cập",
-    description: "Chọn không gian làm việc phù hợp với quyền của bạn.",
+    description: "Chọn không gian làm việc phù hợp với quyền của bạn",
   },
   "not-found": {
     icon: FileQuestion,
     title: "Không tìm thấy trang",
-    description: "Đường dẫn có thể không đúng hoặc trang không còn tồn tại.",
+    description: "Đường dẫn có thể không đúng hoặc trang không còn tồn tại",
   },
   network: {
     icon: WifiOff,
@@ -34,12 +34,12 @@ const states = {
   error: {
     icon: CircleAlert,
     title: "Không thể hiển thị nội dung",
-    description: "Vui lòng thử lại hoặc quay về trang chủ.",
+    description: "Vui lòng thử lại hoặc quay về trang chủ",
   },
   pending: {
     icon: Clock,
     title: "Đang chờ xác nhận",
-    description: "Vui lòng chờ máy chủ xác nhận trạng thái mới nhất.",
+    description: "Vui lòng chờ máy chủ xác nhận trạng thái mới nhất",
   },
 };
 

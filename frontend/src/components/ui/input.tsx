@@ -16,7 +16,7 @@ export function Input({
     .filter(Boolean)
     .join(" ");
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       <label className="block text-sm font-semibold" htmlFor={id}>
         {label}
         {props.required && " (bắt buộc)"}
@@ -26,7 +26,7 @@ export function Input({
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={description || undefined}
-        className={`min-h-11 w-full rounded-lg border bg-surface px-3 py-2 ${error ? "border-danger" : "border-control-border"}`}
+        className={`min-h-11 w-full min-w-0 rounded-lg border bg-surface px-3 py-2 ${error ? "border-danger" : "border-control-border"}`}
       />
       {hint && (
         <p id={`${id}-hint`} className="text-sm text-muted-foreground">

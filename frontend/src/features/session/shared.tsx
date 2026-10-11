@@ -11,7 +11,7 @@ export function message(cause: unknown) {
       SESSION_INVALID_STATE:
         "Trạng thái kỳ thi không còn cho phép thao tác này. Hãy tải lại để đối chiếu.",
       SESSION_REVISION_CONFLICT:
-        "Kỳ thi đã thay đổi. Nội dung đang nhập được giữ lại; hãy tải bản máy chủ để đối chiếu.",
+        "Kỳ thi đã thay đổi. Nội dung đang nhập được giữ lại; hãy tải bản đã lưu để đối chiếu.",
       SESSION_USE_EXTEND_COMMAND: "Kỳ thi đã lên lịch chỉ được tăng giờ kết thúc qua Gia hạn.",
       SESSION_INVALID_PARTICIPANT: "Người nhận phải có tài khoản hoạt động và vai trò PARTICIPANT.",
       EXAM_ARCHIVED: "Đề đã lưu trữ, không thể dùng để tạo hoặc lên lịch kỳ thi mới.",

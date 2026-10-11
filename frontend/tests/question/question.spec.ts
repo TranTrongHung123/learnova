@@ -106,7 +106,7 @@ test("four types round trip, edit, filter and preserve exact decimal", async ({
   await page.goto("/creator/questions");
   await page.getByLabel("Loại câu hỏi").selectOption("NUMERIC_ANSWER");
   await page.getByLabel("Danh mục", { exact: true }).fill("Toán");
-  await page.getByRole("button", { name: "Tìm kiếm / Lọc" }).click();
+  await page.getByRole("button", { name: "Áp dụng bộ lọc" }).click();
   await expect(page.getByText(/1 câu hỏi · Trang/)).toBeVisible();
   await page.reload();
   await expect(page.getByLabel("Loại câu hỏi")).toHaveValue("NUMERIC_ANSWER");
@@ -150,7 +150,7 @@ test("incomplete draft restores to draft, completed question restores active", a
   await page.getByRole("button", { name: "Lưu trữ", exact: true }).click();
   await expect(page.getByText(/0 câu hỏi · Trang/)).toBeVisible();
   await page.getByLabel("Trạng thái").selectOption("ARCHIVED");
-  await page.getByRole("button", { name: "Tìm kiếm / Lọc" }).click();
+  await page.getByRole("button", { name: "Áp dụng bộ lọc" }).click();
   await page.getByRole("button", { name: "Khôi phục", exact: true }).click();
   await expect(page.getByText("Đã cập nhật: Đang sử dụng.", { exact: true })).toBeVisible();
 });

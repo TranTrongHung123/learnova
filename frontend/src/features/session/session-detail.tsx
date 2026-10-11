@@ -35,7 +35,7 @@ export function SessionSummary({ s }: { s: SessionDetail }) {
         <h3 className="text-lg font-bold">Đối tượng</h3>
         <p>{accessLabels[s.accessType]}</p>
         {s.accessType === "PUBLIC" ? (
-          <p>Yêu cầu đăng nhập và vai trò PARTICIPANT.</p>
+          <p>Yêu cầu đăng nhập và vai trò PARTICIPANT</p>
         ) : (
           <ul className="list-inside list-disc">
             {[...s.classrooms, ...s.participants].map((t) => (
@@ -44,7 +44,7 @@ export function SessionSummary({ s }: { s: SessionDetail }) {
           </ul>
         )}
         {s.accessType === "CLASS" && (
-          <p>Quyền tham gia theo thành viên ACTIVE hiện tại của các lớp.</p>
+          <p>Quyền tham gia theo thành viên ACTIVE hiện tại của các lớp</p>
         )}
       </section>
       <section className={`${panel} space-y-2`}>

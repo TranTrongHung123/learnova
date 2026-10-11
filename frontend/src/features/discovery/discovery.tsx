@@ -47,12 +47,12 @@ function Availability({ value: s }: { value: DiscoveredSession }) {
     <div className="space-y-2">
       {s.canContinue ? (
         <>
-          <p className="text-success">Bạn có bài đang làm và còn thời gian để tiếp tục.</p>
+          <p className="text-success">Bài làm đang chờ bạn tiếp tục</p>
           <StartAttempt value={s} />
         </>
       ) : s.canStart ? (
         <>
-          <p className="text-success">Bạn đủ điều kiện bắt đầu theo lần kiểm tra mới nhất.</p>
+          <p className="text-success">Bạn có thể bắt đầu bài thi</p>
           <StartAttempt value={s} />
         </>
       ) : (
@@ -99,7 +99,7 @@ export function DiscoveryList() {
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground">
-          Các kỳ thi bạn được tham gia và lịch sử bài làm của bạn.
+          Các kỳ thi bạn được tham gia và lịch sử bài làm của bạn
         </p>
         <Button variant="secondary" onClick={query.reload}>
           Làm mới
@@ -118,7 +118,7 @@ export function DiscoveryList() {
         ))}
       </nav>
       <p className="text-sm text-muted-foreground">
-        Một kỳ thi có thể xuất hiện ở nhiều nhóm nếu bạn đã hoàn thành một lượt và vẫn còn lượt làm.
+        Một kỳ thi có thể xuất hiện ở nhiều nhóm nếu bạn đã hoàn thành một lượt và vẫn còn lượt làm
       </p>
       {!query.data ? (
         <QueryState error={query.error} retry={query.reload} />
@@ -128,7 +128,7 @@ export function DiscoveryList() {
             <PageState
               kind="empty"
               title="Chưa có kỳ thi trong nhóm này"
-              description="Chọn nhóm khác hoặc làm mới để kiểm tra kỳ thi được giao."
+              description="Chọn nhóm khác hoặc làm mới để kiểm tra kỳ thi được giao"
             />
           )}
           <div className="grid gap-4 xl:grid-cols-2">
@@ -185,7 +185,7 @@ function History({ id }: { id: string }) {
       ) : (
         <>
           {query.data.content.length === 0 ? (
-            <p className={panel}>Bạn chưa có bài làm trong kỳ thi này.</p>
+            <p className={panel}>Bạn chưa có bài làm trong kỳ thi này</p>
           ) : (
             query.data.content.map((a) => (
               <article key={a.id} className={`${panel} space-y-3`}>
@@ -267,16 +267,11 @@ export function DiscoveryDetail({ id }: { id: string }) {
             </dl>
             <Availability value={s} />
             <p className="text-sm text-muted-foreground">
-              Hạn làm bài được máy chủ chốt khi bắt đầu: thời điểm sớm hơn giữa hết thời lượng và
-              giờ kết thúc kỳ thi.
+              Bài làm kết thúc khi hết thời lượng hoặc khi kỳ thi đóng, tùy thời điểm nào đến trước
             </p>
             <p className="text-sm">
               Chính sách kết quả: {displayLabels[s.resultDisplayMode]} ·{" "}
-              {releaseLabels[s.resultReleasePolicy]}.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Máy chủ kiểm tra lúc {date(s.serverTime)}. Điều kiện sẽ được kiểm tra lại khi bắt đầu
-              bài thi.
+              {releaseLabels[s.resultReleasePolicy]}
             </p>
           </section>
           <History key={id} id={id} />

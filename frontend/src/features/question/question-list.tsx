@@ -33,12 +33,12 @@ export function QuestionList() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="max-w-xl text-muted-foreground">
-          Soạn và quản lý câu hỏi riêng của bạn. Chỉ câu đã kích hoạt mới có thể dùng cho đề mới.
+          Quản lý câu hỏi theo chủ đề, loại câu và mức độ khó
         </p>
         <div className="flex flex-wrap gap-3">
           <LinkButton href="/creator/questions/new">Tạo câu hỏi</LinkButton>
           <LinkButton variant="secondary" href="/creator/questions/import">
-            Import Excel
+            Nhập từ Excel
           </LinkButton>
         </div>
       </div>
@@ -105,7 +105,7 @@ export function QuestionList() {
           />
         </Field>
         <div className="flex flex-wrap gap-3 sm:col-span-2 xl:col-span-3">
-          <Button type="submit">Tìm kiếm / Lọc</Button>
+          <Button type="submit">Áp dụng bộ lọc</Button>
           <LinkButton variant="ghost" href="/creator/questions">
             Xóa bộ lọc
           </LinkButton>
@@ -124,7 +124,7 @@ export function QuestionList() {
             <PageState
               kind="empty"
               title="Chưa có câu hỏi phù hợp"
-              description="Tạo câu hỏi đầu tiên hoặc thay đổi bộ lọc."
+              description="Tạo câu hỏi đầu tiên hoặc thay đổi bộ lọc"
             />
           ) : (
             <>

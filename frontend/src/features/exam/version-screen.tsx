@@ -205,7 +205,7 @@ function VersionEditor({ initial, editable }: { initial: VersionDetail; editable
             : "Nội dung phiên bản chỉ đọc. Tạo bản nháp mới từ lịch sử phiên bản để thay đổi."}
         </p>
         {initial.examStatus === "ARCHIVED" && (
-          <p>Đề đã lưu trữ: vẫn được biên soạn nhưng không dùng để tạo kỳ thi mới.</p>
+          <p>Đề đã lưu trữ: vẫn được biên soạn nhưng không dùng để tạo kỳ thi mới</p>
         )}
       </section>
       <p role="status" className={dirty ? "text-warning" : "text-success"}>
@@ -229,7 +229,7 @@ function VersionEditor({ initial, editable }: { initial: VersionDetail; editable
               })
             }
           >
-            Tải bản máy chủ để đối chiếu
+            Tải bản đã lưu để đối chiếu
           </Button>
         </div>
       )}
@@ -289,7 +289,7 @@ function VersionEditor({ initial, editable }: { initial: VersionDetail; editable
             </Button>
           </form>
           <p className="text-sm text-muted-foreground">
-            Phần dư được phân bổ theo thứ tự câu, chính xác tới 10 chữ số thập phân.
+            Phần dư được phân bổ theo thứ tự câu, chính xác tới 10 chữ số thập phân
           </p>
         </div>
       )}
@@ -297,7 +297,7 @@ function VersionEditor({ initial, editable }: { initial: VersionDetail; editable
         <PageState
           kind="empty"
           title="Bản nháp chưa có câu hỏi"
-          description="Thêm câu hỏi đang sử dụng từ ngân hàng của bạn."
+          description="Thêm câu hỏi đang sử dụng từ ngân hàng của bạn"
         />
       )}
       <ol className="space-y-4">
@@ -448,9 +448,9 @@ function VersionEditor({ initial, editable }: { initial: VersionDetail; editable
         </Modal>
       )}
       {dialog === "reload" && remote && (
-        <Modal title="Đối chiếu bản máy chủ" close={() => setDialog(null)}>
+        <Modal title="Đối chiếu bản đã lưu" close={() => setDialog(null)}>
           <p className="mb-4">
-            Bản máy chủ: {versionLabel[remote.status]} · revision {remote.revision} ·{" "}
+            Bản đã lưu: {versionLabel[remote.status]} ·{" "}
             {remote.questions.length} câu · {remote.totalScore} điểm. Nội dung đang nhập vẫn được
             giữ cho tới khi bạn chọn thay thế.
           </p>
@@ -470,7 +470,7 @@ function VersionEditor({ initial, editable }: { initial: VersionDetail; editable
                 router.replace(versionPath(remote.examId, remote.id));
             }}
           >
-            Thay nội dung đang nhập bằng bản máy chủ
+            Thay nội dung đang nhập bằng bản đã lưu
           </Button>
         </Modal>
       )}

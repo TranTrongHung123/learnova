@@ -17,7 +17,7 @@ export function CreatorClassrooms() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="text-muted-foreground">Quản lý lớp và những người tham gia của bạn.</p>
+        <p className="text-muted-foreground">Quản lý lớp và những người tham gia của bạn</p>
         <LinkButton href="/creator/classes/new">Tạo lớp</LinkButton>
       </div>
       <form
@@ -49,7 +49,7 @@ export function CreatorClassrooms() {
             <PageState
               kind="empty"
               title="Chưa có lớp phù hợp"
-              description="Tạo lớp đầu tiên hoặc thay đổi từ khóa tìm kiếm."
+              description="Tạo lớp đầu tiên hoặc thay đổi từ khóa tìm kiếm"
             />
           ) : (
             <div className="grid gap-4 xl:grid-cols-2">

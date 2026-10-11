@@ -37,7 +37,7 @@ test("admin searches, changes roles, locks and unlocks through real APIs with au
   await login(page);
   await page.getByRole("link", { name: "Người dùng", exact: true }).click();
   await page.getByLabel("Tìm email hoặc tên").fill(target.email);
-  await page.getByRole("button", { name: "Tìm kiếm / Lọc" }).click();
+  await page.getByRole("button", { name: "Áp dụng bộ lọc" }).click();
   await expect(page).toHaveURL(/search=/);
   await page
     .getByRole("link", { name: "Xem chi tiết", exact: true })
@@ -53,7 +53,8 @@ test("admin searches, changes roles, locks and unlocks through real APIs with au
   await detail.getByRole("button", { name: "Khóa tài khoản", exact: true }).focus();
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText(/Các phiên refresh hiện tại sẽ bị thu hồi/)).toBeVisible();
+  await expect(dialog.getByText(/Người dùng không thể đăng nhập hoặc bắt đầu bài làm mới/)).toBeVisible();
+  await expect(dialog.getByText(/Phiên đang mở có thể còn hiệu lực tối đa 15 phút/)).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(detail.getByRole("button", { name: "Khóa tài khoản", exact: true })).toBeFocused();

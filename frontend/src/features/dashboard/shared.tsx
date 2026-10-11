@@ -22,9 +22,9 @@ export function DashboardIntro({
       className="rounded-2xl border border-primary/15 bg-muted p-5 sm:p-7"
       aria-label={label}
     >
-      <p className="text-xs font-bold tracking-wider text-primary">{label}</p>
-      <p className="mt-3 max-w-3xl text-lg leading-8 font-medium">{description}</p>
-      <div className="mt-5 flex flex-wrap gap-3" aria-label="Thao tác nhanh">
+      <h2 className="text-base font-semibold text-foreground">Thao tác nhanh</h2>
+      <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">{description}</p>
+      <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap" aria-label="Thao tác nhanh">
         {children}
       </div>
     </section>
@@ -157,7 +157,7 @@ export function Results({
     <Section
       title="Kết quả gần đây"
       href={creator ? "/creator/reports" : "/participant/results"}
-      empty={!items.length ? "Chưa có kết quả được phép xem." : undefined}
+      empty={!items.length ? "Chưa có kết quả được phép xem" : undefined}
     >
       {items.map((item) => (
         <Row

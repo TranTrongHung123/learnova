@@ -129,7 +129,7 @@ export function ProtectedWorkspace({
     );
   const content = (
     <div className="space-y-8">
-      {title && <h1 className="text-3xl font-bold">{title}</h1>}
+      {title && <h1 className="text-2xl leading-tight font-bold tracking-tight sm:text-3xl">{title}</h1>}
       {children ? (
         <div key={user.id}>
           {typeof children === "function"

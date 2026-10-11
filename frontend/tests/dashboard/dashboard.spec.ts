@@ -138,7 +138,7 @@ test("participant dashboard keeps scores private until release, resumes and swit
   await login(page, f.participant.email, "participant");
   await expect(page.getByText("Chưa có điểm", { exact: true })).toBeVisible();
   const results = page.getByRole("region", { name: "Kết quả gần đây", exact: true });
-  await expect(results.getByText("Chưa có kết quả được phép xem.")).toBeVisible();
+  await expect(results.getByText("Chưa có kết quả được phép xem", { exact: true })).toBeVisible();
   expect(
     (
       await request.post(`${api}/exam-sessions/${f.s.id}/release-results`, {
@@ -249,11 +249,11 @@ test("admin dashboard labels account status and role counts with safe navigation
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
   await expect(
-    page.getByRole("paragraph").filter({ hasText: /^Tài khoản ACTIVE$/ }),
+    page.getByRole("paragraph").filter({ hasText: /^Tài khoản hoạt động$/ }),
   ).toBeVisible();
-  await expect(page.getByText(/không phải số người đang online/)).toBeVisible();
+  await expect(page.getByText("Tài khoản được phép đăng nhập", { exact: true })).toBeVisible();
   await checkLayout(page, "admin");
-  await page.getByRole("link", { name: "Xem chi tiết Tài khoản ACTIVE", exact: true }).click();
+  await page.getByRole("link", { name: "Xem chi tiết Tài khoản hoạt động", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/users\?status=ACTIVE$/);
   await page.goto("/creator");
   await expect(
@@ -300,8 +300,8 @@ test("empty participant dashboard loads without invented scores and retries a fa
 }) => {
   const user = await account(request, "PARTICIPANT");
   await login(page, user.email, "participant");
-  await expect(page.getByText("Bạn không có bài đang làm còn thời gian.")).toBeVisible();
-  await expect(page.getByText("Bạn chưa có thông báo.")).toBeVisible();
+  await expect(page.getByText("Bạn không có bài đang làm còn thời gian", { exact: true })).toBeVisible();
+  await expect(page.getByText("Bạn chưa có thông báo", { exact: true })).toBeVisible();
   await expect(page.getByText("Chưa có điểm", { exact: true })).toBeVisible();
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
@@ -312,8 +312,11 @@ test("empty participant dashboard loads without invented scores and retries a fa
     await route.continue();
   });
   await page.getByRole("button", { name: "Làm mới", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: /Đang tải/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Đang cập nhật…", exact: true })).toBeDisabled();
+  await expect(page.getByText("Chưa có điểm", { exact: true })).toBeVisible();
+  await expect(page.locator('main [role="status"][aria-busy="true"]')).toHaveCount(0);
   release();
+  await expect(page.getByRole("button", { name: "Làm mới", exact: true })).toBeEnabled();
   await expect(page.getByText("Chưa có điểm", { exact: true })).toBeVisible();
   await page.unroute("**/api/v1/participant/dashboard");
   await page.context().setOffline(true);

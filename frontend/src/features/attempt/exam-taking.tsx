@@ -198,7 +198,7 @@ export function ExamTaking({ id }: { id: string }) {
         <p>
           {a.title} · Lượt {a.attemptNumber}
         </p>
-        <p>Máy chủ đã hoàn tất bài làm từ các câu trả lời đã lưu.</p>
+        <p>Bài làm đã hoàn tất với các câu trả lời đã lưu</p>
         {unsaved > 0 && (
           <p className="text-warning">
             Trình duyệt chưa xác nhận lưu được một số thay đổi. Bài được chấm theo dữ liệu máy
@@ -423,12 +423,12 @@ export function ExamTaking({ id }: { id: string }) {
                   {d.local.markedForReview ? "Có" : "Không"} đánh dấu xem lại
                 </p>
                 <p>
-                  Bản máy chủ: {answerText(current, d.conflict.answer)} ·{" "}
+                  Bản đã lưu: {answerText(current, d.conflict.answer)} ·{" "}
                   {d.conflict.markedForReview ? "Có" : "Không"} đánh dấu xem lại
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Button variant="secondary" onClick={() => engine.resolve(current.id, false)}>
-                    Dùng bản máy chủ
+                    Dùng bản đã lưu
                   </Button>
                   <Button onClick={() => engine.resolve(current.id, true)}>
                     Lưu bản đang nhập
@@ -506,7 +506,7 @@ export function ExamTaking({ id }: { id: string }) {
           <p>Đã trả lời: {savedAnswers}</p>
           <p>Chưa trả lời: {drafts.length - savedAnswers}</p>
           <p>Đánh dấu xem lại: {drafts.filter((d) => d.local.markedForReview).length}</p>
-          <p>Sau khi nộp, bạn không thể sửa câu trả lời.</p>
+          <p>Sau khi nộp, bạn không thể sửa câu trả lời</p>
         </div>
         {busy && (
           <p role="status" className="my-3">
@@ -553,7 +553,7 @@ export function ExamTaking({ id }: { id: string }) {
         <h2 id="leave-title" className="text-xl font-bold">
           Còn thay đổi chưa lưu
         </h2>
-        <p className="my-4">Rời trang có thể làm mất phần chưa được máy chủ xác nhận.</p>
+        <p className="my-4">Rời trang có thể làm mất các thay đổi chưa lưu</p>
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => leaveDialog.current?.close()}>Tiếp tục làm bài</Button>
           <Button variant="secondary" onClick={leave}>

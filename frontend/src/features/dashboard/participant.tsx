@@ -24,7 +24,7 @@ export function ParticipantOverview() {
     <div className="space-y-6">
       <DashboardIntro
         label="KHÔNG GIAN NGƯỜI THAM GIA"
-        description="Tiếp tục bài đang làm, chuẩn bị cho kỳ thi tiếp theo và theo dõi kết quả của bạn."
+        description="Theo dõi lịch thi, tiếp tục bài làm và xem kết quả"
       >
         <LinkButton href="/participant/exams">Khám phá kỳ thi</LinkButton>
         <LinkButton variant="secondary" href="/participant/classes/join">
@@ -61,7 +61,7 @@ export function ParticipantOverview() {
       <Section
         title="Bài đang làm"
         href="/participant/exams"
-        empty={!d.inProgress.length ? "Bạn không có bài đang làm còn thời gian." : undefined}
+        empty={!d.inProgress.length ? "Bạn không có bài đang làm còn thời gian" : undefined}
       >
         {d.inProgress.map((a) => (
           <Row
@@ -83,7 +83,7 @@ export function ParticipantOverview() {
       <Section
         title={`Thông báo · ${d.unreadCount} chưa đọc`}
         href="/notifications"
-        empty={!d.notifications.length ? "Bạn chưa có thông báo." : undefined}
+        empty={!d.notifications.length ? "Bạn chưa có thông báo" : undefined}
       >
         {d.notifications.map((n) => (
           <Row
@@ -119,7 +119,7 @@ function Sessions({
     <Section
       title={title}
       href={`/participant/exams?tab=${tab}`}
-      empty={!data.content.length ? "Chưa có kỳ thi trong nhóm này." : undefined}
+      empty={!data.content.length ? "Chưa có kỳ thi trong nhóm này" : undefined}
     >
       {data.content.map((s) => (
         <Row

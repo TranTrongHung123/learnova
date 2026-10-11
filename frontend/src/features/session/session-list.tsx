@@ -53,7 +53,7 @@ export function SessionList({
           </LinkButton>
         )}
       </div>
-      {reporting && <p>Chọn kỳ thi để xem thống kê, kết quả hoặc xuất Excel.</p>}
+      {reporting && <p>Chọn kỳ thi để xem thống kê, kết quả hoặc xuất Excel</p>}
       <nav aria-label="Lọc trạng thái kỳ thi" className="flex flex-wrap gap-2">
         {(["", ...Object.keys(statusLabels)] as (Status | "")[]).map((s) => (
           <Button
@@ -73,7 +73,7 @@ export function SessionList({
         <QueryState error={query.error} retry={query.reload} />
       ) : (
         <>
-          {query.data.content.length === 0 && <p className={panel}>Chưa có kỳ thi phù hợp.</p>}
+          {query.data.content.length === 0 && <p className={panel}>Chưa có kỳ thi phù hợp</p>}
           <div className="grid gap-4">
             {query.data.content.map((s) => (
               <article key={s.id} className={`${panel} space-y-3 [overflow-wrap:anywhere]`}>

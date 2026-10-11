@@ -16,17 +16,17 @@ const steps = [
   {
     icon: BookOpen,
     title: "Chuẩn bị nội dung",
-    description: "Xây dựng ngân hàng câu hỏi, nhập Excel và biên soạn đề theo từng phiên bản.",
+    description: "Xây dựng ngân hàng câu hỏi, nhập Excel và biên soạn đề theo từng phiên bản",
   },
   {
     icon: ClipboardList,
     title: "Tổ chức kỳ thi",
-    description: "Giao bài theo lớp hoặc từng người, thiết lập thời gian và theo dõi bài làm.",
+    description: "Giao bài theo lớp hoặc từng người, thiết lập thời gian và theo dõi bài làm",
   },
   {
     icon: Layers3,
     title: "Hiểu rõ kết quả",
-    description: "Chấm điểm tự động, công bố kết quả và phân tích từng câu hỏi.",
+    description: "Chấm điểm tự động, công bố kết quả và phân tích từng câu hỏi",
   },
 ];
 
@@ -67,9 +67,9 @@ export default function Home() {
               <GraduationCap size={16} aria-hidden="true" /> KHÔNG GIAN KIỂM TRA TRỰC TUYẾN
             </p>
             <h1 className="max-w-2xl text-4xl leading-[1.15] font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
-              Tổ chức thi gọn gàng.
+              Tổ chức thi gọn gàng
               <br />
-              <span className="text-primary">Đánh giá hiệu quả.</span>
+              <span className="text-primary">Đánh giá hiệu quả</span>
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-8 text-muted-foreground">
               Từ câu hỏi đầu tiên đến kết quả cuối cùng. Learnova kết nối người tạo đề và người
@@ -85,7 +85,7 @@ export default function Home() {
             </div>
             <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
               <Check size={17} className="text-success" aria-hidden="true" /> Một tài khoản,
-              linh hoạt tạo đề và làm bài.
+              linh hoạt tạo đề và làm bài
             </p>
           </div>
           <div className="rounded-3xl border border-border bg-surface p-6 shadow-sm sm:p-8">
@@ -119,9 +119,9 @@ export default function Home() {
               THIẾT KẾ CHO CẢ HAI VAI TRÒ
             </p>
             <h2 className="mt-3 max-w-xl text-3xl font-bold tracking-tight">
-              Rõ ràng khi tổ chức.
+              Rõ ràng khi tổ chức
               <br />
-              An tâm khi làm bài.
+              An tâm khi làm bài
             </h2>
             <div className="mt-8 grid gap-6 md:grid-cols-3">
               {[
@@ -156,7 +156,7 @@ export default function Home() {
       </main>
       <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground sm:px-6 lg:px-8">
         <p className="font-bold text-foreground">Learnova</p>
-        <p>Không gian dành cho việc đánh giá và tiến bộ.</p>
+        <p>Không gian dành cho việc đánh giá và tiến bộ</p>
       </footer>
     </div>
   );

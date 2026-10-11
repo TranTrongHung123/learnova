@@ -141,7 +141,7 @@ function RolesEditor({ target, onDone }: { target: AdminUser; onDone: () => void
           ? "Người dùng cần hoàn tất thiết lập tài khoản trước khi sửa vai trò."
           : invalid
             ? "Chọn ít nhất một vai trò cho tài khoản này."
-            : "Thay đổi áp dụng theo quyền backend; access token cũ có thể còn hiệu lực tối đa 15 phút."}
+            : "Quyền mới được cập nhật trong tối đa 15 phút hoặc khi người dùng đăng nhập lại"}
       </p>
       <Button
         disabled={!changed || invalid || !target.onboardingCompleted}

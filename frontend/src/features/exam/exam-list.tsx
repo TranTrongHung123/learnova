@@ -20,14 +20,13 @@ export function ExamList() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="max-w-xl text-muted-foreground">
-          Xây dựng đề từ ngân hàng câu hỏi. Mỗi phiên bản đã xuất bản giữ nguyên nội dung để bảo
-          toàn lịch sử.
+          Biên soạn và quản lý các phiên bản đề thi
         </p>
         <LinkButton href="/creator/exams/new">Tạo đề thi</LinkButton>
       </div>
       <form
         key={params.toString()}
-        className={`${panel} flex flex-wrap items-end gap-4`}
+        className={`${panel} grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)_auto] xl:items-end`}
         onSubmit={(e) => {
           e.preventDefault();
           const next = new URLSearchParams();
@@ -60,7 +59,7 @@ export function ExamList() {
             ))}
           </select>
         </Field>
-        <Button type="submit">Tìm kiếm / Lọc</Button>
+        <Button type="submit" className="sm:col-span-2 xl:col-span-1">Áp dụng bộ lọc</Button>
       </form>
       {!query.data ? (
         <QueryState error={query.error} retry={query.reload} />
@@ -70,13 +69,13 @@ export function ExamList() {
             <PageState
               kind="empty"
               title="Chưa có đề thi phù hợp"
-              description="Tạo đề đầu tiên hoặc thay đổi bộ lọc."
+              description="Tạo đề đầu tiên hoặc thay đổi bộ lọc"
             />
           )}
           <div className="grid gap-4 md:grid-cols-2">
             {query.data.content.map((e) => (
-              <article key={e.id} className={`${panel} min-w-0 space-y-3 [overflow-wrap:anywhere]`}>
-                <h2 className="text-xl font-bold">{e.name}</h2>
+              <article key={e.id} className={`${panel} flex min-w-0 flex-col gap-3 [overflow-wrap:anywhere]`}>
+                <h2 className="text-lg leading-7 font-semibold">{e.name}</h2>
                 <p>
                   {examLabel[e.status]} · Phiên bản {e.latestVersion.versionNumber} —{" "}
                   {versionLabel[e.latestVersion.status]}
@@ -87,7 +86,7 @@ export function ExamList() {
                 <p className="text-sm text-muted-foreground">
                   Cập nhật: {new Date(e.updatedAt).toLocaleString("vi-VN")}
                 </p>
-                <LinkButton variant="secondary" href={`/creator/exams/${e.id}`}>
+                <LinkButton variant="secondary" className="mt-auto self-start" href={`/creator/exams/${e.id}`}>
                   Mở đề thi
                 </LinkButton>
               </article>

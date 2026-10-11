@@ -22,20 +22,17 @@ export function CreatorOverview() {
     <div className="space-y-6">
       <DashboardIntro
         label="KHÔNG GIAN NGƯỜI TẠO"
-        description="Từ ý tưởng đến một kỳ thi hoàn chỉnh. Quản lý nội dung và theo dõi các kỳ thi bạn tổ chức."
+        description="Chuẩn bị đề thi và theo dõi hoạt động đánh giá"
       >
-        <LinkButton href="/creator/questions/new">Tạo câu hỏi</LinkButton>
+        <LinkButton variant="secondary" href="/creator/questions/new">Tạo câu hỏi</LinkButton>
         <LinkButton variant="secondary" href="/creator/questions/import">
-          Nhập Excel
+          Nhập từ Excel
         </LinkButton>
-        <LinkButton variant="secondary" href="/creator/exams/new">
+        <LinkButton href="/creator/exams/new">
           Tạo đề thi
         </LinkButton>
         <LinkButton variant="secondary" href="/creator/sessions/new">
           Tạo kỳ thi
-        </LinkButton>
-        <LinkButton variant="secondary" href="/creator/monitor">
-          Mở giám sát
         </LinkButton>
       </DashboardIntro>
       <Updated time={d.serverTime} reload={query.reload} refreshing={query.refreshing} />
@@ -50,14 +47,14 @@ export function CreatorOverview() {
         <Metric
           label="Người tham gia"
           value={d.counts.participants}
-          hint="Số người được giao hoặc đã có bài làm, không đếm trùng giữa các kỳ thi."
+          hint="Số người được giao hoặc đã có bài làm, không đếm trùng giữa các kỳ thi"
         />
       </div>
       <div className="grid items-start gap-6 xl:grid-cols-2">
         <Section
           title="Kỳ thi đang mở"
           href="/creator/monitor"
-          empty={!d.activeSessions.length ? "Chưa có kỳ thi đang mở." : undefined}
+          empty={!d.activeSessions.length ? "Chưa có kỳ thi đang mở" : undefined}
         >
           {d.activeSessions.map((s) => (
             <Row
@@ -111,8 +108,7 @@ export function CreatorOverview() {
         </div>
       </section>
       <p className="text-sm text-muted-foreground">
-        Tổng số gồm cả dữ liệu đã lưu trữ. Mỗi danh sách hiển thị tối đa 5 mục mới nhất hoặc gần
-        đến hạn nhất.
+        Tổng số bao gồm dữ liệu đã lưu trữ
       </p>
     </div>
   );

@@ -65,7 +65,7 @@ export function StartAttempt({ value: s }: { value: DiscoveredSession }) {
         </p>
         <p className="mt-3 text-muted-foreground">
           Khi hết giờ, máy chủ tự kết thúc và chấm các câu trả lời đã lưu, kể cả khi bạn đóng trình
-          duyệt.
+          duyệt
         </p>
         {error && (
           <p role="alert" className="my-3 text-danger">

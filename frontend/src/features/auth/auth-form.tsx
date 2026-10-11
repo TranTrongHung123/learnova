@@ -109,12 +109,12 @@ export function AuthForm({
             MỖI BÀI KIỂM TRA, MỘT BƯỚC TIẾN
           </p>
           <p className="mt-5 text-4xl leading-tight font-extrabold tracking-tight">
-            Không gian của bạn.
+            Không gian của bạn
             <br />
-            <span className="text-primary">Sẵn sàng cho điều tiếp theo.</span>
+            <span className="text-primary">Sẵn sàng cho kỳ thi tiếp theo</span>
           </p>
           <p className="mt-5 max-w-md text-lg leading-8 text-muted-foreground">
-            Tạo bài kiểm tra, tham gia kỳ thi và theo dõi kết quả — tất cả bắt đầu từ đây.
+            Tạo bài kiểm tra, tham gia kỳ thi và theo dõi kết quả — tất cả bắt đầu từ đây
           </p>
           <ul className="mt-9 space-y-5">
             {[
@@ -147,8 +147,8 @@ export function AuthForm({
         </h1>
         <p className="mt-2 mb-6 text-muted-foreground">
           {register
-            ? "Chọn cách bạn muốn sử dụng Learnova."
-            : "Tiếp tục vào không gian kiểm tra của bạn."}
+            ? "Chọn cách bạn muốn sử dụng Learnova"
+            : "Đăng nhập để tiếp tục"}
         </p>
         {registered && !register && (
           <p role="status" className="mb-4 text-success">
