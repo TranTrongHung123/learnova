@@ -20,7 +20,7 @@ export function GoogleButton() {
   }, [session, retry]);
   if (state === "disabled") return null;
   return (
-    <div className="mt-5 space-y-2">
+    <div className="mt-5 space-y-2 text-center">
       <Button
         className="w-full"
         variant="secondary"

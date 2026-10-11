@@ -79,7 +79,7 @@ export default function Home() {
               <LinkButton href="/register" className="px-6">
                 Tạo tài khoản <ArrowRight size={18} aria-hidden="true" />
               </LinkButton>
-              <LinkButton variant="ghost" href="/workspaces">
+              <LinkButton variant="tinted" href="/workspaces">
                 Vào không gian của bạn <MoveUpRight size={16} aria-hidden="true" />
               </LinkButton>
             </div>

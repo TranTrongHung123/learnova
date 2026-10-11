@@ -2,12 +2,13 @@ import Link from "next/link";
 import type { ButtonHTMLAttributes, ComponentProps } from "react";
 import { NavigationFeedback } from "./loading-feedback";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "tinted";
 
 const styles: Record<Variant, string> = {
   primary: "bg-primary text-on-primary shadow-sm hover:bg-primary-hover",
   secondary: "border border-control-border bg-surface hover:bg-muted",
   ghost: "hover:bg-muted text-muted-foreground",
+  tinted: "border border-primary/20 bg-muted text-primary hover:bg-primary/10",
 };
 
 function classes(variant: Variant, className = "") {

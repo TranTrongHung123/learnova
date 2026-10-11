@@ -42,6 +42,12 @@ test("auth forms use available login methods and fit mobile and desktop", async 
     for (const route of ["/login", "/register"]) {
       await page.goto(route);
       await expect(page.locator("#email")).toBeVisible();
+      const reveal = page.getByRole("button", { name: "Hiện mật khẩu", exact: true });
+      await reveal.focus();
+      await page.keyboard.press("Enter");
+      await expect(page.locator("#password")).toHaveAttribute("type", "text");
+      await page.getByRole("button", { name: "Ẩn mật khẩu", exact: true }).click();
+      await expect(page.locator("#password")).toHaveAttribute("type", "password");
       await expect(page.getByText("Đang kiểm tra Google Login…", { exact: true })).toHaveCount(
         0,
       );
@@ -55,6 +61,20 @@ test("auth forms use available login methods and fit mobile and desktop", async 
         path: testInfo.outputPath(`${route.slice(1)}-${width}.png`),
         fullPage: true,
       });
+      if (route === "/login") {
+        await page.locator("#email").fill(`${randomUUID()}@example.com`);
+        await page.locator("#password").fill(password);
+        await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
+        const error = page.getByRole("alert").filter({ hasText: "Email hoặc mật khẩu chưa đúng" });
+        await expect(error).toBeFocused();
+        await expect(page.locator("#password")).toHaveAttribute("type", "password");
+        await page.locator("#email").fill("");
+        await page.locator("#password").fill("");
+        await page.screenshot({
+          path: testInfo.outputPath(`login-error-${width}.png`),
+          fullPage: true,
+        });
+      }
     }
   }
 });
@@ -222,8 +242,16 @@ for (const width of [375, 768, 1024, 1440, 640]) {
       true,
     );
     await page.locator("#password").fill("Mật khẩu có dấu 😀");
-    await page.getByRole("button", { name: "Hiện mật khẩu" }).click();
+    await page.getByRole("button", { name: "Hiện mật khẩu", exact: true }).click();
     await expect(page.locator("#password")).toHaveAttribute("type", "text");
+    await expect(page.locator("#confirmPassword")).toHaveAttribute("type", "password");
+    await page.getByRole("button", { name: "Hiện mật khẩu xác nhận", exact: true }).click();
+    await expect(page.locator("#confirmPassword")).toHaveAttribute("type", "text");
+    await page.getByRole("button", { name: "Ẩn mật khẩu xác nhận", exact: true }).click();
+    await expect(page.locator("#confirmPassword")).toHaveAttribute("type", "password");
+    await expect(page.locator("#password")).toHaveValue("Mật khẩu có dấu 😀");
+    await page.getByRole("button", { name: "Ẩn mật khẩu", exact: true }).click();
+    await expect(page.locator("#password")).toHaveAttribute("type", "password");
     await expect(page.locator("#password")).toHaveAttribute("autocomplete", "new-password");
     await page.locator("#password").fill("");
     await page.screenshot({
