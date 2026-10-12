@@ -24,7 +24,7 @@ export function AuditLog() {
   function page(value: number) {
     const next = new URLSearchParams(params);
     next.set("page", String(value));
-    router.push(`/admin/audit-logs?${next}`);
+    router.push(`/admin/audit-logs?${next}`, { scroll: false });
   }
   return (
     <section aria-label="Nhật ký hoạt động" className="space-y-6">
@@ -54,7 +54,7 @@ export function AuditLog() {
             return;
           }
           setValidation("");
-          router.push(`/admin/audit-logs?${next}`);
+          router.push(`/admin/audit-logs?${next}`, { scroll: false });
         }}
       >
         <Field id="action" label="Hành động">
@@ -154,7 +154,7 @@ export function AuditLog() {
             <PageState
               kind="empty"
               title="Không có nhật ký phù hợp"
-              description="Thử mở rộng thời gian hoặc thay đổi bộ lọc."
+              description="Thử mở rộng thời gian hoặc thay đổi bộ lọc"
             />
           ) : (
             <>
@@ -273,7 +273,7 @@ const metadataLabels: Record<string, string> = {
 function Metadata({ item }: { item: AuditItem }) {
   const entries = Object.entries(item.metadata);
   if (!entries.length)
-    return <p className="text-sm text-muted-foreground">Không có thay đổi chi tiết.</p>;
+    return <p className="text-sm text-muted-foreground">Không có thay đổi chi tiết</p>;
   return (
     <details>
       <summary className="min-h-11 cursor-pointer py-2 font-semibold text-primary">

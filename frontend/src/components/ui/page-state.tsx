@@ -1,39 +1,45 @@
-import { CircleAlert, FileQuestion, LockKeyhole, Inbox, WifiOff, Construction } from "lucide-react";
+import { CircleAlert, Clock, FileQuestion, LockKeyhole, Inbox, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
+import { DelayedLoading } from "./loading-feedback";
 
 export type PageStateKind =
-  "empty" | "forbidden" | "not-found" | "network" | "unavailable" | "error";
+  | "empty"
+  | "forbidden"
+  | "not-found"
+  | "network"
+  | "pending"
+  | "error";
 
 const states = {
   empty: {
     icon: Inbox,
     title: "Chưa có nội dung",
-    description: "Nội dung sẽ xuất hiện tại đây khi có dữ liệu.",
+    description: "Nội dung sẽ xuất hiện tại đây khi có dữ liệu",
   },
   forbidden: {
     icon: LockKeyhole,
     title: "Bạn không có quyền truy cập",
-    description: "Chọn không gian làm việc phù hợp với quyền của bạn.",
+    description: "Chọn không gian làm việc phù hợp với quyền của bạn",
   },
   "not-found": {
     icon: FileQuestion,
     title: "Không tìm thấy trang",
-    description: "Đường dẫn có thể không đúng hoặc trang không còn tồn tại.",
+    description: "Đường dẫn có thể không đúng hoặc trang không còn tồn tại",
   },
   network: {
     icon: WifiOff,
     title: "Chưa thể kết nối",
     description: "Kiểm tra kết nối mạng rồi thử lại. Chưa có dữ liệu mới được tải.",
   },
-  unavailable: {
-    icon: Construction,
-    title: "Tính năng đang được hoàn thiện",
-    description: "Bạn có thể quay lại trang chủ trong khi chờ tính năng sẵn sàng.",
-  },
   error: {
     icon: CircleAlert,
     title: "Không thể hiển thị nội dung",
-    description: "Vui lòng thử lại hoặc quay về trang chủ.",
+    description: "Vui lòng thử lại hoặc quay về trang chủ",
+  },
+  pending: {
+    icon: Clock,
+    title: "Đang chờ xác nhận",
+    description: "Vui lòng chờ máy chủ xác nhận trạng thái mới nhất",
   },
 };
 
@@ -64,12 +70,16 @@ export function PageState({
 
 export function Skeleton() {
   return (
-    <div role="status" className="space-y-6 rounded-xl border border-border bg-surface p-8">
+    <div role="status" aria-busy="true" className="min-h-80">
       <span className="sr-only">Đang tải nội dung</span>
-      <div className="h-6 w-2/3 rounded bg-muted" />
-      <div className="h-4 w-full rounded bg-muted" />
-      <div className="h-4 w-4/5 rounded bg-muted" />
-      <div className="h-40 rounded bg-muted" />
+      <DelayedLoading>
+        <div aria-hidden="true" className="space-y-6 rounded-xl border border-border bg-surface p-8">
+          <div className="h-6 w-2/3 rounded bg-muted" />
+          <div className="h-4 w-full rounded bg-muted" />
+          <div className="h-4 w-4/5 rounded bg-muted" />
+          <div className="h-40 rounded bg-muted" />
+        </div>
+      </DelayedLoading>
     </div>
   );
 }

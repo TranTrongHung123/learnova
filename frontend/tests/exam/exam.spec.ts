@@ -160,10 +160,10 @@ test("failed saves keep input; stale revisions require explicit reconciliation",
   await page.getByRole("button", { name: "Lưu bản nháp", exact: true }).click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText("Dữ liệu đã thay đổi");
   await expect(page.getByLabel("Điểm câu 1", { exact: true })).toHaveValue("2");
-  await page.getByRole("button", { name: "Tải bản máy chủ để đối chiếu" }).click();
-  const dialog = page.getByRole("dialog", { name: "Đối chiếu bản máy chủ" });
+  await page.getByRole("button", { name: "Tải bản đã lưu để đối chiếu" }).click();
+  const dialog = page.getByRole("dialog", { name: "Đối chiếu bản đã lưu" });
   await expect(dialog).toContainText("3 điểm");
-  await dialog.getByRole("button", { name: "Thay nội dung đang nhập bằng bản máy chủ" }).click();
+  await dialog.getByRole("button", { name: "Thay nội dung đang nhập bằng bản đã lưu" }).click();
   await expect(page.getByLabel("Điểm câu 1", { exact: true })).toHaveValue("3");
   await page.getByRole("button", { name: "Thêm từ ngân hàng câu hỏi", exact: true }).click();
   await page.keyboard.press("Escape");
@@ -366,9 +366,9 @@ test("lost generation response reconciles without generating twice", async ({ pa
   });
   await dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" }).click();
   await expect(dialog.getByRole("alert")).toContainText("Chưa xác nhận được kết quả");
-  await expect(dialog).toContainText("2 câu · 2 điểm");
+  await expect(dialog).toContainText("2 câu hỏi · 2 điểm");
   await expect(dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" })).toBeDisabled();
-  await dialog.getByRole("button", { name: "Dùng bản máy chủ và quay lại Builder" }).click();
+  await dialog.getByRole("button", { name: "Dùng bản đã lưu" }).click();
   await expect(page.getByLabel("Điểm câu 2", { exact: true })).toHaveValue("1");
   expect(generates).toBe(1);
 });
@@ -397,8 +397,8 @@ test("matrix stale revision preserves server changes and requires reconciliation
     ).status(),
   ).toBe(200);
   await dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" }).click();
-  await expect(dialog).toContainText("1 câu · 7 điểm");
+  await expect(dialog).toContainText("1 câu hỏi · 7 điểm");
   await expect(dialog.getByRole("button", { name: "Sinh và thêm vào bản nháp" })).toBeDisabled();
-  await dialog.getByRole("button", { name: "Dùng bản máy chủ và quay lại Builder" }).click();
+  await dialog.getByRole("button", { name: "Dùng bản đã lưu" }).click();
   await expect(page.getByLabel("Điểm câu 1", { exact: true })).toHaveValue("7");
 });

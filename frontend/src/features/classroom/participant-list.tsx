@@ -27,7 +27,7 @@ export function ParticipantClassrooms() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="text-muted-foreground">Những lớp bạn đang tham gia.</p>
+        <p className="text-muted-foreground">Những lớp bạn đang tham gia</p>
         <LinkButton href="/participant/classes/join">Tham gia bằng mã</LinkButton>
       </div>
       {notice && (
@@ -43,7 +43,7 @@ export function ParticipantClassrooms() {
             <PageState
               kind="empty"
               title="Bạn chưa tham gia lớp nào"
-              description="Nhập mã do người tạo lớp cung cấp để bắt đầu."
+              description="Nhập mã do người tạo lớp cung cấp để bắt đầu"
               action={<LinkButton href="/participant/classes/join">Tham gia lớp</LinkButton>}
             />
           ) : (

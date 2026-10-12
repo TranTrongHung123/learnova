@@ -53,7 +53,7 @@ test("profile persists, validates, recovers from network failure and fits all vi
   await page.locator("#profile-displayName").fill("Chưa lưu");
   await page.getByRole("button", { name: "Lưu hồ sơ" }).click();
   await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
-  await expect(page.getByText("Đã lưu hồ sơ.", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Đã lưu hồ sơ", { exact: true })).toHaveCount(0);
   await expect(page.locator("#profile-displayName")).toHaveValue("Chưa lưu");
   await page.unroute("**/api/v1/auth/profile");
   await page.getByRole("button", { name: "Lưu hồ sơ" }).click();

@@ -104,12 +104,11 @@ export function AnalyticsScreen({ id }: { id: string }) {
           Phân tích câu hỏi
         </h3>
         <p>
-          Mẫu: toàn bộ lượt GRADED trong kỳ thi, gồm cả các lượt làm lại. Nội dung lấy từ snapshot
-          đã xuất bản.
+          Thống kê tất cả lượt đã chấm, gồm cả lượt làm lại, theo nội dung đề đã xuất bản
         </p>
         <p className="text-sm text-muted-foreground">
-          Thời gian trung bình chỉ dùng telemetry hợp lệ; đây là dữ liệu do trình duyệt ghi nhận,
-          không phải bằng chứng giám sát. Số mẫu thời gian có thể nhỏ hơn số lượt đã chấm.
+          Thời gian trả lời mang tính tham khảo, không dùng để kết luận vi phạm.
+          Một số lượt làm có thể không có dữ liệu thời gian.
         </p>
         <div
           className="overflow-x-auto rounded-lg border border-border focus-visible:outline-ring"
@@ -119,12 +118,12 @@ export function AnalyticsScreen({ id }: { id: string }) {
         >
           <table className="w-full min-w-[760px] text-left text-sm">
             <caption className="sr-only">
-              Tỷ lệ đúng, sai, chưa trả lời và thời gian của từng snapshot
+              Tỷ lệ đúng, sai, chưa trả lời và thời gian trả lời từng câu hỏi
             </caption>
             <thead className="bg-muted">
               <tr>
                 {[
-                  "Câu hỏi / Snapshot",
+                  "Câu hỏi",
                   "Số lượt",
                   "Đúng",
                   "Sai",
@@ -143,7 +142,7 @@ export function AnalyticsScreen({ id }: { id: string }) {
                   <th scope="row" className="max-w-sm p-3 font-normal">
                     <details>
                       <summary className="cursor-pointer font-bold">
-                        Câu {q.position + 1} · {q.points} điểm — Xem snapshot
+                        Câu {q.position + 1} · {q.points} điểm — Xem nội dung
                       </summary>
                       <div className="mt-3 space-y-2 whitespace-pre-wrap [overflow-wrap:anywhere]">
                         <p>{q.snapshot.content}</p>

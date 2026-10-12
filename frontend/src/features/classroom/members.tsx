@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { useAuth } from "@/features/auth/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -193,7 +191,7 @@ export function ClassroomMembers({
             <PageState
               kind="empty"
               title="Chưa có thành viên phù hợp"
-              description="Thêm Participant hoặc thay đổi bộ lọc để xem thành viên."
+              description="Thêm Participant hoặc thay đổi bộ lọc để xem thành viên"
             />
           ) : (
             <ul className="space-y-3">

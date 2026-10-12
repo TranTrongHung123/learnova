@@ -135,7 +135,7 @@ export function QuestionForm({ existing }: { existing?: QuestionDetail }) {
       </p>
       {existing && (
         <p className="text-sm text-muted-foreground">
-          Sửa ngân hàng câu hỏi không thay đổi phiên bản đề đã xuất bản.
+          Sửa ngân hàng câu hỏi không thay đổi phiên bản đề đã xuất bản
         </p>
       )}
       {error && (
@@ -293,7 +293,7 @@ export function QuestionForm({ existing }: { existing?: QuestionDetail }) {
               value={form.correctValue ?? ""}
               error={fields.correctValue}
               onChange={(e) => patch({ correctValue: e.target.value || null })}
-              hint="Dùng dấu chấm cho phần thập phân."
+              hint="Dùng dấu chấm cho phần thập phân"
             />
             <Input
               id="tolerance"
@@ -302,7 +302,7 @@ export function QuestionForm({ existing }: { existing?: QuestionDetail }) {
               value={form.tolerance}
               error={fields.tolerance}
               onChange={(e) => patch({ tolerance: e.target.value })}
-              hint="Mặc định 0, không được âm."
+              hint="Mặc định 0, không được âm"
             />
           </div>
         )}

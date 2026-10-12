@@ -83,21 +83,9 @@ jobs:
         working-directory: frontend
         run: npm run test:e2e
 
-      - name: Auth browser integration with PostgreSQL and Redis
+      - name: Application browser integration with PostgreSQL and Redis
         working-directory: frontend
-        run: npm run test:auth
-
-      - name: Google browser integration with test OIDC provider
-        working-directory: frontend
-        run: npm run test:google
-
-      - name: Classroom browser integration with PostgreSQL and Redis
-        working-directory: frontend
-        run: npm run test:classroom
-
-      - name: Question Bank browser integration with PostgreSQL and Redis
-        working-directory: frontend
-        run: npm run test:question
+        run: npm run test:integration
 
       - name: Question Bank failure diagnostics
         if: failure()
@@ -108,41 +96,17 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Excel import browser integration with PostgreSQL and Redis
+      - name: Google browser integration with test OIDC provider
         working-directory: frontend
-        run: npm run test:import
-
-      - name: Exam Builder browser integration with PostgreSQL and Redis
-        working-directory: frontend
-        run: npm run test:exam
-
-      - name: Session browser integration with PostgreSQL and Redis
-        working-directory: frontend
-        run: npm run test:session
-
-      - name: Participant discovery browser integration with PostgreSQL and Redis
-        working-directory: frontend
-        run: npm run test:discovery
-
-      - name: Attempt browser integration with PostgreSQL and Redis
-        working-directory: frontend
-        run: npm run test:attempt
-
-      - name: Result browser integration with PostgreSQL and Redis
-        working-directory: frontend
-        run: npm run test:result
-
-      - name: Realtime monitoring browser integration with PostgreSQL and Redis
-        working-directory: frontend
-        run: npm run test:monitoring
-
-      - name: Notification browser integration with PostgreSQL and Redis
-        working-directory: frontend
-        run: npm run test:notification
+        run: npm run test:google
 
       - name: Dashboard browser integration with PostgreSQL and Redis
         working-directory: frontend
         run: npm run test:dashboard
+
+      - name: Admin browser integration with PostgreSQL and Redis
+        working-directory: frontend
+        run: npm run test:admin
 
       - name: Build frontend
         working-directory: frontend

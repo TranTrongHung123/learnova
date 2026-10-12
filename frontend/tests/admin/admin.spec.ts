@@ -23,8 +23,8 @@ async function login(
   workspace = "admin",
 ) {
   await page.goto("/login");
-  await page.getByLabel("Email (bắt buộc)", { exact: true }).fill(email);
-  await page.getByLabel("Mật khẩu (bắt buộc)", { exact: true }).fill(secret);
+  await page.locator("#email").fill(email);
+  await page.locator("#password").fill(secret);
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/${workspace}$`));
 }
@@ -37,7 +37,7 @@ test("admin searches, changes roles, locks and unlocks through real APIs with au
   await login(page);
   await page.getByRole("link", { name: "Người dùng", exact: true }).click();
   await page.getByLabel("Tìm email hoặc tên").fill(target.email);
-  await page.getByRole("button", { name: "Tìm kiếm / Lọc" }).click();
+  await page.getByRole("button", { name: "Áp dụng bộ lọc" }).click();
   await expect(page).toHaveURL(/search=/);
   await page
     .getByRole("link", { name: "Xem chi tiết", exact: true })
@@ -48,12 +48,15 @@ test("admin searches, changes roles, locks and unlocks through real APIs with au
   await detail.getByRole("checkbox", { name: "CREATOR", exact: true }).check();
   await detail.getByRole("button", { name: "Lưu vai trò", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Xác nhận lưu vai trò" }).click();
-  await expect(detail.getByRole("status")).toBeVisible();
+  await expect(
+    detail.getByRole("status").filter({ hasText: "Đã cập nhật tài khoản" }),
+  ).toBeVisible();
   await expect(detail.getByRole("checkbox", { name: "CREATOR", exact: true })).toBeChecked();
   await detail.getByRole("button", { name: "Khóa tài khoản", exact: true }).focus();
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText(/Các phiên refresh hiện tại sẽ bị thu hồi/)).toBeVisible();
+  await expect(dialog.getByText(/Người dùng không thể đăng nhập hoặc bắt đầu bài làm mới/)).toBeVisible();
+  await expect(dialog.getByText(/Phiên đang mở có thể còn hiệu lực tối đa 15 phút/)).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(detail.getByRole("button", { name: "Khóa tài khoản", exact: true })).toBeFocused();

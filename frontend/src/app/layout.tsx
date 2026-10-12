@@ -3,6 +3,8 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/features/auth/auth-provider";
 
+import { WorkspaceLayout } from "@/features/auth/protected-workspace";
+
 const sans = Plus_Jakarta_Sans({
   variable: "--font-learnova",
   subsets: ["latin", "vietnamese"],
@@ -11,7 +13,7 @@ const sans = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: { default: "Learnova", template: "%s | Learnova" },
-  description: "Nền tảng tổ chức và tham gia kiểm tra trực tuyến.",
+  description: "Nền tảng tổ chức và tham gia kiểm tra trực tuyến",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -21,7 +23,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <a className="skip-link" href="#main-content">
           Chuyển đến nội dung chính
         </a>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <WorkspaceLayout>{children}</WorkspaceLayout>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -30,14 +30,13 @@ export function UserList() {
   function page(value: number) {
     const next = new URLSearchParams(params);
     next.set("page", String(value));
-    router.push(`/admin/users?${next}`);
+    router.push(`/admin/users?${next}`, { scroll: false });
   }
   return (
     <section aria-label="Danh sách người dùng" className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-muted-foreground">
-          Tra cứu tài khoản, quản lý quyền tham gia và tạo kỳ thi. Mọi thay đổi quyền và trạng thái
-          đều được ghi nhật ký.
+          Tra cứu tài khoản và quản lý quyền truy cập
         </p>
         <Button variant="secondary" onClick={query.reload}>
           Làm mới
@@ -53,7 +52,7 @@ export function UserList() {
             if (String(value).trim()) next.set(key, String(value).trim());
           });
           setNotice("");
-          router.push(`/admin/users?${next}`);
+          router.push(`/admin/users?${next}`, { scroll: false });
         }}
       >
         <Field id="search" label="Tìm email hoặc tên">
@@ -89,7 +88,7 @@ export function UserList() {
           </select>
         </Field>
         <div className="flex flex-wrap gap-3 sm:col-span-2 xl:col-span-3">
-          <Button type="submit">Tìm kiếm / Lọc</Button>
+          <Button type="submit">Áp dụng bộ lọc</Button>
           <LinkButton variant="ghost" href="/admin/users">
             Xóa bộ lọc
           </LinkButton>
@@ -108,7 +107,7 @@ export function UserList() {
             <PageState
               kind="empty"
               title="Không có người dùng phù hợp"
-              description="Thử thay đổi từ khóa hoặc xóa bộ lọc."
+              description="Thử thay đổi từ khóa hoặc xóa bộ lọc"
             />
           ) : (
             <>

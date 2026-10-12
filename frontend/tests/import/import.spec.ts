@@ -33,7 +33,7 @@ async function login(page: Page, email: string) {
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(page).toHaveURL(/\/creator$/);
   await page.goto("/creator/questions");
-  await page.getByRole("link", { name: "Import Excel", exact: true }).click();
+  await page.getByRole("link", { name: "Nhập từ Excel", exact: true }).click();
 }
 
 async function upload(page: Page, rows: Record<string, string>[]) {

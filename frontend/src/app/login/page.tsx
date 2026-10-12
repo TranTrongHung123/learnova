@@ -1,6 +1,7 @@
+import type { Metadata } from "next";
 import { AuthForm } from "@/features/auth/auth-form";
 
-export const metadata = { title: "Đăng nhập" };
+export const metadata: Metadata = { title: "Đăng nhập" };
 
 export default async function Page({ searchParams }: PageProps<"/login">) {
   const params = await searchParams;

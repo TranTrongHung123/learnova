@@ -107,7 +107,7 @@ function VersionPicker({
           </option>
         ))}
       </select>
-      {!versions.length && <p>Đề chưa có phiên bản đã xuất bản.</p>}
+      {!versions.length && <p>Đề chưa có phiên bản đã xuất bản</p>}
     </Field>
   );
 }
@@ -330,7 +330,7 @@ export function EditSession({ id }: { id: string }) {
   if (!q.data.actions.editTitle)
     return (
       <div className={panel}>
-        <p>Kỳ thi đã đóng hoặc hủy, không thể chỉnh sửa.</p>
+        <p>Kỳ thi đã đóng hoặc hủy, không thể chỉnh sửa</p>
         <LinkButton href={path(id)}>Xem kỳ thi</LinkButton>
       </div>
     );
@@ -445,9 +445,8 @@ export function SessionForm({ existing }: { existing?: SessionDetail }) {
       <LinkButton variant="ghost" href={saved ? path(saved.id) : "/creator/sessions"}>
         Quay lại
       </LinkButton>
-      <p>
-        Múi giờ nhập lịch: {Intl.DateTimeFormat().resolvedOptions().timeZone}. Thời gian thực tế do
-        máy chủ quyết định.
+      <p className="text-sm text-muted-foreground">
+        Múi giờ: {Intl.DateTimeFormat().resolvedOptions().timeZone}
       </p>
       {locked && (
         <p className="rounded bg-muted p-4">Cấu hình đã khóa. Bạn chỉ có thể sửa tên kỳ thi.</p>
@@ -527,7 +526,7 @@ export function SessionForm({ existing }: { existing?: SessionDetail }) {
                   onChange={(e) => put("endTime", e.target.value)}
                 />
                 {saved?.status === "SCHEDULED" && (
-                  <p>Dùng action Gia hạn trên trang chi tiết để tăng giờ kết thúc.</p>
+                  <p>Dùng action Gia hạn trên trang chi tiết để tăng giờ kết thúc</p>
                 )}
               </Field>
               <Field
@@ -594,7 +593,7 @@ export function SessionForm({ existing }: { existing?: SessionDetail }) {
               </Field>
               {form.accessType === "PUBLIC" ? (
                 <p>
-                  Mọi người dùng đã đăng nhập có role PARTICIPANT đều có thể tham gia khi kỳ thi mở.
+                  Mọi người dùng đã đăng nhập có role PARTICIPANT đều có thể tham gia khi kỳ thi mở
                 </p>
               ) : form.accessType === "CLASS" ? (
                 <ClassPicker selected={form.classrooms} onChange={(v) => put("classrooms", v)} />
@@ -618,7 +617,7 @@ export function SessionForm({ existing }: { existing?: SessionDetail }) {
                   {i ? "Trộn thứ tự đáp án" : "Trộn thứ tự câu hỏi"}
                 </label>
               ))}
-              <p>Thứ tự được giữ ổn định trong mỗi lượt làm bài.</p>
+              <p>Thứ tự được giữ ổn định trong mỗi lượt làm bài</p>
             </>
           )}
           {step === 4 && !locked && (
@@ -657,7 +656,7 @@ export function SessionForm({ existing }: { existing?: SessionDetail }) {
               </Field>
               <p>
                 Đáp án và giải thích chỉ hiển thị khi chế độ Chi tiết và chính sách công bố cho
-                phép.
+                phép
               </p>
             </>
           )}
@@ -708,7 +707,7 @@ export function SessionForm({ existing }: { existing?: SessionDetail }) {
                   }
                 }}
               >
-                Tải bản máy chủ để đối chiếu
+                Tải bản đã lưu để đối chiếu
               </Button>
             )}
           </div>
@@ -736,10 +735,10 @@ export function SessionForm({ existing }: { existing?: SessionDetail }) {
         </div>
       </form>
       {remote && (
-        <Modal title="Đối chiếu bản máy chủ" close={() => setRemote(undefined)}>
+        <Modal title="Đối chiếu bản đã lưu" close={() => setRemote(undefined)}>
           <div className="space-y-4">
             <p>
-              Thông tin đang nhập vẫn được giữ. Chọn dùng bản máy chủ sẽ thay nội dung biểu mẫu.
+              Thông tin đang nhập vẫn được giữ. Chọn dùng bản đã lưu sẽ thay nội dung biểu mẫu.
             </p>
             <SessionSummary s={remote} />
             <Button
@@ -752,7 +751,7 @@ export function SessionForm({ existing }: { existing?: SessionDetail }) {
                 setErrors({});
               }}
             >
-              Dùng bản máy chủ
+              Dùng bản đã lưu
             </Button>
           </div>
         </Modal>

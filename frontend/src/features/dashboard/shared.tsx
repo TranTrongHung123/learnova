@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowUpRight, RefreshCw } from "lucide-react";
+import { ArrowUpRight, Inbox, RefreshCw } from "lucide-react";
 import { Button, LinkButton } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/client";
 import { PageState, Skeleton } from "@/components/ui/page-state";
@@ -8,13 +8,44 @@ import { Badge } from "@/components/ui/badge";
 import { date, panel } from "@/features/session/shared";
 import type { DashboardResult } from "./types";
 
-export function Updated({ time, reload }: { time: string; reload: () => void }) {
+export function DashboardIntro({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className="rounded-2xl border border-primary/15 bg-muted p-5 sm:p-7"
+      aria-label={label}
+    >
+      <h2 className="text-base font-semibold text-foreground">Thao tác nhanh</h2>
+      <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">{description}</p>
+      <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap" aria-label="Thao tác nhanh">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+export function Updated({
+  time,
+  reload,
+  refreshing = false,
+}: {
+  time: string;
+  reload: () => void;
+  refreshing?: boolean;
+}) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-muted-foreground">Cập nhật lúc {date(time)}</p>
-      <Button variant="secondary" onClick={reload}>
+      <Button variant="secondary" onClick={reload} disabled={refreshing} aria-busy={refreshing}>
         <RefreshCw size={16} aria-hidden="true" />
-        Làm mới
+        {refreshing ? "Đang cập nhật…" : "Làm mới"}
       </Button>
     </div>
   );
@@ -32,15 +63,21 @@ export function Metric({
   href?: string;
 }) {
   return (
-    <div className={`${panel} min-w-0`}>
-      <p className="text-sm font-semibold text-muted-foreground">{label}</p>
-      <p className="my-2 break-words text-3xl font-bold tabular-nums">
+    <div className={`${panel} relative flex min-w-0 flex-col`}>
+      <p className="flex items-start gap-2 text-sm font-semibold text-muted-foreground">
+        <span
+          className="mt-1.5 size-2 shrink-0 rounded-full bg-primary/60"
+          aria-hidden="true"
+        />
+        {label}
+      </p>
+      <p className="my-3 break-words text-4xl font-extrabold tracking-tight tabular-nums">
         {typeof value === "number" ? value.toLocaleString("vi-VN") : value}
       </p>
       {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
       {href && (
         <Link
-          className="mt-3 inline-flex min-h-11 items-center gap-2 font-semibold text-primary hover:underline"
+          className="mt-auto inline-flex min-h-11 items-center gap-2 pt-3 text-sm font-semibold text-primary hover:underline"
           href={href}
         >
           Xem chi tiết<span className="sr-only"> {label}</span>
@@ -73,7 +110,10 @@ export function Section({
         )}
       </div>
       {empty ? (
-        <p className="rounded-lg bg-background p-4 text-muted-foreground">{empty}</p>
+        <div className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-background p-5 text-center text-sm text-muted-foreground">
+          <Inbox size={24} className="text-primary" aria-hidden="true" />
+          <p className="max-w-md">{empty}</p>
+        </div>
       ) : (
         <ul className="divide-y divide-border">{children}</ul>
       )}
@@ -117,7 +157,7 @@ export function Results({
     <Section
       title="Kết quả gần đây"
       href={creator ? "/creator/reports" : "/participant/results"}
-      empty={!items.length ? "Chưa có kết quả được phép xem." : undefined}
+      empty={!items.length ? "Chưa có kết quả được phép xem" : undefined}
     >
       {items.map((item) => (
         <Row

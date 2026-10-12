@@ -24,7 +24,11 @@ async function account(request: APIRequestContext, role: string) {
   const login = await (
     await request.post(`${api}/auth/login`, { headers, data: { email, password } })
   ).json();
-  return { email, id: login.user.id, headers: { Authorization: `Bearer ${login.accessToken}` } };
+  return {
+    email,
+    id: login.user.id,
+    headers: { Authorization: `Bearer ${login.accessToken}` },
+  };
 }
 
 async function fixture(request: APIRequestContext, mode = "DETAILED", graded = true) {
@@ -91,7 +95,9 @@ async function fixture(request: APIRequestContext, mode = "DETAILED", graded = t
     ).status(),
   ).toBe(200);
   const started = await (
-    await request.post(`${api}/exam-sessions/${s.id}/attempts`, { headers: participant.headers })
+    await request.post(`${api}/exam-sessions/${s.id}/attempts`, {
+      headers: participant.headers,
+    })
   ).json();
   const a = started.attempt ?? started;
   expect(
@@ -132,7 +138,7 @@ test("participant dashboard keeps scores private until release, resumes and swit
   await login(page, f.participant.email, "participant");
   await expect(page.getByText("Chưa có điểm", { exact: true })).toBeVisible();
   const results = page.getByRole("region", { name: "Kết quả gần đây", exact: true });
-  await expect(results.getByText("Chưa có kết quả được phép xem.")).toBeVisible();
+  await expect(results.getByText("Chưa có kết quả được phép xem", { exact: true })).toBeVisible();
   expect(
     (
       await request.post(`${api}/exam-sessions/${f.s.id}/release-results`, {
@@ -145,7 +151,9 @@ test("participant dashboard keeps scores private until release, resumes and swit
   await expect(
     results.getByRole("link", { name: "Xem kết quả : Dashboard session", exact: true }),
   ).toBeVisible();
-  await results.getByRole("link", { name: "Xem kết quả : Dashboard session", exact: true }).click();
+  await results
+    .getByRole("link", { name: "Xem kết quả : Dashboard session", exact: true })
+    .click();
   await expect(page).toHaveURL(new RegExp(`/participant/results/${f.a.id}$`));
   await page.goto("/participant");
   const second = await request.post(`${api}/exam-sessions/${f.s.id}/attempts`, {
@@ -240,10 +248,12 @@ test("admin dashboard labels account status and role counts with safe navigation
   await page.locator("#password").fill(process.env.LEARNOVA_TEST_ADMIN_PASSWORD!);
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
-  await expect(page.getByRole("paragraph").filter({ hasText: /^Tài khoản ACTIVE$/ })).toBeVisible();
-  await expect(page.getByText(/không phải số người đang online/)).toBeVisible();
+  await expect(
+    page.getByRole("paragraph").filter({ hasText: /^Tài khoản hoạt động$/ }),
+  ).toBeVisible();
+  await expect(page.getByText("Tài khoản được phép đăng nhập", { exact: true })).toBeVisible();
   await checkLayout(page, "admin");
-  await page.getByRole("link", { name: "Xem chi tiết Tài khoản ACTIVE", exact: true }).click();
+  await page.getByRole("link", { name: "Xem chi tiết Tài khoản hoạt động", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/users\?status=ACTIVE$/);
   await page.goto("/creator");
   await expect(
@@ -258,6 +268,19 @@ async function checkLayout(page: Page, role: string) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     ).toBeTruthy();
+    if (width < 1024) {
+      const trigger = page.getByRole("button", { name: "Mở điều hướng", exact: true });
+      await trigger.click();
+      await expect(page.getByRole("dialog", { name: "Điều hướng", exact: true })).toBeVisible();
+      await page.keyboard.press("Tab");
+      expect(
+        await page.evaluate(() =>
+          document.querySelector("dialog[open]")?.contains(document.activeElement),
+        ),
+      ).toBe(true);
+      await page.keyboard.press("Escape");
+      await expect(trigger).toBeFocused();
+    }
     if (width === 375 || width === 1440)
       await page.screenshot({
         path: `test-results/dashboard/${role}-${width}.png`,
@@ -277,8 +300,8 @@ test("empty participant dashboard loads without invented scores and retries a fa
 }) => {
   const user = await account(request, "PARTICIPANT");
   await login(page, user.email, "participant");
-  await expect(page.getByText("Bạn không có bài đang làm còn thời gian.")).toBeVisible();
-  await expect(page.getByText("Bạn chưa có thông báo.")).toBeVisible();
+  await expect(page.getByText("Bạn không có bài đang làm còn thời gian", { exact: true })).toBeVisible();
+  await expect(page.getByText("Bạn chưa có thông báo", { exact: true })).toBeVisible();
   await expect(page.getByText("Chưa có điểm", { exact: true })).toBeVisible();
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
@@ -289,8 +312,11 @@ test("empty participant dashboard loads without invented scores and retries a fa
     await route.continue();
   });
   await page.getByRole("button", { name: "Làm mới", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: /Đang tải/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Đang cập nhật…", exact: true })).toBeDisabled();
+  await expect(page.getByText("Chưa có điểm", { exact: true })).toBeVisible();
+  await expect(page.locator('main [role="status"][aria-busy="true"]')).toHaveCount(0);
   release();
+  await expect(page.getByRole("button", { name: "Làm mới", exact: true })).toBeEnabled();
   await expect(page.getByText("Chưa có điểm", { exact: true })).toBeVisible();
   await page.unroute("**/api/v1/participant/dashboard");
   await page.context().setOffline(true);

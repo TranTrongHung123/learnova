@@ -63,7 +63,7 @@ function ProfileContent({ logoutAll }: { logoutAll: () => void }) {
   return (
     <div className="space-y-6">
       <p className="text-muted-foreground">
-        Quản lý thông tin cá nhân và bảo vệ tài khoản Learnova của bạn.
+        Quản lý thông tin cá nhân và bảo vệ tài khoản Learnova của bạn
       </p>
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <PersonalInformation profile={profile} onSaved={setProfile} />
@@ -102,7 +102,7 @@ function ProfileContent({ logoutAll }: { logoutAll: () => void }) {
             <div className="mt-6 space-y-3 border-t border-border pt-6">
               <h3 className="font-semibold">Phiên đăng nhập</h3>
               <p className="text-sm text-muted-foreground">
-                Đăng xuất tất cả thiết bị, bao gồm phiên bạn đang sử dụng.
+                Đăng xuất tất cả thiết bị, bao gồm phiên bạn đang sử dụng
               </p>
               <Button variant="secondary" onClick={logoutAll}>
                 Đăng xuất tất cả thiết bị
@@ -284,14 +284,14 @@ function PersonalInformation({
           }}
         />
         <p className="text-sm text-muted-foreground">
-          Email, vai trò và trạng thái không thể chỉnh sửa tại đây.
+          Email, vai trò và trạng thái không thể chỉnh sửa tại đây
         </p>
         <Button type="submit" disabled={busy || !dirty}>
           {busy ? "Đang lưu…" : "Lưu hồ sơ"}
         </Button>
         {success && (
           <p role="status" className="text-sm text-success">
-            Đã lưu hồ sơ.
+            Đã lưu hồ sơ
           </p>
         )}
       </form>
@@ -371,7 +371,7 @@ function PasswordForm() {
         type="password"
         autoComplete="new-password"
         required
-        hint="Từ 12 đến 128 ký tự, có thể dùng dấu cách và Unicode."
+        hint="Từ 12 đến 128 ký tự, có thể dùng dấu cách và Unicode"
         value={next}
         disabled={busy}
         error={errors.newPassword}

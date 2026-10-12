@@ -218,10 +218,10 @@ test("reporting shows best score, all graded samples, immutable snapshot and dow
   await expect(page).toHaveURL(/\/creator\/reports$/);
   await page.getByRole("link", { name: "Xem thống kê Result session", exact: true }).click();
   await expect(page.getByText(/Mẫu BEST_SCORE: 1 người/)).toBeVisible();
-  await expect(page.locator("summary")).toHaveText("Câu 1 · 1 điểm — Xem snapshot");
+  await expect(page.locator("summary")).toHaveText("Câu 1 · 1 điểm — Xem nội dung");
   await expect(page.getByRole("cell", { name: "50% (1)", exact: true })).toHaveCount(2);
   await expect(page.getByRole("cell", { name: /Không có dữ liệu.*0 mẫu thời gian/ })).toBeVisible();
-  const snapshot = page.locator("summary").filter({ hasText: "Xem snapshot" });
+  const snapshot = page.locator("summary").filter({ hasText: "Xem nội dung" });
   await snapshot.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByText("Snapshot question", { exact: true })).toBeVisible();

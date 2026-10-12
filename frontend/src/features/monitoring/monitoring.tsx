@@ -39,7 +39,7 @@ export function Monitoring({ id }: { id: string }) {
       </LinkButton>
       <header className="space-y-2">
         <h2 className="text-2xl font-bold [overflow-wrap:anywhere]">{s.title}</h2>
-        <p>Theo dõi lượt làm mới nhất của mỗi Participant.</p>
+        <p>Theo dõi lượt làm mới nhất của mỗi Participant</p>
         <div className="flex flex-wrap items-center gap-3">
           <p role="status" className={query.connected ? "text-success" : "text-warning"}>
             {query.connected

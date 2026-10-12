@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/features/auth/auth-provider";
@@ -7,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PageState, Skeleton } from "@/components/ui/page-state";
 import type { PageResult } from "./types";
 
-export const panel = "rounded-xl border border-border bg-surface p-4 sm:p-6";
+export const panel = "rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-6";
 
 export const control =
   "min-h-11 w-full rounded-lg border border-control-border bg-surface px-3 py-2";

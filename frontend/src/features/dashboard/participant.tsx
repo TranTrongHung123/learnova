@@ -5,25 +5,33 @@ import { useApiQuery } from "@/lib/api/use-query";
 import { date } from "@/features/session/shared";
 import type { DiscoveredSession, PageResult } from "@/features/discovery/types";
 import { notificationTarget } from "@/features/notification/types";
-import { DashboardState, Metric, Results, Row, Section, Updated } from "./shared";
+import {
+  DashboardIntro,
+  DashboardState,
+  Metric,
+  Results,
+  Row,
+  Section,
+  Updated,
+} from "./shared";
 import type { ParticipantDashboard } from "./types";
 
 export function ParticipantOverview() {
-  const query = useApiQuery<ParticipantDashboard>("/api/v1/participant/dashboard", true);
+  const query = useApiQuery<ParticipantDashboard>("/api/v1/participant/dashboard", true, true);
   if (!query.data) return <DashboardState error={query.error} retry={query.reload} />;
   const d = query.data;
   return (
     <div className="space-y-6">
-      <p className="text-muted-foreground">
-        Tiếp tục bài đang làm, chuẩn bị cho kỳ thi tiếp theo và theo dõi kết quả của bạn.
-      </p>
-      <div className="flex flex-wrap gap-3">
+      <DashboardIntro
+        label="KHÔNG GIAN NGƯỜI THAM GIA"
+        description="Theo dõi lịch thi, tiếp tục bài làm và xem kết quả"
+      >
         <LinkButton href="/participant/exams">Khám phá kỳ thi</LinkButton>
         <LinkButton variant="secondary" href="/participant/classes/join">
           Tham gia lớp
         </LinkButton>
-      </div>
-      <Updated time={d.serverTime} reload={query.reload} />
+      </DashboardIntro>
+      <Updated time={d.serverTime} reload={query.reload} refreshing={query.refreshing} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
           label="Kỳ thi có thể làm"
@@ -53,7 +61,7 @@ export function ParticipantOverview() {
       <Section
         title="Bài đang làm"
         href="/participant/exams"
-        empty={!d.inProgress.length ? "Bạn không có bài đang làm còn thời gian." : undefined}
+        empty={!d.inProgress.length ? "Bạn không có bài đang làm còn thời gian" : undefined}
       >
         {d.inProgress.map((a) => (
           <Row
@@ -75,7 +83,7 @@ export function ParticipantOverview() {
       <Section
         title={`Thông báo · ${d.unreadCount} chưa đọc`}
         href="/notifications"
-        empty={!d.notifications.length ? "Bạn chưa có thông báo." : undefined}
+        empty={!d.notifications.length ? "Bạn chưa có thông báo" : undefined}
       >
         {d.notifications.map((n) => (
           <Row
@@ -111,7 +119,7 @@ function Sessions({
     <Section
       title={title}
       href={`/participant/exams?tab=${tab}`}
-      empty={!data.content.length ? "Chưa có kỳ thi trong nhóm này." : undefined}
+      empty={!data.content.length ? "Chưa có kỳ thi trong nhóm này" : undefined}
     >
       {data.content.map((s) => (
         <Row
