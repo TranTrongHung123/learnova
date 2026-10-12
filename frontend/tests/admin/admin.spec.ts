@@ -27,7 +27,67 @@ async function login(
   await page.locator("#password").fill(secret);
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/${workspace}$`));
+  await expect(page.getByRole("button", { name: /Menu người dùng/ })).toBeVisible();
 }
+
+async function openAdminPage(page: Page, path: string) {
+  await page.goto(path);
+  // Document tải xong chưa có nghĩa refresh cookie và dữ liệu trang đã hoàn tất.
+  const regionName = path.startsWith("/admin/audit-logs")
+    ? "Nhật ký hoạt động"
+    : /^\/admin\/users\/[^?]+/.test(path)
+      ? "Chi tiết người dùng"
+      : "Danh sách người dùng";
+  const region = page.getByRole("region", { name: regionName, exact: true });
+  await expect(region).toBeVisible();
+  await expect(region.getByRole("button", { name: "Làm mới", exact: true })).toBeVisible();
+  await expect(region.locator('[role="status"][aria-busy="true"]')).toHaveCount(0);
+  return region;
+}
+
+test("admin navigation waits for delayed refresh before opening another page", async ({
+  page,
+  request,
+}) => {
+  const target = await account(request);
+  await login(page);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let blocked = false;
+  let ready = false;
+  await page.route(`${api}/auth/refresh`, async (route) => {
+    blocked = true;
+    await gate;
+    await route.continue();
+  });
+  const opening = openAdminPage(
+    page,
+    `/admin/users?search=${encodeURIComponent(target.email)}`,
+  ).then(() => {
+    ready = true;
+  });
+  void opening.catch(() => {});
+  try {
+    await expect.poll(() => blocked).toBe(true);
+    await page.waitForLoadState("load");
+    expect(ready).toBe(false);
+    await expect(page.getByRole("region", { name: "Danh sách người dùng" })).toHaveCount(0);
+    release();
+    await opening;
+    await expect(
+      page.getByText(target.email, { exact: true }).filter({ visible: true }),
+    ).toBeVisible();
+    await page.unrouteAll({ behavior: "wait" });
+    await openAdminPage(page, `/admin/users/${target.id}`);
+    await expect(page.getByRole("checkbox", { name: "CREATOR", exact: true })).toBeVisible();
+  } finally {
+    release();
+    await opening.catch(() => {});
+    await page.unrouteAll({ behavior: "wait" });
+  }
+});
 
 test("admin searches, changes roles, locks and unlocks through real APIs with audited history", async ({
   page,
@@ -102,14 +162,18 @@ test("responsive lists, pagination, empty and offline recovery, keyboard and red
   await list.getByRole("button", { name: "Trang sau" }).click();
   await expect(page).toHaveURL(/page=1/);
   await expect(list.getByRole("button", { name: "Trang trước" })).toBeEnabled();
-  await page.goto(`/admin/users?search=${encodeURIComponent(target.email)}`);
   for (const path of [
     `/admin/users?search=${encodeURIComponent(target.email)}`,
     `/admin/users/${target.id}`,
     "/admin/audit-logs?action=ADMIN_BOOTSTRAPPED",
   ]) {
-    await page.goto(path);
-    await expect(page.getByRole("button", { name: "Làm mới", exact: true })).toBeVisible();
+    await test.step(`Open ${path.split("?")[0]}`, async () => {
+      const region = await openAdminPage(page, path);
+      const expectedText = path.includes("audit") ? "ADMIN_BOOTSTRAPPED" : target.email;
+      await expect(
+        region.getByText(expectedText, { exact: true }).filter({ visible: true }),
+      ).toBeVisible();
+    });
     for (const width of [375, 768, 1024, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       await expect(page.locator("main")).toBeVisible();
