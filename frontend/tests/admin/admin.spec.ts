@@ -23,8 +23,8 @@ async function login(
   workspace = "admin",
 ) {
   await page.goto("/login");
-  await page.getByLabel("Email (bắt buộc)", { exact: true }).fill(email);
-  await page.getByLabel("Mật khẩu (bắt buộc)", { exact: true }).fill(secret);
+  await page.locator("#email").fill(email);
+  await page.locator("#password").fill(secret);
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/${workspace}$`));
 }
@@ -48,7 +48,9 @@ test("admin searches, changes roles, locks and unlocks through real APIs with au
   await detail.getByRole("checkbox", { name: "CREATOR", exact: true }).check();
   await detail.getByRole("button", { name: "Lưu vai trò", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Xác nhận lưu vai trò" }).click();
-  await expect(detail.getByRole("status")).toBeVisible();
+  await expect(
+    detail.getByRole("status").filter({ hasText: "Đã cập nhật tài khoản" }),
+  ).toBeVisible();
   await expect(detail.getByRole("checkbox", { name: "CREATOR", exact: true })).toBeChecked();
   await detail.getByRole("button", { name: "Khóa tài khoản", exact: true }).focus();
   await page.keyboard.press("Enter");
